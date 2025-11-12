@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#06b6d4"/>
+      <stop offset="1" stop-color="#0ea5a4"/>
+    </linearGradient>
+  </defs>
+  <rect fill="url(#g)" width="800" height="200" rx="20"/>
+  <circle cx="120" cy="100" r="58" fill="#ffffff" opacity="0.95"/>
+  <circle cx="120" cy="100" r="40" fill="#06b6d4"/>
+  <g font-family="Inter, Arial, sans-serif" font-weight="600">
+    <text x="220" y="110" font-size="44" fill="#ffffff">Fast pin pon</text>
+  </g>
+  <g opacity="0.12">
+    <circle cx="700" cy="40" r="30" fill="#ffffff"/>
+    <circle cx="740" cy="80" r="18" fill="#ffffff"/>
+  </g>
+</svg>
