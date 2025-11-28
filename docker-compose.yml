@@ -29,7 +29,7 @@ services:
       - keycloakdb
     volumes:
       - ${KEYCLOAK_IMPORT_DIR}/realm-export.json:/opt/keycloak/data/import/realm-export.json
-      - ${KEYCLOAK_IMPORT_DIR}/realm-export-sdmis.json/opt/keycloak/data/import/realm-export-sdmis.json
+      - ${KEYCLOAK_IMPORT_DIR}/realm-export-sdmis.json:/opt/keycloak/data/import/realm-export-sdmis.json
     ports:
       - 8080:8080
 
