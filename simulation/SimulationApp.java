@@ -10,23 +10,24 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Imulation d'incidents et vehicules et envoi de l'état vers l'API
- * Le cahier des charges exige ce qui suit : 
+ * Simulation d'incidents et véhicules et envoi de l'état vers l'API
+ * Le cahier des charges exige :
  * - Génération d'incidents (type, localisation, gravité, horodatage) et les faire évoluer.
  * - Simulation des positions de véhicules et leurs mouvements avec une transmission périodique.
  */
 public class SimulationApp {
 
     public static void main(String[] args) {
-        String apiBaseUrl = System.getenv().getOrDefault("API_BASE_URL(à inserer une fois loan l'a créé)", "http://localhost:8080/api");
+        // Variable d'env propre : API_BASE_URL
+        String apiBaseUrl = System.getenv().getOrDefault("API_BASE_URL", "http://localhost:8080/api");
         if (args.length > 0) {
             apiBaseUrl = args[0];
         }
 
-        ApiClient apiClient = new ApiClient(apiBaseUrl); //wrapper pour faire les requêtes HTTP.
-        SimulationEngine engine = new SimulationEngine(apiClient);//logique de simulation (incidents + véhicules), il garde une référence vers ApiClient pour pousser les états.
+        ApiClient apiClient = new ApiClient(apiBaseUrl);          // wrapper pour faire les requêtes HTTP.
+        SimulationEngine engine = new SimulationEngine(apiClient); // logique de simulation (incidents + véhicules)
 
-        // Scheduler: simulation periodique automatique à chaque tick
+        // Scheduler: simulation périodique automatique à chaque tick
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
             try {
@@ -34,15 +35,15 @@ public class SimulationApp {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }, 0, 2, TimeUnit.SECONDS); //0: démarrage immédiat, 2: période en secondes, engine.tick() est appelé toutes les 2s
+        }, 0, 10, TimeUnit.SECONDS); // 0: démarrage immédiat, 10: période en secondes
 
         // CLI thread: permet de rentrer les données manuellement (simulate vehicle terminal / operator input)
         Thread cli = new Thread(new CommandListener(engine), "cli-listener");
         cli.setDaemon(true);
         cli.start();
 
+        // Hook d’arrêt : quand la JVM s’arrête (Ctrl+C ou autre), on coupe proprement le scheduler.
         Runtime.getRuntime().addShutdownHook(new Thread(scheduler::shutdownNow));
-        //Hook d’arrêt : quand la JVM s’arrête (Ctrl+C ou autre), il appelle scheduler.shutdownNow() pour couper proprement le scheduler.
     }
 
     // =========== ENUMS METIER ===========
@@ -62,14 +63,14 @@ public class SimulationApp {
     // =========== MODELES ===========
 
     static class Incident {
-        final UUID id;     //identifiant unique, immuable.
-        IncidentType type; 
-        double lat; //latitude
-        double lon; //longitude
+        final UUID id;     // identifiant unique, immuable.
+        IncidentType type;
+        double lat; // latitude
+        double lon; // longitude
         int gravite; // 1 à 3
         IncidentState etat;
-        final Instant createdAt; //timestamp de création, immuable.
-        Instant lastUpdate; //dernière fois qu’on a modifié l’état.
+        final Instant createdAt; // timestamp de création, immuable.
+        Instant lastUpdate; // dernière fois qu’on a modifié l’état.
 
         Incident(IncidentType type, double lat, double lon, int gravite) {
             this.id = UUID.randomUUID();
@@ -90,7 +91,7 @@ public class SimulationApp {
         double lon;
         VehicleState etat;
         Incident currentIncident; // incident sur lequel le véhicule est engagé (= null, si libre)
-        Instant lastUpdate; //quand on a touché à son état / position pour la dernière fois.
+        Instant lastUpdate; // quand on a touché à son état / position pour la dernière fois.
 
         Vehicle(String matricule, double lat, double lon) {
             this.id = UUID.randomUUID();
@@ -128,19 +129,19 @@ public class SimulationApp {
         }
 
         public synchronized void tick() {
-            maybeCreateIncident(); //créer un incident aléatoire parfois,
-            updateIncidentsState(); //faire évoluer son état,
-            updateVehicles(); //faire bouger / changer l’état des véhicules,
-            pushStateToApi(); //envoyer tout ça à l’API.
+            maybeCreateIncident();   // créer un incident aléatoire parfois,
+            updateIncidentsState();  // faire évoluer leur état,
+            updateVehicles();        // faire bouger / changer l’état des véhicules,
+            pushStateToApi();        // envoyer tout ça à l’API.
         }
 
         // -------- Incidents --------
 
         private void maybeCreateIncident() {
-            //~20% de chance de générer un incident à chaque tick → en moyenne un incident toutes les ~10 s.
+            // ~20% de chance de générer un incident à chaque tick → en moyenne un incident toutes les ~10 s.
             if (random.nextDouble() < 0.2) {
                 IncidentType type = IncidentType.values()[random.nextInt(IncidentType.values().length)];
-                //Coordonnées générées autour du centre ville dans un carré +/- 0.025°.
+                // Coordonnées générées autour du centre ville dans un carré +/- 0.025°.
                 double lat = CITY_CENTER_LAT + (random.nextDouble() - 0.5) * 0.05;
                 double lon = CITY_CENTER_LON + (random.nextDouble() - 0.5) * 0.05;
                 int gravite = 1 + random.nextInt(3);
@@ -148,24 +149,26 @@ public class SimulationApp {
             }
         }
 
-        Incident createIncident(IncidentType type, double lat, double lon, int gravite, String source) {
+        // synchronized car aussi appelée par la CLI
+        synchronized Incident createIncident(IncidentType type, double lat, double lon, int gravite, String source) {
             Incident incident = new Incident(type, lat, lon, gravite);
             incidents.add(incident);
-            System.out.println("[SIMU] (" + source + ") Nouvel incident : " + incident.id + " " + type + " g" + gravite);
-            api.createIncident(incident);//appelle l’API (POST /incidents) pour que le backend soit au courant.
+            System.out.println();
+            System.out.println("[SIMU] (" + source + ") Nouvel incident : " + incident.id + " " + type + " Gravite : " + gravite);
+            api.createIncident(incident); // appelle l’API (POST /incidents) pour que le backend soit au courant.
             return incident;
         }
 
-        boolean resolveIncident(UUID incidentId, String reason) {
-            //Cette méthode sert à resoudre un incident : 
-            //Elle cherche l’incident par ID dans la liste
-            // S’il existe et pas déjà résolu : passe à RESOLU, met à jour lastUpdate,log, envoie un PATCH à l’API
+        // synchronized car aussi appelée par la CLI
+        synchronized boolean resolveIncident(UUID incidentId, String reason) {
+            // Cette méthode sert à résoudre un incident
             for (Incident incident : incidents) {
                 if (incident.id.equals(incidentId) && incident.etat != IncidentState.RESOLU) {
                     incident.etat = IncidentState.RESOLU;
                     incident.lastUpdate = Instant.now();
+                    System.out.println();
                     System.out.println("[SIMU] Incident résolu (" + reason + ") : " + incident.id);
-                    api.updateIncident(incident); 
+                    api.updateIncident(incident);
                     return true;
                 }
             }
@@ -179,7 +182,7 @@ public class SimulationApp {
 
                 switch (incident.etat) {
                     case NOUVEAU:
-                        // si au moins un véhicule est affecté et en route -> EN_COURS
+                        // si au moins un véhicule est affecté -> EN_COURS
                         if (vehicles.stream().anyMatch(v -> v.currentIncident == incident)) {
                             incident.etat = IncidentState.EN_COURS;
                             incident.lastUpdate = now;
@@ -214,6 +217,7 @@ public class SimulationApp {
                             v.currentIncident = incident;
                             v.etat = VehicleState.EN_ROUTE;
                             v.lastUpdate = Instant.now();
+                            System.out.println();
                             System.out.println("[SIMU] " + v.matricule + " envoyé sur " + incident.id);
                         });
                         break;
@@ -225,6 +229,7 @@ public class SimulationApp {
                             if (distance(v.lat, v.lon, v.currentIncident.lat, v.currentIncident.lon) < 0.0005) {
                                 v.etat = VehicleState.SUR_PLACE;
                                 v.lastUpdate = Instant.now();
+                                System.out.println();
                                 System.out.println("[SIMU] " + v.matricule + " sur place " + v.currentIncident.id);
                             }
                         }
@@ -244,6 +249,7 @@ public class SimulationApp {
                             v.etat = VehicleState.DISPONIBLE;
                             v.currentIncident = null;
                             v.lastUpdate = Instant.now();
+                            System.out.println();
                             System.out.println("[SIMU] " + v.matricule + " de retour et dispo");
                         }
                         break;
@@ -251,8 +257,9 @@ public class SimulationApp {
             }
         }
 
-        boolean setVehicleState(String matricule, VehicleState newState, String note) {
-            // Changement manuel d'état de véhicule 
+        // synchronized car appelée par la CLI
+        synchronized boolean setVehicleState(String matricule, VehicleState newState, String note) {
+            // Changement manuel d'état de véhicule
             for (Vehicle v : vehicles) {
                 if (v.matricule.equalsIgnoreCase(matricule)) {
                     v.etat = newState;
@@ -260,6 +267,7 @@ public class SimulationApp {
                     if (newState == VehicleState.DISPONIBLE) {
                         v.currentIncident = null;
                     }
+                    System.out.println();
                     System.out.println("[SIMU] Etat manuel " + v.matricule + " -> " + newState + (note.isEmpty() ? "" : " (" + note + ")"));
                     api.sendVehicleReport(v, note); // Envoi d'un report à l'API (genre message de terminal de bord)
                     return true;
@@ -290,7 +298,7 @@ public class SimulationApp {
         }
 
         private void pushStateToApi() {
-            // pousser positions véhicules à chaque tick 
+            // pousser positions véhicules à chaque tick
             for (Vehicle v : vehicles) {
                 api.sendVehiclePosition(v); //(POST /vehicules/position)
             }
@@ -302,11 +310,11 @@ public class SimulationApp {
 
         // ---- Helpers for CLI ----
 
-        List<Incident> getIncidentsSnapshot() {
+        synchronized List<Incident> getIncidentsSnapshot() {
             return new ArrayList<>(incidents);
         }
 
-        List<Vehicle> getVehiclesSnapshot() {
+        synchronized List<Vehicle> getVehiclesSnapshot() {
             return new ArrayList<>(vehicles);
         }
     }
@@ -375,8 +383,8 @@ public class SimulationApp {
 
                 http.sendAsync(req, HttpResponse.BodyHandlers.discarding())
                         .thenAccept(resp -> {
-                            if (resp.statusmatricule() >= 400) {
-                                System.err.println("[API] POST " + path + " -> " + resp.statusmatricule());
+                            if (resp.statusCode() >= 400) {
+                                System.err.println("[API] POST " + path + " -> " + resp.statusCode());
                             }
                         });
             } catch (Exception e) {
@@ -394,8 +402,8 @@ public class SimulationApp {
 
                 http.sendAsync(req, HttpResponse.BodyHandlers.discarding())
                         .thenAccept(resp -> {
-                            if (resp.statusmatricule() >= 400) {
-                                System.err.println("[API] PATCH " + path + " -> " + resp.statusmatricule());
+                            if (resp.statusCode() >= 400) {
+                                System.err.println("[API] PATCH " + path + " -> " + resp.statusCode());
                             }
                         });
             } catch (Exception e) {
@@ -492,7 +500,7 @@ public class SimulationApp {
         private void printState() {
             System.out.println("Incidents:");
             for (Incident inc : engine.getIncidentsSnapshot()) {
-                System.out.println(" - " + inc.id + " " + inc.type + " g" + inc.gravite + " " + inc.etat + " @" + inc.lat + "," + inc.lon);
+                System.out.println(" - " + inc.id + " | " + inc.type + " | Gravite " + inc.gravite + " | " + inc.etat + " au : (" + inc.lat + "," + inc.lon + ")" );
             }
             System.out.println("Vehicules:");
             for (Vehicle v : engine.getVehiclesSnapshot()) {
@@ -506,7 +514,7 @@ public class SimulationApp {
             System.out.println(" help                               : afficher l'aide");
             System.out.println(" incident <type> <lat> <lon> <g>    : créer un incident manuel");
             System.out.println(" resolve <incidentId>               : marquer un incident résolu");
-            System.out.println(" etat <matricule> <etat> [note]          : forcer l'état d'un véhicule (simule terminal)");
+            System.out.println(" etat <matricule> <etat> [note]     : forcer l'état d'un véhicule (simule terminal)");
             System.out.println(" liste                              : afficher un snapshot incidents/véhicules");
         }
     }
