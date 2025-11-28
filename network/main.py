@@ -1,5 +1,6 @@
 from microbit import *
 import random
+import radio
 
 # État : False = Libre, True = En intervention
 en_intervention = False
@@ -9,6 +10,10 @@ led_on = True
 # Timer pour l'envoi GPS
 last_gps_sent = running_time()
 GPS_INTERVAL = 2000  # Envoi toutes les 2 secondes
+
+# Configuration radio (utilise le réseau Micro:bit intégré)
+radio.config(channel=7, length=64, power=7, queue=3)
+radio.on()
 
 def get_random_gps_lyon():
     """
@@ -20,15 +25,20 @@ def get_random_gps_lyon():
     lon = 4.76 + random.random() * (4.93 - 4.76)
     return lat, lon
 
+def build_gps_payload(lat, lon, status):
+    """Construit une charge utile compacte à envoyer par radio."""
+    return "GPS:{:.6f},{:.6f},{}".format(lat, lon, status)
+
 def send_gps_data():
     """
-    Simule l'envoi de données GPS via le port série (USB).
+    Simule l'envoi de données GPS via radio et via le port série (USB).
     Format: "GPS:lat,lon,status"
     """
     lat, lon = get_random_gps_lyon()
     status = "BUSY" if en_intervention else "FREE"
-    # Format CSV simple pour faciliter le parsing côté réception
-    print("GPS:{:.6f},{:.6f},{}".format(lat, lon, status))
+    payload = build_gps_payload(lat, lon, status)
+    radio.send(payload)
+    print(payload)
 
 while True:
     # Gestion du bouton A pour changer l'état d'intervention
