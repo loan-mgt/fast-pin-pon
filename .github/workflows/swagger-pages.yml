@@ -1,0 +1,87 @@
+name: Publish Swagger Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Swagger Site
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+
+      - name: Install swag CLI
+        run: go install github.com/swaggo/swag/cmd/swag@v1.16.3
+
+      - name: Generate OpenAPI artifacts
+        run: swag init -g main.go -o docs
+
+      - name: Prepare static site
+        run: |
+          mkdir -p site
+          cp docs/swagger.json site/swagger.json
+          cp docs/swagger.yaml site/swagger.yaml
+          cat <<'EOF' > site/index.html
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <title>Fast Pin Pon API</title>
+            <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+          </head>
+          <body>
+            <div id="swagger-ui"></div>
+            <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+            <script>
+              window.addEventListener('load', () => {
+                window.ui = SwaggerUIBundle({
+                  url: 'swagger.json',
+                  dom_id: '#swagger-ui',
+                  deepLinking: true,
+                  presets: [SwaggerUIBundle.presets.apis],
+                });
+              });
+            </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./api/site
+
+  deploy:
+    name: Deploy Swagger Docs
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

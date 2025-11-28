@@ -1,88 +1,57 @@
+// Package main wires configuration, dependencies, and HTTP server startup.
+//
+// @title Fast Pin Pon API
+// @version 0.1.0
+// @description Real-time coordination API for intervention dispatch.
+// @BasePath /
+// @schemes http
 package main
 
 import (
-	"encoding/json"
-	"log"
-	"net/http"
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-)
+	"fast/pin/internal/config"
+	"fast/pin/internal/server"
 
-type statusResponse struct {
-	Service   string `json:"service"`
-	Status    string `json:"status"`
-	Timestamp string `json:"timestamp"`
-}
-
-var requestCounter = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "fast_pin_pon_requests_total",
-		Help: "Count of HTTP requests by handler.",
-	},
-	[]string{"handler"},
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
-	addr := getAddr()
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", rootHandler)
-	mux.HandleFunc("/healthz", healthHandler)
-	mux.Handle("/metrics", promhttp.Handler())
-
-	server := &http.Server{
-		Addr:         addr,
-		Handler:      logRequests(mux),
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal().Err(err).Msg("load config")
 	}
 
-	log.Printf("API listening on %s", addr)
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server failed: %v", err)
-	}
-}
+	logger := newLogger(cfg)
 
-func rootHandler(w http.ResponseWriter, _ *http.Request) {
-	requestCounter.WithLabelValues("root").Inc()
-	w.Header().Set("Content-Type", "application/json")
-	response := map[string]string{
-		"message": "Fast Pin Pon API",
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	srv, err := server.New(ctx, cfg, logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("init server")
 	}
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	defer srv.Close()
+
+	if err := srv.Run(ctx); err != nil {
+		logger.Fatal().Err(err).Msg("server stopped")
 	}
 }
 
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	requestCounter.WithLabelValues("health").Inc()
-	w.Header().Set("Content-Type", "application/json")
-	response := statusResponse{
-		Service:   "fast-pin-pon",
-		Status:    "ok",
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
+func newLogger(cfg config.Config) zerolog.Logger {
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+	level, err := zerolog.ParseLevel(cfg.LogLevel)
+	if err != nil {
+		level = zerolog.InfoLevel
 	}
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	logger := log.Level(level).With().Str("env", cfg.Env).Str("app", cfg.AppName).Logger()
+	if cfg.Env == "development" {
+		logger = logger.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC822})
 	}
-}
-
-func logRequests(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		next.ServeHTTP(w, r)
-		log.Printf("%s %s %s", r.Method, r.URL.Path, time.Since(start))
-	})
-}
-
-// Prometheus metrics collected automatically via promhttp handler
-
-func getAddr() string {
-	if port := os.Getenv("PORT"); port != "" {
-		return ":" + port
-	}
-	return ":8080"
+	return logger
 }

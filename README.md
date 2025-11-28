@@ -6,6 +6,10 @@ A minimal project repository. This README contains a small project illustration 
 
 ![Doc illustration](doc/illustration.png)
 
+> 📄 Latest API contract: [Swagger UI](https://loan-mgt.github.io/fast-pin-pon/swagger) (auto-published from `main` via GitHub Pages)
+>
+> ✅ Code quality dashboard: [SonarQube report](https://sonar.4loop.org/dashboard?id=fast-pin-pon)
+
 
 ## Project structure
 
@@ -109,74 +113,119 @@ Please follow this file structure:
 
 ## Database
 
-### Events
-- `EVT_id`
-- `EVT_title`
-- `EVT_description`
-- `EVT_report`
-- `EVT_address`
-- `EVT_ETY_code`
-- `EVT_latitude`
-- `EVT_longitude`
-
-### Events Logs
-- `EVL_id`
-- `EVL_EVT_id`
-- `EVL_datetime`
-- `EVL_code`
-- `EVL_ETY_code`
-- `EVL_UIT_id`
-
-### Units
-- `UIT_id`
-- `UIT_UTY_code`
-- `UIT_latitude`
-- `UIT_longitude`
-
-### Unit Types
-- `UTY_code`
-- `UTY_name`
-- `UTY_illustration`
-- `UTY_speed`
-
 ```mermaid
 erDiagram
-  Events ||--o{ EventsLogs : "generates"
-  Units ||--o{ EventsLogs : "records"
-  Units }o--|| UnitTypes : "classified as"
+  EventTypes ||--o{ Events : "categorizes"
+  Events ||--o{ EventLogs : "timeline"
+  Events ||--o{ Interventions : "spawn"
+  Interventions ||--o{ InterventionAssignments : "dispatches"
+  Units ||--o{ InterventionAssignments : "allocated"
+  Units ||--o{ UnitTelemetry : "reports"
+  UnitTypes ||--o{ Units : "defines"
+  Personnel ||--o{ InterventionCrew : "assigned"
+  Interventions ||--o{ InterventionCrew : "staffs"
+
+  EventTypes {
+    string ETY_code
+    string ETY_name
+    string ETY_description
+    int ETY_default_severity
+    json ETY_recommended_units
+  }
 
   Events {
     string EVT_id
     string EVT_title
     string EVT_description
-    string EVT_report
+    string EVT_report_source
     string EVT_address
-    string EVT_ETY_code
     float EVT_latitude
     float EVT_longitude
+    int EVT_severity
+    string EVT_status
+    string EVT_ETY_code
+    datetime EVT_reported_at
+    datetime EVT_closed_at
   }
 
-  EventsLogs {
+  EventLogs {
     string EVL_id
     string EVL_EVT_id
     datetime EVL_datetime
     string EVL_code
-    string EVL_ETY_code
-    string EVL_UIT_id
+    json EVL_payload
+    string EVL_actor
   }
 
-  Units {
-    string UIT_id
-    string UIT_UTY_code
-    float UIT_latitude
-    float UIT_longitude
+  Interventions {
+    string IVN_id
+    string IVN_EVT_id
+    string IVN_status
+    int IVN_priority
+    string IVN_decision_mode
+    string IVN_created_by
+    datetime IVN_created_at
+    datetime IVN_started_at
+    datetime IVN_completed_at
+  }
+
+  InterventionAssignments {
+    string IAS_id
+    string IAS_IVN_id
+    string IAS_UIT_id
+    string IAS_role
+    string IAS_status
+    datetime IAS_dispatched_at
+    datetime IAS_arrived_at
+    datetime IAS_released_at
   }
 
   UnitTypes {
     string UTY_code
     string UTY_name
-    string UTY_illustration
+    string UTY_capabilities
     int UTY_speed
+    int UTY_max_crew
+    string UTY_illustration
+  }
+
+  Units {
+    string UIT_id
+    string UIT_call_sign
+    string UIT_UTY_code
+    string UIT_home_base
+    string UIT_status
+    float UIT_latitude
+    float UIT_longitude
+    datetime UIT_last_contact_at
+  }
+
+  UnitTelemetry {
+    string UTM_id
+    string UTM_UIT_id
+    datetime UTM_recorded_at
+    float UTM_latitude
+    float UTM_longitude
+    int UTM_heading
+    float UTM_speed
+    json UTM_status_snapshot
+  }
+
+  Personnel {
+    string PRS_id
+    string PRS_name
+    string PRS_rank
+    string PRS_status
+    string PRS_home_base
+    string PRS_contact
+  }
+
+  InterventionCrew {
+    string IRC_id
+    string IRC_IVN_id
+    string IRC_PRS_id
+    string IRC_role
+    string IRC_status
   }
 ```
 
