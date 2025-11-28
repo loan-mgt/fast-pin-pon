@@ -26,7 +26,6 @@ func (s *Server) routes() http.Handler {
 	}))
 
 	r.Get("/healthz", s.handleHealth)
-
 	r.Route("/v1", func(v1 chi.Router) {
 		v1.Get("/event-types", s.handleListEventTypes)
 		v1.Get("/unit-types", s.handleListUnitTypes)

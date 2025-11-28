@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type apiError struct {
+type APIError struct {
 	Error   string      `json:"error"`
 	Details interface{} `json:"details,omitempty"`
 }
@@ -28,7 +28,7 @@ func (s *Server) writeJSON(w http.ResponseWriter, status int, payload interface{
 }
 
 func (s *Server) writeError(w http.ResponseWriter, status int, message string, details interface{}) {
-	s.writeJSON(w, status, apiError{Error: message, Details: details})
+	s.writeJSON(w, status, APIError{Error: message, Details: details})
 }
 
 func (s *Server) decodeAndValidate(r *http.Request, dst interface{}) error {
@@ -126,11 +126,11 @@ func timestamptzFromPtr(t *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: t.UTC(), Valid: true}
 }
 
-func rawJSONOrEmpty(data json.RawMessage) []byte {
+func rawJSONOrEmpty(data RawJSON) []byte {
 	if len(data) == 0 {
 		return []byte("{}")
 	}
-	return data
+	return []byte(data)
 }
 
 func pgUUIDFromString(value string) (pgtype.UUID, error) {

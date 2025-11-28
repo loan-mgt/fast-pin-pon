@@ -1,3 +1,10 @@
+// Package main wires configuration, dependencies, and HTTP server startup.
+//
+// @title Fast Pin Pon API
+// @version 0.1.0
+// @description Real-time coordination API for intervention dispatch.
+// @BasePath /
+// @schemes http
 package main
 
 import (

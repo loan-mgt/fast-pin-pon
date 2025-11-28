@@ -1,9 +1,23 @@
 package server
 
-import (
-	"encoding/json"
-	"time"
-)
+import "time"
+
+type RawJSON []byte
+
+func (r RawJSON) MarshalJSON() ([]byte, error) {
+	if r == nil {
+		return []byte("null"), nil
+	}
+	return []byte(r), nil
+}
+
+func (r *RawJSON) UnmarshalJSON(data []byte) error {
+	if r == nil {
+		return nil
+	}
+	*r = append((*r)[:0], data...)
+	return nil
+}
 
 type GeoPoint struct {
 	Latitude  float64 `json:"latitude"`
@@ -34,12 +48,12 @@ type EventDetailResponse struct {
 }
 
 type EventLogResponse struct {
-	ID        int64           `json:"id"`
-	EventID   string          `json:"event_id"`
-	CreatedAt time.Time       `json:"created_at"`
-	Code      string          `json:"code"`
-	Actor     string          `json:"actor,omitempty"`
-	Payload   json.RawMessage `json:"payload"`
+	ID        int64     `json:"id"`
+	EventID   string    `json:"event_id"`
+	CreatedAt time.Time `json:"created_at"`
+	Code      string    `json:"code"`
+	Actor     string    `json:"actor,omitempty"`
+	Payload   RawJSON   `json:"payload"`
 }
 
 type EventTypeResponse struct {
@@ -99,13 +113,13 @@ type UnitResponse struct {
 }
 
 type TelemetryResponse struct {
-	ID         int64           `json:"id"`
-	UnitID     string          `json:"unit_id"`
-	RecordedAt time.Time       `json:"recorded_at"`
-	Location   GeoPoint        `json:"location"`
-	Heading    *int32          `json:"heading,omitempty"`
-	SpeedKMH   *float64        `json:"speed_kmh,omitempty"`
-	Status     json.RawMessage `json:"status_snapshot"`
+	ID         int64     `json:"id"`
+	UnitID     string    `json:"unit_id"`
+	RecordedAt time.Time `json:"recorded_at"`
+	Location   GeoPoint  `json:"location"`
+	Heading    *int32    `json:"heading,omitempty"`
+	SpeedKMH   *float64  `json:"speed_kmh,omitempty"`
+	Status     RawJSON   `json:"status_snapshot"`
 }
 
 type HealthResponse struct {
