@@ -3,8 +3,9 @@
 // @title Fast Pin Pon API
 // @version 0.1.0
 // @description Real-time coordination API for intervention dispatch.
+// @host api.fast-pin-pon.4loop.org
 // @BasePath /
-// @schemes http
+// @schemes https
 package main
 
 import (
