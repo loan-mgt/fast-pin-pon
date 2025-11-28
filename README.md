@@ -6,6 +6,8 @@ A minimal project repository. This README contains a small project illustration 
 
 ![Doc illustration](doc/illustration.png)
 
+> 📄 Latest API contract: [Swagger UI](https://loan-mgt.github.io/fast-pin-pon/swagger) (auto-published from `main` via GitHub Pages)
+
 
 ## Project structure
 
