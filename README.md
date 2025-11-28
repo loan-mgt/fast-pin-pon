@@ -106,3 +106,39 @@ Please follow this file structure:
   - Represent external system states and state changes
   - Validate end-to-end system functionality (capture, processing/decision, restitution)
 
+
+## Database
+
+
+Events
+EVT_id
+EVT_title
+EVT_description
+EVT_report
+EVT_address
+EVT_ETY_code
+EVT_latitude
+EVT_longitude
+
+Events_logs
+EVL_id
+EVL_EVT_id
+EVL_datetime
+EVL_code
+EVL_ETY_code
+EVL_UIT_id
+
+Units
+UIT_id
+UIT_UTY_code
+UIT_latitude
+UIT_longitude
+
+Units_types
+UTY_code
+UTY_name
+UTY_illustration
+UTY_speed
+
+
+
