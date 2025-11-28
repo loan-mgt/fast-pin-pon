@@ -1,0 +1,14 @@
+services:
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: always
+    environment:
+      GF_INSTALL_PLUGINS: ${PACKAGE_PLUGINS_GRAFANA}
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+volumes:
+  grafana-storage: 
