@@ -1,0 +1,22 @@
+{
+  "realm": "master",
+  "enabled": true,
+  "users": [
+    {
+      "username": "${MY_ADMIN_USER}",
+      "enabled": true,
+      "email": "${MY_ADMIN_EMAIL}",
+      "firstName": "${MY_ADMIN_FNAME}",
+      "lastName": "${MY_ADMIN_LNAME}",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${MY_ADMIN_PASS}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [ "admin" ]
+    }
+  ]
+}
