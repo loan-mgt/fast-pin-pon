@@ -4,16 +4,14 @@ services:
     container_name: keycloak_web
     command: start-dev --import-realm
     environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloakdb:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: password
-
-      KC_HOSTNAME: localhost
+      KC_DB: ${KC_DB}
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HOSTNAME: ${KC_HOSTNAME}
       KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
-
       KC_LOG_LEVEL: info
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
@@ -26,11 +24,12 @@ services:
       MY_ADMIN_LNAME: ${MY_ADMIN_LNAME}
 
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
-      
+    
     depends_on:
       - keycloakdb
     volumes:
-      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+      - ${KEYCLOAK_IMPORT_DIR}/realm-export.json:/opt/keycloak/data/import/realm-export.json
+      - ${KEYCLOAK_IMPORT_DIR}/realm-export-sdmis.json/opt/keycloak/data/import/realm-export-sdmis.json
     ports:
       - 8080:8080
 
@@ -39,9 +38,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
 volumes:
   postgres_data:
