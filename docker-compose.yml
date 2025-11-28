@@ -1,0 +1,47 @@
+services:
+  keycloak_web:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak_web
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloakdb:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+
+      # On utilise des noms "custom" que seul votre JSON connait.
+      MY_ADMIN_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      MY_ADMIN_PASS: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      MY_ADMIN_EMAIL: ${MY_ADMIN_EMAIL}
+      MY_ADMIN_FNAME: ${MY_ADMIN_FNAME}
+      MY_ADMIN_LNAME: ${MY_ADMIN_LNAME}
+
+      JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
+      
+    depends_on:
+      - keycloakdb
+    volumes:
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    ports:
+      - 8080:8080
+
+  keycloakdb:
+    image: postgres:16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+
+volumes:
+  postgres_data:
