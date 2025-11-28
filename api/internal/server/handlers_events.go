@@ -1,0 +1,326 @@
+package server
+
+import (
+	"encoding/json"
+	"net/http"
+
+	db "fast/pin/internal/db/sqlc"
+)
+
+type createEventRequest struct {
+	Title         string  `json:"title" validate:"required,min=3,max=140"`
+	Description   *string `json:"description"`
+	ReportSource  *string `json:"report_source"`
+	Address       *string `json:"address"`
+	Latitude      float64 `json:"latitude" validate:"required,latitude"`
+	Longitude     float64 `json:"longitude" validate:"required,longitude"`
+	Severity      int32   `json:"severity" validate:"required,min=1,max=5"`
+	EventTypeCode string  `json:"event_type_code" validate:"required"`
+}
+
+type updateEventStatusRequest struct {
+	Status string `json:"status" validate:"required,oneof=open acknowledged contained closed"`
+}
+
+type createEventLogRequest struct {
+	Code    string          `json:"code" validate:"required"`
+	Actor   *string         `json:"actor"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+func (s *Server) handleListEventTypes(w http.ResponseWriter, r *http.Request) {
+	types, err := s.queries.ListEventTypes(r.Context())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to list event types", err.Error())
+		return
+	}
+
+	resp := make([]EventTypeResponse, 0, len(types))
+	for _, t := range types {
+		resp = append(resp, EventTypeResponse{
+			Code:                 t.Code,
+			Name:                 t.Name,
+			Description:          t.Description,
+			DefaultSeverity:      t.DefaultSeverity,
+			RecommendedUnitTypes: t.RecommendedUnitTypes,
+		})
+	}
+
+	s.writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleListUnitTypes(w http.ResponseWriter, r *http.Request) {
+	types, err := s.queries.ListUnitTypes(r.Context())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to list unit types", err.Error())
+		return
+	}
+
+	resp := make([]UnitTypeResponse, 0, len(types))
+	for _, t := range types {
+		resp = append(resp, UnitTypeResponse{
+			Code:         t.Code,
+			Name:         t.Name,
+			Capabilities: t.Capabilities,
+			SpeedKMH:     t.SpeedKmh,
+			MaxCrew:      t.MaxCrew,
+			Illustration: optionalString(t.Illustration),
+		})
+	}
+
+	s.writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
+	limit, offset := s.paginate(r, 25)
+	rows, err := s.queries.ListEvents(r.Context(), db.ListEventsParams{Limit: limit, Offset: offset})
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to list events", err.Error())
+		return
+	}
+	resp := make([]EventSummaryResponse, 0, len(rows))
+	for _, row := range rows {
+		resp = append(resp, mapEventSummary(row))
+	}
+	s.writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
+	var req createEventRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		return
+	}
+
+	params := db.CreateEventParams{
+		Title:         req.Title,
+		Description:   req.Description,
+		ReportSource:  req.ReportSource,
+		Address:       req.Address,
+		Longitude:     req.Longitude,
+		Latitude:      req.Latitude,
+		Severity:      req.Severity,
+		EventTypeCode: req.EventTypeCode,
+	}
+
+	row, err := s.queries.CreateEvent(r.Context(), params)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to create event", err.Error())
+		return
+	}
+
+	summary := mapCreateEventRow(row)
+	s.writeJSON(w, http.StatusCreated, summary)
+}
+
+func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
+	eventID, err := s.parseUUIDParam(r, "eventID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid event id", err.Error())
+		return
+	}
+
+	eventRow, err := s.queries.GetEvent(r.Context(), eventID)
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, "event not found", nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to fetch event", err.Error())
+		return
+	}
+
+	interventions, err := s.queries.ListInterventionsByEvent(r.Context(), eventID)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to fetch interventions", err.Error())
+		return
+	}
+
+	logs, err := s.queries.ListEventLogs(r.Context(), db.ListEventLogsParams{EventID: eventID, Limit: 50, Offset: 0})
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to fetch event logs", err.Error())
+		return
+	}
+
+	resp := mapEventDetail(eventRow, interventions, logs)
+	s.writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleUpdateEventStatus(w http.ResponseWriter, r *http.Request) {
+	eventID, err := s.parseUUIDParam(r, "eventID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid event id", err.Error())
+		return
+	}
+
+	var req updateEventStatusRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		return
+	}
+
+	row, err := s.queries.UpdateEventStatus(r.Context(), db.UpdateEventStatusParams{
+		ID:     eventID,
+		Status: db.EventStatus(req.Status),
+	})
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, "event not found", nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to update status", err.Error())
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, mapUpdateEventRow(row))
+}
+
+func (s *Server) handleCreateEventLog(w http.ResponseWriter, r *http.Request) {
+	eventID, err := s.parseUUIDParam(r, "eventID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid event id", err.Error())
+		return
+	}
+
+	var req createEventLogRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		return
+	}
+
+	params := db.CreateEventLogParams{
+		EventID: eventID,
+		Code:    req.Code,
+		Actor:   req.Actor,
+		Payload: rawJSONOrEmpty(req.Payload),
+	}
+
+	logRow, err := s.queries.CreateEventLog(r.Context(), params)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to create log", err.Error())
+		return
+	}
+
+	s.writeJSON(w, http.StatusCreated, mapEventLog(logRow))
+}
+
+func (s *Server) handleListEventLogs(w http.ResponseWriter, r *http.Request) {
+	eventID, err := s.parseUUIDParam(r, "eventID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid event id", err.Error())
+		return
+	}
+	limit, offset := s.paginate(r, 50)
+
+	rows, err := s.queries.ListEventLogs(r.Context(), db.ListEventLogsParams{EventID: eventID, Limit: limit, Offset: offset})
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to list logs", err.Error())
+		return
+	}
+
+	resp := make([]EventLogResponse, 0, len(rows))
+	for _, row := range rows {
+		resp = append(resp, mapEventLog(row))
+	}
+
+	s.writeJSON(w, http.StatusOK, resp)
+}
+
+func mapEventSummary(row db.ListEventsRow) EventSummaryResponse {
+	return EventSummaryResponse{
+		ID:            uuidString(row.ID),
+		Title:         row.Title,
+		Description:   optionalString(row.Description),
+		ReportSource:  optionalString(row.ReportSource),
+		Address:       optionalString(row.Address),
+		Location:      GeoPoint{Latitude: row.Latitude, Longitude: row.Longitude},
+		Severity:      row.Severity,
+		Status:        string(row.Status),
+		EventTypeCode: row.EventTypeCode,
+		EventTypeName: row.EventTypeName,
+		ReportedAt:    row.ReportedAt.Time,
+		UpdatedAt:     row.UpdatedAt.Time,
+		ClosedAt:      timestamptzPtr(row.ClosedAt),
+	}
+}
+
+func mapCreateEventRow(row db.CreateEventRow) EventSummaryResponse {
+	return EventSummaryResponse{
+		ID:           uuidString(row.ID),
+		Title:        row.Title,
+		Description:  optionalString(row.Description),
+		ReportSource: optionalString(row.ReportSource),
+		Address:      optionalString(row.Address),
+		Location: GeoPoint{
+			Latitude:  row.Latitude,
+			Longitude: row.Longitude,
+		},
+		Severity:      row.Severity,
+		Status:        string(row.Status),
+		EventTypeCode: row.EventTypeCode,
+		ReportedAt:    row.ReportedAt.Time,
+		UpdatedAt:     row.UpdatedAt.Time,
+		ClosedAt:      timestamptzPtr(row.ClosedAt),
+	}
+}
+
+func mapUpdateEventRow(row db.UpdateEventStatusRow) EventSummaryResponse {
+	return EventSummaryResponse{
+		ID:            uuidString(row.ID),
+		Title:         row.Title,
+		Description:   optionalString(row.Description),
+		ReportSource:  optionalString(row.ReportSource),
+		Address:       optionalString(row.Address),
+		Location:      GeoPoint{Latitude: row.Latitude, Longitude: row.Longitude},
+		Severity:      row.Severity,
+		Status:        string(row.Status),
+		EventTypeCode: row.EventTypeCode,
+		ReportedAt:    row.ReportedAt.Time,
+		UpdatedAt:     row.UpdatedAt.Time,
+		ClosedAt:      timestamptzPtr(row.ClosedAt),
+	}
+}
+
+func mapEventDetail(event db.GetEventRow, interventions []db.Intervention, logs []db.EventLog) EventDetailResponse {
+	summary := EventSummaryResponse{
+		ID:            uuidString(event.ID),
+		Title:         event.Title,
+		Description:   optionalString(event.Description),
+		ReportSource:  optionalString(event.ReportSource),
+		Address:       optionalString(event.Address),
+		Location:      GeoPoint{Latitude: event.Latitude, Longitude: event.Longitude},
+		Severity:      event.Severity,
+		Status:        string(event.Status),
+		EventTypeCode: event.EventTypeCode,
+		EventTypeName: event.EventTypeName,
+		ReportedAt:    event.ReportedAt.Time,
+		UpdatedAt:     event.UpdatedAt.Time,
+		ClosedAt:      timestamptzPtr(event.ClosedAt),
+	}
+
+	resp := EventDetailResponse{
+		EventSummaryResponse: summary,
+		RecommendedUnitTypes: event.RecommendedUnitTypes,
+	}
+
+	for _, intervention := range interventions {
+		resp.Interventions = append(resp.Interventions, mapIntervention(intervention))
+	}
+
+	for _, logRow := range logs {
+		resp.Logs = append(resp.Logs, mapEventLog(logRow))
+	}
+
+	return resp
+}
+
+func mapEventLog(row db.EventLog) EventLogResponse {
+	return EventLogResponse{
+		ID:        row.ID,
+		EventID:   uuidString(row.EventID),
+		CreatedAt: row.CreatedAt.Time,
+		Code:      row.Code,
+		Actor:     optionalString(row.Actor),
+		Payload:   json.RawMessage(row.Payload),
+	}
+}

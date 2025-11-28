@@ -30,8 +30,9 @@ RUN apk --no-cache add ca-certificates && \
 # Set working directory
 WORKDIR /app
 
-# Copy the binary from builder stage
+# Copy the binary and migrations from builder stage
 COPY --from=builder /app/main .
+COPY --from=builder /app/migrations ./migrations
 
 # Switch to non-root user
 USER appuser

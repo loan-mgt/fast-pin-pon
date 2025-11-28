@@ -1,46 +1,92 @@
+version: "3.9"
+
 services:
-  keycloak_web:
-    image: quay.io/keycloak/keycloak:latest
-    container_name: keycloak_web
-    command: start-dev --import-realm
-    environment:
-      KC_DB: ${KC_DB}
-      KC_DB_URL: ${KC_DB_URL}
-      KC_DB_USERNAME: ${POSTGRES_USER}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
-      KC_HOSTNAME: ${KC_HOSTNAME}
-      KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
-      KC_LOG_LEVEL: info
-      KC_METRICS_ENABLED: true
-      KC_HEALTH_ENABLED: true
+  # keycloak_web:
+  #   image: quay.io/keycloak/keycloak:latest
+  #   container_name: keycloak_web
+  #   command: start-dev --import-realm
+  #   environment:
+  #     KC_DB: ${KC_DB}
+  #     KC_DB_URL: ${KC_DB_URL}
+  #     KC_DB_USERNAME: ${POSTGRES_USER}
+  #     KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+  #     KC_HOSTNAME: ${KC_HOSTNAME}
+  #     KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
+  #     KC_HOSTNAME_STRICT: false
+  #     KC_HOSTNAME_STRICT_HTTPS: false
+  #     KC_LOG_LEVEL: info
+  #     KC_METRICS_ENABLED: true
+  #     KC_HEALTH_ENABLED: true
 
-      # On utilise des noms "custom" que seul votre JSON connait.
-      MY_ADMIN_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
-      MY_ADMIN_PASS: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
-      MY_ADMIN_EMAIL: ${MY_ADMIN_EMAIL}
-      MY_ADMIN_FNAME: ${MY_ADMIN_FNAME}
-      MY_ADMIN_LNAME: ${MY_ADMIN_LNAME}
+  #     # On utilise des noms "custom" que seul votre JSON connait.
+  #     MY_ADMIN_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+  #     MY_ADMIN_PASS: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+  #     MY_ADMIN_EMAIL: ${MY_ADMIN_EMAIL}
+  #     MY_ADMIN_FNAME: ${MY_ADMIN_FNAME}
+  #     MY_ADMIN_LNAME: ${MY_ADMIN_LNAME}
 
-      JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
+  #     JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
     
-    depends_on:
-      - keycloakdb
-    volumes:
-      - ${KEYCLOAK_IMPORT_DIR}/realm-export.json:/opt/keycloak/data/import/realm-export.json
-      - ${KEYCLOAK_IMPORT_DIR}/realm-export-sdmis.json:/opt/keycloak/data/import/realm-export-sdmis.json
-    ports:
-      - 8080:8080
+  #   depends_on:
+  #     - keycloakdb
+  #   volumes:
+  #     - ${KEYCLOAK_IMPORT_DIR}/realm-export.json:/opt/keycloak/data/import/realm-export.json
+  #     - ${KEYCLOAK_IMPORT_DIR}/realm-export-sdmis.json:/opt/keycloak/data/import/realm-export-sdmis.json
+  #   ports:
+  #     - 8080:8080
 
-  keycloakdb:
-    image: postgres:16
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # keycloakdb:
+  #   image: postgres:16
+  #   volumes:
+  #     - keycloak_postgres_data:/var/lib/postgresql/data
+  #   environment:
+  #     POSTGRES_DB: ${POSTGRES_DB}
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: fast-pin-pon-api
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      - PORT=9031
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  postgres:
+    image: postgis/postgis:18-3.6-alpine
+    container_name: fast-pin-pon-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fastpinpon
+      POSTGRES_USER: fastpinpon
+      POSTGRES_PASSWORD: fastpinpon
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fastpinpon -d fastpinpon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  internal:
+    driver: bridge
 
 volumes:
   postgres_data:
+  keycloak_postgres_data:
