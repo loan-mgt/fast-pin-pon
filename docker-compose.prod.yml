@@ -1,0 +1,15 @@
+services:
+  api:
+    image: ghcr.io/loan-mgt/fast-pin-pon/api:latest
+    container_name: fast-pin-pon-api
+    env_file:
+      - .env
+    environment:
+      - PORT=9031
+    networks:
+      - internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
