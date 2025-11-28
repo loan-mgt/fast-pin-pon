@@ -1,4 +1,4 @@
-from microbit import *
+from microbit import Image, display, sleep
 import radio
 
 radio.config(channel=7, length=64, power=7, queue=10)
