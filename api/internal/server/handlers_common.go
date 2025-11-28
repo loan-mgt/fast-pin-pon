@@ -19,6 +19,13 @@ type APIError struct {
 	Details interface{} `json:"details,omitempty"`
 }
 
+const (
+	errInvalidPayload        = "invalid payload"
+	errInvalidEventID        = "invalid event id"
+	errInvalidInterventionID = "invalid intervention id"
+	errInvalidUnitID         = "invalid unit id"
+)
+
 func (s *Server) writeJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

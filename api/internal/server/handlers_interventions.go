@@ -43,7 +43,7 @@ type UpdateAssignmentStatusRequest struct {
 func (s *Server) handleCreateIntervention(w http.ResponseWriter, r *http.Request) {
 	var req CreateInterventionRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 
@@ -96,7 +96,7 @@ func (s *Server) handleCreateIntervention(w http.ResponseWriter, r *http.Request
 func (s *Server) handleGetIntervention(w http.ResponseWriter, r *http.Request) {
 	interventionID, err := s.parseUUIDParam(r, "interventionID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid intervention id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidInterventionID, err.Error())
 		return
 	}
 
@@ -140,13 +140,13 @@ func (s *Server) handleGetIntervention(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpdateInterventionStatus(w http.ResponseWriter, r *http.Request) {
 	interventionID, err := s.parseUUIDParam(r, "interventionID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid intervention id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidInterventionID, err.Error())
 		return
 	}
 
 	var req UpdateInterventionStatusRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 
@@ -212,13 +212,13 @@ func (s *Server) handleListInterventionsForEvent(w http.ResponseWriter, r *http.
 func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) {
 	interventionID, err := s.parseUUIDParam(r, "interventionID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid intervention id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidInterventionID, err.Error())
 		return
 	}
 
 	var req CreateAssignmentRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 
@@ -262,7 +262,7 @@ func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleListAssignmentsForIntervention(w http.ResponseWriter, r *http.Request) {
 	interventionID, err := s.parseUUIDParam(r, "interventionID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid intervention id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidInterventionID, err.Error())
 		return
 	}
 
@@ -302,7 +302,7 @@ func (s *Server) handleUpdateAssignmentStatus(w http.ResponseWriter, r *http.Req
 
 	var req UpdateAssignmentStatusRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 

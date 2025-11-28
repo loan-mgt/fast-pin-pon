@@ -124,7 +124,7 @@ func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 	var req CreateEventRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 
@@ -163,7 +163,7 @@ func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid event id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidEventID, err.Error())
 		return
 	}
 
@@ -209,13 +209,13 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpdateEventStatus(w http.ResponseWriter, r *http.Request) {
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid event id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidEventID, err.Error())
 		return
 	}
 
 	var req UpdateEventStatusRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 
@@ -250,13 +250,13 @@ func (s *Server) handleUpdateEventStatus(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleCreateEventLog(w http.ResponseWriter, r *http.Request) {
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid event id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidEventID, err.Error())
 		return
 	}
 
 	var req CreateEventLogRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 
@@ -291,7 +291,7 @@ func (s *Server) handleCreateEventLog(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListEventLogs(w http.ResponseWriter, r *http.Request) {
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid event id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidEventID, err.Error())
 		return
 	}
 	limit, offset := s.paginate(r, 50)

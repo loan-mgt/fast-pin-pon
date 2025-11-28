@@ -44,7 +44,18 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]UnitResponse, 0, len(rows))
 	for _, row := range rows {
-		resp = append(resp, mapUnitRow(row.ID, row.CallSign, row.UnitTypeCode, row.HomeBase, row.Status, row.Longitude, row.Latitude, row.LastContactAt, row.CreatedAt, row.UpdatedAt))
+		resp = append(resp, mapUnitRow(unitRowData{
+			ID:           row.ID,
+			CallSign:     row.CallSign,
+			UnitTypeCode: row.UnitTypeCode,
+			HomeBase:     row.HomeBase,
+			Status:       row.Status,
+			Longitude:    row.Longitude,
+			Latitude:     row.Latitude,
+			LastContact:  row.LastContactAt,
+			CreatedAt:    row.CreatedAt,
+			UpdatedAt:    row.UpdatedAt,
+		}))
 	}
 
 	s.writeJSON(w, http.StatusOK, resp)
@@ -66,13 +77,13 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) {
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid unit id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
 		return
 	}
 
 	var req UpdateUnitStatusRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 
@@ -89,7 +100,18 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	s.writeJSON(w, http.StatusOK, mapUnitRow(row.ID, row.CallSign, row.UnitTypeCode, row.HomeBase, row.Status, row.Longitude, row.Latitude, row.LastContactAt, row.CreatedAt, row.UpdatedAt))
+	s.writeJSON(w, http.StatusOK, mapUnitRow(unitRowData{
+		ID:           row.ID,
+		CallSign:     row.CallSign,
+		UnitTypeCode: row.UnitTypeCode,
+		HomeBase:     row.HomeBase,
+		Status:       row.Status,
+		Longitude:    row.Longitude,
+		Latitude:     row.Latitude,
+		LastContact:  row.LastContactAt,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}))
 }
 
 // handleUpdateUnitLocation godoc
@@ -108,13 +130,13 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request) {
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid unit id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
 		return
 	}
 
 	var req UpdateUnitLocationRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 
@@ -133,7 +155,18 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	s.writeJSON(w, http.StatusOK, mapUnitRow(row.ID, row.CallSign, row.UnitTypeCode, row.HomeBase, row.Status, row.Longitude, row.Latitude, row.LastContactAt, row.CreatedAt, row.UpdatedAt))
+	s.writeJSON(w, http.StatusOK, mapUnitRow(unitRowData{
+		ID:           row.ID,
+		CallSign:     row.CallSign,
+		UnitTypeCode: row.UnitTypeCode,
+		HomeBase:     row.HomeBase,
+		Status:       row.Status,
+		Longitude:    row.Longitude,
+		Latitude:     row.Latitude,
+		LastContact:  row.LastContactAt,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}))
 }
 
 // handleInsertTelemetry godoc
@@ -152,13 +185,13 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 func (s *Server) handleInsertTelemetry(w http.ResponseWriter, r *http.Request) {
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid unit id", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
 		return
 	}
 
 	var req UnitTelemetryRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid payload", err.Error())
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
 		return
 	}
 
@@ -188,16 +221,29 @@ func (s *Server) handleInsertTelemetry(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusCreated, resp)
 }
 
-func mapUnitRow(id pgtype.UUID, callSign string, unitTypeCode string, homeBase *string, status db.UnitStatus, longitude, latitude float64, lastContact, createdAt, updatedAt pgtype.Timestamptz) UnitResponse {
+type unitRowData struct {
+	ID           pgtype.UUID
+	CallSign     string
+	UnitTypeCode string
+	HomeBase     *string
+	Status       db.UnitStatus
+	Longitude    float64
+	Latitude     float64
+	LastContact  pgtype.Timestamptz
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+func mapUnitRow(data unitRowData) UnitResponse {
 	return UnitResponse{
-		ID:           uuidString(id),
-		CallSign:     callSign,
-		UnitTypeCode: unitTypeCode,
-		HomeBase:     optionalString(homeBase),
-		Status:       string(status),
-		Location:     GeoPoint{Latitude: latitude, Longitude: longitude},
-		LastContact:  timestamptzPtr(lastContact),
-		CreatedAt:    createdAt.Time,
-		UpdatedAt:    updatedAt.Time,
+		ID:           uuidString(data.ID),
+		CallSign:     data.CallSign,
+		UnitTypeCode: data.UnitTypeCode,
+		HomeBase:     optionalString(data.HomeBase),
+		Status:       string(data.Status),
+		Location:     GeoPoint{Latitude: data.Latitude, Longitude: data.Longitude},
+		LastContact:  timestamptzPtr(data.LastContact),
+		CreatedAt:    data.CreatedAt.Time,
+		UpdatedAt:    data.UpdatedAt.Time,
 	}
 }
