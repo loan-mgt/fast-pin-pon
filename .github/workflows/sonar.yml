@@ -31,15 +31,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Print Sonar report links
+      - name: Print Sonar report link
         if: always()
         run: |
-          REPORT_FILE=.scannerwork/report-task.txt
-          if [ -f "$REPORT_FILE" ]; then
-            DASHBOARD_URL=$(grep '^dashboardUrl=' "$REPORT_FILE" | cut -d'=' -f2-)
-            CE_TASK_URL=$(grep '^ceTaskUrl=' "$REPORT_FILE" | cut -d'=' -f2-)
-            echo "SonarQube dashboard: ${DASHBOARD_URL:-N/A}"
-            echo "SonarQube background task: ${CE_TASK_URL:-N/A}"
-          else
-            echo "SonarQube report file not found; scan may have failed before completion."
-          fi
+          echo "SonarQube report: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
