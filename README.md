@@ -106,3 +106,79 @@ Please follow this file structure:
   - Represent external system states and state changes
   - Validate end-to-end system functionality (capture, processing/decision, restitution)
 
+
+## Database
+
+### Events
+- `EVT_id`
+- `EVT_title`
+- `EVT_description`
+- `EVT_report`
+- `EVT_address`
+- `EVT_ETY_code`
+- `EVT_latitude`
+- `EVT_longitude`
+
+### Events Logs
+- `EVL_id`
+- `EVL_EVT_id`
+- `EVL_datetime`
+- `EVL_code`
+- `EVL_ETY_code`
+- `EVL_UIT_id`
+
+### Units
+- `UIT_id`
+- `UIT_UTY_code`
+- `UIT_latitude`
+- `UIT_longitude`
+
+### Unit Types
+- `UTY_code`
+- `UTY_name`
+- `UTY_illustration`
+- `UTY_speed`
+
+```mermaid
+erDiagram
+  Events ||--o{ EventsLogs : "generates"
+  Units ||--o{ EventsLogs : "records"
+  Units }o--|| UnitTypes : "classified as"
+
+  Events {
+    string EVT_id
+    string EVT_title
+    string EVT_description
+    string EVT_report
+    string EVT_address
+    string EVT_ETY_code
+    float EVT_latitude
+    float EVT_longitude
+  }
+
+  EventsLogs {
+    string EVL_id
+    string EVL_EVT_id
+    datetime EVL_datetime
+    string EVL_code
+    string EVL_ETY_code
+    string EVL_UIT_id
+  }
+
+  Units {
+    string UIT_id
+    string UIT_UTY_code
+    float UIT_latitude
+    float UIT_longitude
+  }
+
+  UnitTypes {
+    string UTY_code
+    string UTY_name
+    string UTY_illustration
+    int UTY_speed
+  }
+```
+
+
+
