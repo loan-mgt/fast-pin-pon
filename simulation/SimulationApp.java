@@ -10,24 +10,26 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Simulation d'incidents et véhicules et envoi de l'état vers l'API
- * Le cahier des charges exige :
- * - Génération d'incidents (type, localisation, gravité, horodatage) et les faire évoluer.
- * - Simulation des positions de véhicules et leurs mouvements avec une transmission périodique.
+ * Simulation d'incidents et véhicules et envoi de l'état vers Fast Pin Pon API.
+ * - Génération d'incidents (type, localisation, gravité, horodatage) et évolution.
+ * - Simulation des positions / états des véhicules avec transmission périodique.
  */
 public class SimulationApp {
 
     public static void main(String[] args) {
-        // Variable d'env propre : API_BASE_URL
-        String apiBaseUrl = System.getenv().getOrDefault("API_BASE_URL", "http://localhost:8080/api");
+        // par défaut : Fast Pin Pon prod ; overridable via API_BASE_URL ou argument
+        String apiBaseUrl = System.getenv().getOrDefault(
+                "API_BASE_URL",
+                "https://api.fast-pin-pon.4loop.org"
+        );
         if (args.length > 0) {
             apiBaseUrl = args[0];
         }
 
-        ApiClient apiClient = new ApiClient(apiBaseUrl);          // wrapper pour faire les requêtes HTTP.
-        SimulationEngine engine = new SimulationEngine(apiClient); // logique de simulation (incidents + véhicules)
+        ApiClient apiClient = new ApiClient(apiBaseUrl);
+        SimulationEngine engine = new SimulationEngine(apiClient);
 
-        // Scheduler: simulation périodique automatique à chaque tick
+        // Tick de simu périodique
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
             try {
@@ -35,14 +37,13 @@ public class SimulationApp {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }, 0, 10, TimeUnit.SECONDS); // 0: démarrage immédiat, 10: période en secondes
+        }, 0, 10, TimeUnit.SECONDS);
 
-        // CLI thread: permet de rentrer les données manuellement (simulate vehicle terminal / operator input)
+        // Thread CLI
         Thread cli = new Thread(new CommandListener(engine), "cli-listener");
         cli.setDaemon(true);
         cli.start();
 
-        // Hook d’arrêt : quand la JVM s’arrête (Ctrl+C ou autre), on coupe proprement le scheduler.
         Runtime.getRuntime().addShutdownHook(new Thread(scheduler::shutdownNow));
     }
 
@@ -63,14 +64,17 @@ public class SimulationApp {
     // =========== MODELES ===========
 
     static class Incident {
-        final UUID id;     // identifiant unique, immuable.
+        final UUID id;           // ID interne simu
         IncidentType type;
-        double lat; // latitude
-        double lon; // longitude
-        int gravite; // 1 à 3
+        double lat;
+        double lon;
+        int gravite;             // 1..3
         IncidentState etat;
-        final Instant createdAt; // timestamp de création, immuable.
-        Instant lastUpdate; // dernière fois qu’on a modifié l’état.
+        final Instant createdAt;
+        Instant lastUpdate;
+
+        // ID de l'event côté Fast Pin Pon (POST /v1/events)
+        String eventId;
 
         Incident(IncidentType type, double lat, double lon, int gravite) {
             this.id = UUID.randomUUID();
@@ -81,17 +85,18 @@ public class SimulationApp {
             this.etat = IncidentState.NOUVEAU;
             this.createdAt = Instant.now();
             this.lastUpdate = this.createdAt;
+            this.eventId = null;
         }
     }
 
     static class Vehicle {
-        final UUID id;
-        final String matricule; // id vehicule
+        final UUID id;           // ID interne simu
+        final String matricule;  // on l'utilise comme unitID / call_sign côté API
         double lat;
         double lon;
         VehicleState etat;
-        Incident currentIncident; // incident sur lequel le véhicule est engagé (= null, si libre)
-        Instant lastUpdate; // quand on a touché à son état / position pour la dernière fois.
+        Incident currentIncident; // null si libre
+        Instant lastUpdate;
 
         Vehicle(String matricule, double lat, double lon) {
             this.id = UUID.randomUUID();
@@ -113,7 +118,6 @@ public class SimulationApp {
         private final List<Incident> incidents = new ArrayList<>();
         private final List<Vehicle> vehicles = new ArrayList<>();
 
-        // Paramètres de simu
         private static final double CITY_CENTER_LAT = 45.75;
         private static final double CITY_CENTER_LON = 4.85;
 
@@ -124,24 +128,22 @@ public class SimulationApp {
 
         private void initVehicles() {
             vehicles.add(new Vehicle("VSAV1", CITY_CENTER_LAT + 0.01, CITY_CENTER_LON + 0.01));
-            vehicles.add(new Vehicle("FPT1", CITY_CENTER_LAT - 0.01, CITY_CENTER_LON - 0.01));
+            vehicles.add(new Vehicle("FPT1",  CITY_CENTER_LAT - 0.01, CITY_CENTER_LON - 0.01));
             vehicles.add(new Vehicle("VSAV2", CITY_CENTER_LAT + 0.02, CITY_CENTER_LON - 0.01));
         }
 
         public synchronized void tick() {
-            maybeCreateIncident();   // créer un incident aléatoire parfois,
-            updateIncidentsState();  // faire évoluer leur état,
-            updateVehicles();        // faire bouger / changer l’état des véhicules,
-            pushStateToApi();        // envoyer tout ça à l’API.
+            maybeCreateIncident();
+            updateIncidentsState();
+            updateVehicles();
+            pushStateToApi();
         }
 
         // -------- Incidents --------
 
         private void maybeCreateIncident() {
-            // ~20% de chance de générer un incident à chaque tick → en moyenne un incident toutes les ~10 s.
             if (random.nextDouble() < 0.2) {
                 IncidentType type = IncidentType.values()[random.nextInt(IncidentType.values().length)];
-                // Coordonnées générées autour du centre ville dans un carré +/- 0.025°.
                 double lat = CITY_CENTER_LAT + (random.nextDouble() - 0.5) * 0.05;
                 double lon = CITY_CENTER_LON + (random.nextDouble() - 0.5) * 0.05;
                 int gravite = 1 + random.nextInt(3);
@@ -149,19 +151,16 @@ public class SimulationApp {
             }
         }
 
-        // synchronized car aussi appelée par la CLI
         synchronized Incident createIncident(IncidentType type, double lat, double lon, int gravite, String source) {
             Incident incident = new Incident(type, lat, lon, gravite);
             incidents.add(incident);
             System.out.println();
             System.out.println("[SIMU] (" + source + ") Nouvel incident : " + incident.id + " " + type + " Gravite : " + gravite);
-            api.createIncident(incident); // appelle l’API (POST /incidents) pour que le backend soit au courant.
+            api.createIncident(incident);
             return incident;
         }
 
-        // synchronized car aussi appelée par la CLI
         synchronized boolean resolveIncident(UUID incidentId, String reason) {
-            // Cette méthode sert à résoudre un incident
             for (Incident incident : incidents) {
                 if (incident.id.equals(incidentId) && incident.etat != IncidentState.RESOLU) {
                     incident.etat = IncidentState.RESOLU;
@@ -182,7 +181,6 @@ public class SimulationApp {
 
                 switch (incident.etat) {
                     case NOUVEAU:
-                        // si au moins un véhicule est affecté -> EN_COURS
                         if (vehicles.stream().anyMatch(v -> v.currentIncident == incident)) {
                             incident.etat = IncidentState.EN_COURS;
                             incident.lastUpdate = now;
@@ -190,13 +188,11 @@ public class SimulationApp {
                         }
                         break;
                     case EN_COURS:
-                        // incident se résout après ~120s si non résolu manuellement
                         if (ageSec > 120) {
                             resolveIncident(incident.id, "auto");
                         }
                         break;
                     case RESOLU:
-                        // rien
                         break;
                 }
             }
@@ -208,7 +204,6 @@ public class SimulationApp {
             for (Vehicle v : vehicles) {
                 switch (v.etat) {
                     case DISPONIBLE:
-                        // chercher un incident NON RESOLU et NON encore pris
                         Optional<Incident> target = incidents.stream()
                                 .filter(i -> i.etat != IncidentState.RESOLU)
                                 .filter(i -> vehicles.stream().noneMatch(veh -> veh.currentIncident == i))
@@ -225,7 +220,6 @@ public class SimulationApp {
                     case EN_ROUTE:
                         if (v.currentIncident != null) {
                             moveTowards(v, v.currentIncident.lat, v.currentIncident.lon, 0.001);
-                            // si très proche de l'incident → SUR_PLACE
                             if (distance(v.lat, v.lon, v.currentIncident.lat, v.currentIncident.lon) < 0.0005) {
                                 v.etat = VehicleState.SUR_PLACE;
                                 v.lastUpdate = Instant.now();
@@ -236,7 +230,6 @@ public class SimulationApp {
                         break;
 
                     case SUR_PLACE:
-                        // après résolution → retour
                         if (v.currentIncident != null && v.currentIncident.etat == IncidentState.RESOLU) {
                             v.etat = VehicleState.RETOUR;
                             v.lastUpdate = Instant.now();
@@ -257,9 +250,7 @@ public class SimulationApp {
             }
         }
 
-        // synchronized car appelée par la CLI
         synchronized boolean setVehicleState(String matricule, VehicleState newState, String note) {
-            // Changement manuel d'état de véhicule
             for (Vehicle v : vehicles) {
                 if (v.matricule.equalsIgnoreCase(matricule)) {
                     v.etat = newState;
@@ -269,7 +260,7 @@ public class SimulationApp {
                     }
                     System.out.println();
                     System.out.println("[SIMU] Etat manuel " + v.matricule + " -> " + newState + (note.isEmpty() ? "" : " (" + note + ")"));
-                    api.sendVehicleReport(v, note); // Envoi d'un report à l'API (genre message de terminal de bord)
+                    api.sendVehicleReport(v, note);
                     return true;
                 }
             }
@@ -298,17 +289,13 @@ public class SimulationApp {
         }
 
         private void pushStateToApi() {
-            // pousser positions véhicules à chaque tick
             for (Vehicle v : vehicles) {
-                api.sendVehiclePosition(v); //(POST /vehicules/position)
+                api.sendVehiclePosition(v); // status + location unit
             }
-            // envoyer un heartbeat d'incident (états + horodatage)
             for (Incident incident : incidents) {
-                api.heartbeatIncident(incident); //(PATCH /incidents/{id}/heartbeat).
+                api.heartbeatIncident(incident); // log "heartbeat" sur l'event
             }
         }
-
-        // ---- Helpers for CLI ----
 
         synchronized List<Incident> getIncidentsSnapshot() {
             return new ArrayList<>(incidents);
@@ -319,59 +306,220 @@ public class SimulationApp {
         }
     }
 
-    // =========== CLIENT HTTP VERS L'API ===========
+    // =========== CLIENT HTTP VERS FAST PIN PON API ===========
 
     static class ApiClient {
         private final String baseUrl;
         private final HttpClient http;
         private final DateTimeFormatter iso = DateTimeFormatter.ISO_INSTANT;
 
+        // pour choisir un event_type_code aléatoire
+        private final Random random = new Random();
+        private final List<String> eventTypeCodes = new ArrayList<>();
+
         ApiClient(String baseUrl) {
             this.baseUrl = baseUrl;
             this.http = HttpClient.newHttpClient();
+            loadEventTypes(); // on récupère les event types dès le départ
         }
 
-        void createIncident(Incident incident) {
-            String json = String.format(Locale.US,
-                    "{ \"id\": \"%s\", \"type\": \"%s\", \"lat\": %.6f, \"lon\": %.6f, \"gravite\": %d, \"etat\": \"%s\", \"createdAt\": \"%s\", \"lastUpdate\": \"%s\" }",
-                    incident.id, incident.type, incident.lat, incident.lon, incident.gravite, incident.etat,
-                    iso.format(incident.createdAt), iso.format(incident.lastUpdate));
+        // ---- CHARGEMENT DYNAMIQUE DES EVENT TYPES ----
 
-            postJson("/incidents", json);
+        private void loadEventTypes() {
+            try {
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(baseUrl + "/v1/event-types"))
+                        .GET()
+                        .build();
+
+                HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() >= 400) {
+                    System.err.println("[API] GET /v1/event-types -> " + resp.statusCode()
+                            + " body=" + resp.body());
+                    return;
+                }
+
+                String body = resp.body();
+                String marker = "\"code\"";
+                int idx = 0;
+                while (true) {
+                    int pos = body.indexOf(marker, idx);
+                    if (pos == -1) break;
+
+                    int colon = body.indexOf(":", pos);
+                    if (colon == -1) break;
+
+                    int firstQuote = body.indexOf("\"", colon);
+                    int secondQuote = body.indexOf("\"", firstQuote + 1);
+                    if (firstQuote == -1 || secondQuote == -1) break;
+
+                    String code = body.substring(firstQuote + 1, secondQuote);
+                    if (!code.isEmpty() && !eventTypeCodes.contains(code)) {
+                        eventTypeCodes.add(code);
+                    }
+
+                    idx = secondQuote + 1;
+                }
+
+                if (eventTypeCodes.isEmpty()) {
+                    System.err.println("[API] /v1/event-types a répondu mais aucun code trouvé.");
+                } else {
+                    System.out.println("[API] Event types chargés : " + eventTypeCodes);
+                }
+            } catch (Exception e) {
+                System.err.println("[API] Erreur GET /v1/event-types : " + e.getMessage());
+            }
+        }
+
+        private String pickRandomEventTypeCode() {
+            if (eventTypeCodes.isEmpty()) {
+                return null;
+            }
+            return eventTypeCodes.get(random.nextInt(eventTypeCodes.size()));
+        }
+
+        // ---- MAPPINGS ----
+
+        private String mapIncidentStateToEventStatus(IncidentState state) {
+            switch (state) {
+                case NOUVEAU:
+                    return "open";
+                case EN_COURS:
+                    return "acknowledged";
+                case RESOLU:
+                    return "closed";
+                default:
+                    return "open";
+            }
+        }
+
+        private String mapVehicleStateToUnitStatus(VehicleState state) {
+            switch (state) {
+                case DISPONIBLE:
+                    return "available";
+                case EN_ROUTE:
+                    return "en_route";
+                case SUR_PLACE:
+                    return "on_site";
+                case RETOUR:
+                    return "en_route"; // retour dépôt
+                default:
+                    return "available";
+            }
+        }
+
+        // ---- INCIDENTS -> EVENTS ----
+
+        void createIncident(Incident incident) {
+            String eventTypeCode = pickRandomEventTypeCode();
+            if (eventTypeCode == null) {
+                System.err.println("[API] Aucun event_type_code disponible, event non créé.");
+                return;
+            }
+
+            String title = "SIM-" + incident.type + "-" + incident.id.toString().substring(0, 8);
+
+            String json = String.format(Locale.US,
+                    "{ \"event_type_code\": \"%s\", " +
+                      "\"latitude\": %.6f, " +
+                      "\"longitude\": %.6f, " +
+                      "\"severity\": %d, " +
+                      "\"title\": \"%s\", " +
+                      "\"report_source\": \"simulation\" }",
+                    eventTypeCode,
+                    incident.lat,
+                    incident.lon,
+                    Math.max(1, Math.min(5, incident.gravite)),
+                    escapeJson(title)
+            );
+
+            try {
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(baseUrl + "/v1/events"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(json))
+                        .build();
+
+                HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() >= 400) {
+                    System.err.println("[API] POST /v1/events -> " + resp.statusCode() + " body=" + resp.body());
+                    return;
+                }
+
+                String body = resp.body();
+                String marker = "\"id\":\"";
+                int idx = body.indexOf(marker);
+                if (idx != -1) {
+                    int start = idx + marker.length();
+                    int end = body.indexOf("\"", start);
+                    if (end > start) {
+                        incident.eventId = body.substring(start, end);
+                        System.out.println("[API] Event créé, eventId=" + incident.eventId
+                                + " (type=" + eventTypeCode + ")");
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("[API] Erreur POST /v1/events : " + e.getMessage());
+            }
         }
 
         void updateIncident(Incident incident) {
+            if (incident.eventId == null) {
+                return;
+            }
+            String status = mapIncidentStateToEventStatus(incident.etat);
             String json = String.format(Locale.US,
-                    "{ \"etat\": \"%s\", \"lastUpdate\": \"%s\" }",
-                    incident.etat, iso.format(incident.lastUpdate == null ? Instant.now() : incident.lastUpdate));
-
-            patchJson("/incidents/" + incident.id, json);
+                    "{ \"status\": \"%s\" }",
+                    status
+            );
+            patchJson("/v1/events/" + incident.eventId + "/status", json);
         }
 
         void heartbeatIncident(Incident incident) {
-            String json = String.format(Locale.US,
-                    "{ \"id\": \"%s\", \"etat\": \"%s\", \"gravite\": %d, \"lastUpdate\": \"%s\" }",
-                    incident.id, incident.etat, incident.gravite, iso.format(incident.lastUpdate));
-            patchJson("/incidents/" + incident.id + "/heartbeat", json);
+            if (incident.eventId == null) {
+                return;
+            }
+            String json = "{ \"actor\": \"simulator\", \"code\": \"heartbeat\", \"payload\": [] }";
+            postJson("/v1/events/" + incident.eventId + "/logs", json);
         }
 
-        void sendVehiclePosition(Vehicle v) {
-            String incidentId = (v.currentIncident == null) ? null : v.currentIncident.id.toString();
-            String json = String.format(Locale.US,
-                    "{ \"vehiculeId\": \"%s\", \"matricule\": \"%s\", \"lat\": %.6f, \"lon\": %.6f, \"etat\": \"%s\", \"incidentId\": %s, \"lastUpdate\": \"%s\" }",
-                    v.id, v.matricule, v.lat, v.lon, v.etat,
-                    incidentId == null ? "null" : "\"" + incidentId + "\"",
-                    iso.format(v.lastUpdate));
+        // ---- VEHICULES -> UNITS ----
 
-            postJson("/vehicules/position", json);
+        void sendVehiclePosition(Vehicle v) {
+            String unitId = v.matricule;
+
+            // 1) status du véhicule
+            String statusJson = String.format(Locale.US,
+                    "{ \"status\": \"%s\" }",
+                    mapVehicleStateToUnitStatus(v.etat)
+            );
+            patchJson("/v1/units/" + unitId + "/status", statusJson);
+
+            // 2) localisation
+            String locJson = String.format(Locale.US,
+                    "{ \"latitude\": %.6f, \"longitude\": %.6f, \"recorded_at\": \"%s\" }",
+                    v.lat, v.lon, iso.format(v.lastUpdate)
+            );
+            patchJson("/v1/units/" + unitId + "/location", locJson);
         }
 
         void sendVehicleReport(Vehicle v, String note) {
+            if (v.currentIncident == null || v.currentIncident.eventId == null) {
+                return;
+            }
+            String safeNote = note == null ? "" : escapeJson(note);
+            if (safeNote.length() > 120) {
+                safeNote = safeNote.substring(0, 120);
+            }
             String json = String.format(Locale.US,
-                    "{ \"vehiculeId\": \"%s\", \"matricule\": \"%s\", \"etat\": \"%s\", \"note\": \"%s\", \"timestamp\": \"%s\" }",
-                    v.id, v.matricule, v.etat, escapeJson(note), iso.format(Instant.now()));
-            postJson("/vehicules/report", json);
+                    "{ \"actor\": \"%s\", \"code\": \"%s\", \"payload\": [] }",
+                    escapeJson(v.matricule),
+                    safeNote.isEmpty() ? "status_update" : safeNote
+            );
+            postJson("/v1/events/" + v.currentIncident.eventId + "/logs", json);
         }
+
+        // ---- HTTP helpers ----
 
         private void postJson(String path, String jsonBody) {
             try {
