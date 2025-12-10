@@ -46,9 +46,11 @@ func (s *Server) routes() http.Handler {
 		v1.Patch("/assignments/{assignmentID}/status", s.handleUpdateAssignmentStatus)
 
 		v1.Get("/units", s.handleListUnits)
+		v1.Get("/units", s.handleCreateUnit)
 		v1.Patch("/units/{unitID}/status", s.handleUpdateUnitStatus)
 		v1.Patch("/units/{unitID}/location", s.handleUpdateUnitLocation)
 		v1.Post("/units/{unitID}/telemetry", s.handleInsertTelemetry)
+		
 	})
 
 	return r

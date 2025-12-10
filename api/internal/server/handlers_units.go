@@ -9,6 +9,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CreateUnitRequest struct {
+	CallSign     string  `json:"call_sign" validate:"required"`
+	UnitTypeCode string  `json:"unit_type_code" validate:"required"`
+	HomeBase     *string `json:"home_base"`
+	Status       string  `json:"status" validate:"required,oneof=available en_route on_site maintenance offline"`
+	Latitude     float64 `json:"latitude" validate:"required,latitude"`
+	Longitude    float64 `json:"longitude" validate:"required,longitude"`
+}
+
 type UpdateUnitStatusRequest struct {
 	Status string `json:"status" validate:"required,oneof=available en_route on_site maintenance offline"`
 }
@@ -59,6 +68,48 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.writeJSON(w, http.StatusOK, resp)
+}
+
+// handleCreateUnit godoc
+// @Summary Create unit
+// @Description Registers a new responder unit.
+// @Tags Units
+// @Accept json
+// @Produce json
+// @Param request body CreateUnitRequest true "Unit payload"
+// @Success 201 {object} UnitResponse
+// @Failure 400 {object} APIError
+// @Failure 404 {object} APIError
+// @Failure 500 {object} APIError
+// @Router /v1/units [post]
+func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
+	var req CreateUnitRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
+		return
+	}
+
+	now := time.Now().UTC()
+	lastContact := timestamptzFromPtr(&now)
+
+	params := db.CreateUnitParams{
+		CallSign:      req.CallSign,
+		UnitTypeCode:  req.UnitTypeCode,
+		HomeBase:      req.HomeBase,
+		Status:        db.UnitStatus(req.Status),
+		Longitude:     req.Longitude,
+		Latitude:      req.Latitude,
+		LastContactAt: lastContact,
+	}
+
+	row, err := s.queries.CreateUnit(r.Context(), params)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to create unit", err.Error())
+		return
+	}
+
+	summary := mapCreateUnitRow(row)
+	s.writeJSON(w, http.StatusCreated, summary)
 }
 
 // handleUpdateUnitStatus godoc
@@ -245,5 +296,22 @@ func mapUnitRow(data unitRowData) UnitResponse {
 		LastContact:  timestamptzPtr(data.LastContact),
 		CreatedAt:    data.CreatedAt.Time,
 		UpdatedAt:    data.UpdatedAt.Time,
+	}
+}
+
+func mapCreateUnitRow(row db.CreateUnitRow) UnitResponse {
+	return UnitResponse{
+		ID:           uuidString(row.ID),
+		CallSign:     row.CallSign,
+		UnitTypeCode: row.UnitTypeCode,
+		HomeBase:     optionalString(row.HomeBase),
+		Status:       string(row.Status),
+		Location: GeoPoint{
+			Latitude:  row.Latitude,
+			Longitude: row.Longitude,
+		},
+		LastContact: timestamptzPtr(row.LastContactAt),
+		CreatedAt:   row.CreatedAt.Time,
+		UpdatedAt:   row.UpdatedAt.Time,
 	}
 }

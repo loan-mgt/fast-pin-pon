@@ -13,6 +13,39 @@ SELECT
 FROM units
 ORDER BY call_sign;
 
+-- name: CreateUnit :one
+INSERT INTO units (
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    location,
+    last_contact_at
+) VALUES (
+    sqlc.arg(call_sign),
+    sqlc.arg(unit_type_code),
+    sqlc.arg(home_base),
+    sqlc.arg(status),
+    ST_SetSRID(
+        ST_MakePoint(
+            sqlc.arg(longitude)::double precision,
+            sqlc.arg(latitude)::double precision
+        ),
+        4326
+    )::geography,
+    sqlc.arg(last_contact_at)
+) RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at;
+
 -- name: GetUnit :one
 SELECT
     id,
