@@ -11,6 +11,89 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createUnit = `-- name: CreateUnit :one
+INSERT INTO units (
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    location,
+    last_contact_at
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    ST_SetSRID(
+        ST_MakePoint(
+            $5::double precision,
+            $6::double precision
+        ),
+        4326
+    )::geography,
+    $7
+) RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at
+`
+
+type CreateUnitParams struct {
+	CallSign      string             `json:"call_sign"`
+	UnitTypeCode  string             `json:"unit_type_code"`
+	HomeBase      *string            `json:"home_base"`
+	Status        UnitStatus         `json:"status"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
+}
+
+type CreateUnitRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CallSign      string             `json:"call_sign"`
+	UnitTypeCode  string             `json:"unit_type_code"`
+	HomeBase      *string            `json:"home_base"`
+	Status        UnitStatus         `json:"status"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateUnit(ctx context.Context, arg CreateUnitParams) (CreateUnitRow, error) {
+	row := q.db.QueryRow(ctx, createUnit,
+		arg.CallSign,
+		arg.UnitTypeCode,
+		arg.HomeBase,
+		arg.Status,
+		arg.Longitude,
+		arg.Latitude,
+		arg.LastContactAt,
+	)
+	var i CreateUnitRow
+	err := row.Scan(
+		&i.ID,
+		&i.CallSign,
+		&i.UnitTypeCode,
+		&i.HomeBase,
+		&i.Status,
+		&i.Longitude,
+		&i.Latitude,
+		&i.LastContactAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUnit = `-- name: GetUnit :one
 SELECT
     id,

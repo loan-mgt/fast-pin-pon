@@ -61,6 +61,42 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, resp)
 }
 
+// handleCreateUnit godoc
+// @Summary Create unit
+// @Description 
+// @Tags Units
+// @Produce json
+// @Success 200 {object} UnitResponse
+// @Failure 400 {object} APIError
+// @Failure 404 {object} APIError
+// @Failure 500 {object} APIError
+// @Router /v1/units [post]
+func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
+	rows, err := s.queries.ListUnits(r.Context())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to list units", err.Error())
+		return
+	}
+
+	resp := make([]UnitResponse, 0, len(rows))
+	for _, row := range rows {
+		resp = append(resp, mapUnitRow(unitRowData{
+			ID:           row.ID,
+			CallSign:     row.CallSign,
+			UnitTypeCode: row.UnitTypeCode,
+			HomeBase:     row.HomeBase,
+			Status:       row.Status,
+			Longitude:    row.Longitude,
+			Latitude:     row.Latitude,
+			LastContact:  row.LastContactAt,
+			CreatedAt:    row.CreatedAt,
+			UpdatedAt:    row.UpdatedAt,
+		}))
+	}
+
+	s.writeJSON(w, http.StatusOK, resp)
+}
+
 // handleUpdateUnitStatus godoc
 // @Summary Update unit status
 // @Description Updates the dispatch readiness of a unit.
