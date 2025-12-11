@@ -255,11 +255,19 @@ def process_serial_buffer(api_url: str, serial_buffer: str,
         line = line.strip()
 
         if line:
+            # Afficher les rejets de sécurité
+            if line.startswith("REJECT:"):
+                parts = line.split(":", 2)
+                if len(parts) >= 2:
+                    reason = parts[1]
+                    details = parts[2] if len(parts) > 2 else ""
+                    print(f"[SÉCURITÉ] Message rejeté - Raison: {reason} {details}")
+                continue
+            
             unit_data = parse_unit_message(line)
             if unit_data:
                 call_sign, lat, lon, status = unit_data
                 process_unit_data(api_url, call_sign, lat, lon, status, last_statuses)
-            # Ignorer les messages RAW et non reconnus
 
     return serial_buffer
 
