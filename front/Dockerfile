@@ -14,6 +14,8 @@ FROM nginx:1.29.4-alpine3.23-slim AS runtime
 RUN rm -rf /usr/share/nginx/html/*
 COPY --from=builder --chmod=0555 /app/dist /usr/share/nginx/html
 
+USER nginx
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
