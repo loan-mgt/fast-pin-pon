@@ -37,13 +37,13 @@ type UnitTelemetryRequest struct {
 }
 
 // handleListUnits godoc
-// @Summary List units
+// @Title List units
 // @Description Returns all operational units with their current status and location.
-// @Tags Units
+// @Resource Units
 // @Produce json
 // @Success 200 {array} UnitResponse
 // @Failure 500 {object} APIError
-// @Router /v1/units [get]
+// @Route /v1/units [get]
 func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.queries.ListUnits(r.Context())
 	if err != nil {
@@ -71,9 +71,9 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleCreateUnit godoc
-// @Summary Create unit
+// @Title Create unit
 // @Description Registers a new responder unit.
-// @Tags Units
+// @Resource Units
 // @Accept json
 // @Produce json
 // @Param request body CreateUnitRequest true "Unit payload"
@@ -81,7 +81,7 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/units [post]
+// @Route /v1/units [post]
 func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
 	var req CreateUnitRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
@@ -113,9 +113,9 @@ func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUpdateUnitStatus godoc
-// @Summary Update unit status
+// @Title Update unit status
 // @Description Updates the dispatch readiness of a unit.
-// @Tags Units
+// @Resource Units
 // @Accept json
 // @Produce json
 // @Param unitID path string true "Unit ID"
@@ -124,7 +124,7 @@ func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/units/{unitID}/status [patch]
+// @Route /v1/units/{unitID}/status [patch]
 func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) {
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
@@ -166,9 +166,9 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 }
 
 // handleUpdateUnitLocation godoc
-// @Summary Update unit location
+// @Title Update unit location
 // @Description Updates the last known location for a unit.
-// @Tags Units
+// @Resource Units
 // @Accept json
 // @Produce json
 // @Param unitID path string true "Unit ID"
@@ -177,7 +177,7 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/units/{unitID}/location [patch]
+// @Route /v1/units/{unitID}/location [patch]
 func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request) {
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
@@ -221,9 +221,9 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 }
 
 // handleInsertTelemetry godoc
-// @Summary Submit telemetry
+// @Title Submit telemetry
 // @Description Stores a telemetry snapshot for a unit.
-// @Tags Units
+// @Resource Units
 // @Accept json
 // @Produce json
 // @Param unitID path string true "Unit ID"
@@ -232,7 +232,7 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/units/{unitID}/telemetry [post]
+// @Route /v1/units/{unitID}/telemetry [post]
 func (s *Server) handleInsertTelemetry(w http.ResponseWriter, r *http.Request) {
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {

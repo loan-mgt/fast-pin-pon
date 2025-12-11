@@ -30,16 +30,16 @@ type UpdateAssignmentStatusRequest struct {
 }
 
 // handleCreateIntervention godoc
-// @Summary Create intervention
+// @Title Create intervention
 // @Description Starts a new intervention linked to an event.
-// @Tags Interventions
+// @Resource Interventions
 // @Accept json
 // @Produce json
 // @Param request body CreateInterventionRequest true "Intervention payload"
 // @Success 201 {object} InterventionResponse
 // @Failure 400 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/interventions [post]
+// @Route /v1/interventions [post]
 func (s *Server) handleCreateIntervention(w http.ResponseWriter, r *http.Request) {
 	var req CreateInterventionRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
@@ -83,16 +83,16 @@ func (s *Server) handleCreateIntervention(w http.ResponseWriter, r *http.Request
 }
 
 // handleGetIntervention godoc
-// @Summary Get intervention
+// @Title Get intervention
 // @Description Returns detailed information about a specific intervention.
-// @Tags Interventions
+// @Resource Interventions
 // @Produce json
 // @Param interventionID path string true "Intervention ID"
 // @Success 200 {object} InterventionResponse
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/interventions/{interventionID} [get]
+// @Route /v1/interventions/{interventionID} [get]
 func (s *Server) handleGetIntervention(w http.ResponseWriter, r *http.Request) {
 	interventionID, err := s.parseUUIDParam(r, "interventionID")
 	if err != nil {
@@ -125,9 +125,9 @@ func (s *Server) handleGetIntervention(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUpdateInterventionStatus godoc
-// @Summary Update intervention status
+// @Title Update intervention status
 // @Description Updates the operational status of an intervention.
-// @Tags Interventions
+// @Resource Interventions
 // @Accept json
 // @Produce json
 // @Param interventionID path string true "Intervention ID"
@@ -136,7 +136,7 @@ func (s *Server) handleGetIntervention(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/interventions/{interventionID}/status [patch]
+// @Route /v1/interventions/{interventionID}/status [patch]
 func (s *Server) handleUpdateInterventionStatus(w http.ResponseWriter, r *http.Request) {
 	interventionID, err := s.parseUUIDParam(r, "interventionID")
 	if err != nil {
@@ -167,15 +167,15 @@ func (s *Server) handleUpdateInterventionStatus(w http.ResponseWriter, r *http.R
 }
 
 // handleListInterventionsForEvent godoc
-// @Summary List event interventions
+// @Title List event interventions
 // @Description Lists interventions associated with an event.
-// @Tags Interventions
+// @Resource Interventions
 // @Produce json
 // @Param eventID path string true "Event ID"
 // @Success 200 {array} InterventionResponse
 // @Failure 400 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/events/{eventID}/interventions [get]
+// @Route /v1/events/{eventID}/interventions [get]
 func (s *Server) handleListInterventionsForEvent(w http.ResponseWriter, r *http.Request) {
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {
@@ -198,9 +198,9 @@ func (s *Server) handleListInterventionsForEvent(w http.ResponseWriter, r *http.
 }
 
 // handleCreateAssignment godoc
-// @Summary Create assignment
+// @Title Create assignment
 // @Description Assigns a unit to an intervention.
-// @Tags Interventions
+// @Resource Interventions
 // @Accept json
 // @Produce json
 // @Param interventionID path string true "Intervention ID"
@@ -208,7 +208,7 @@ func (s *Server) handleListInterventionsForEvent(w http.ResponseWriter, r *http.
 // @Success 201 {object} AssignmentResponse
 // @Failure 400 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/interventions/{interventionID}/assignments [post]
+// @Route /v1/interventions/{interventionID}/assignments [post]
 func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) {
 	interventionID, err := s.parseUUIDParam(r, "interventionID")
 	if err != nil {
@@ -250,15 +250,15 @@ func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) 
 }
 
 // handleListAssignmentsForIntervention godoc
-// @Summary List assignments
+// @Title List assignments
 // @Description Lists unit assignments for an intervention.
-// @Tags Interventions
+// @Resource Interventions
 // @Produce json
 // @Param interventionID path string true "Intervention ID"
 // @Success 200 {array} AssignmentResponse
 // @Failure 400 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/interventions/{interventionID}/assignments [get]
+// @Route /v1/interventions/{interventionID}/assignments [get]
 func (s *Server) handleListAssignmentsForIntervention(w http.ResponseWriter, r *http.Request) {
 	interventionID, err := s.parseUUIDParam(r, "interventionID")
 	if err != nil {
@@ -281,9 +281,9 @@ func (s *Server) handleListAssignmentsForIntervention(w http.ResponseWriter, r *
 }
 
 // handleUpdateAssignmentStatus godoc
-// @Summary Update assignment status
+// @Title Update assignment status
 // @Description Updates the lifecycle state of a dispatched unit.
-// @Tags Interventions
+// @Resource Interventions
 // @Accept json
 // @Produce json
 // @Param assignmentID path string true "Assignment ID"
@@ -292,7 +292,7 @@ func (s *Server) handleListAssignmentsForIntervention(w http.ResponseWriter, r *
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/assignments/{assignmentID}/status [patch]
+// @Route /v1/assignments/{assignmentID}/status [patch]
 func (s *Server) handleUpdateAssignmentStatus(w http.ResponseWriter, r *http.Request) {
 	assignmentID, err := s.parseUUIDParam(r, "assignmentID")
 	if err != nil {
