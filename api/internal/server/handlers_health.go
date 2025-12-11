@@ -6,12 +6,12 @@ import (
 )
 
 // handleHealth godoc
-// @Summary Health check
+// @Title Health check
 // @Description Returns service health and uptime information.
-// @Tags System
+// @Resource System
 // @Produce json
 // @Success 200 {object} HealthResponse
-// @Router /healthz [get]
+// @Route /healthz [get]
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	payload := HealthResponse{
 		Status: "ok",

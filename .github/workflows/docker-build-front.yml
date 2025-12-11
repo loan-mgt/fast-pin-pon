@@ -1,4 +1,4 @@
-name: Build and Publish Api
+name: Build and Publish Front
 
 on:
   push:
@@ -7,13 +7,15 @@ on:
     tags:
       - 'v*'
     paths:
-      - 'api/**'
+      - 'front/**'
+      - '.github/workflows/docker-build-front.yml'
   workflow_dispatch:
   pull_request:
     branches:
       - main
     paths:
-      - 'api/**'
+      - 'front/**'
+      - '.github/workflows/docker-build-front.yml'
 
 
 env:
@@ -48,7 +50,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/front
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -62,8 +64,8 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: docker/build-push-action@v5
         with:
-          context: ./api
-          file: ./api/Dockerfile
+          context: ./front
+          file: ./front/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: false
           tags: ${{ steps.meta.outputs.tags }}
@@ -75,8 +77,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
         with:
-          context: ./api
-          file: ./api/Dockerfile
+          context: ./front
+          file: ./front/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

@@ -28,13 +28,13 @@ type CreateEventLogRequest struct {
 }
 
 // handleListEventTypes godoc
-// @Summary List event types
+// @Title List event types
 // @Description Returns catalog of supported incident types.
-// @Tags Metadata
+// @Resource Metadata
 // @Produce json
 // @Success 200 {array} EventTypeResponse
 // @Failure 500 {object} APIError
-// @Router /v1/event-types [get]
+// @Route /v1/event-types [get]
 func (s *Server) handleListEventTypes(w http.ResponseWriter, r *http.Request) {
 	types, err := s.queries.ListEventTypes(r.Context())
 	if err != nil {
@@ -57,13 +57,13 @@ func (s *Server) handleListEventTypes(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleListUnitTypes godoc
-// @Summary List unit types
+// @Title List unit types
 // @Description Returns available responder unit categories.
-// @Tags Metadata
+// @Resource Metadata
 // @Produce json
 // @Success 200 {array} UnitTypeResponse
 // @Failure 500 {object} APIError
-// @Router /v1/unit-types [get]
+// @Route /v1/unit-types [get]
 func (s *Server) handleListUnitTypes(w http.ResponseWriter, r *http.Request) {
 	types, err := s.queries.ListUnitTypes(r.Context())
 	if err != nil {
@@ -87,15 +87,15 @@ func (s *Server) handleListUnitTypes(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleListEvents godoc
-// @Summary List events
+// @Title List events
 // @Description Retrieves paginated incident list ordered by creation date.
-// @Tags Events
+// @Resource Events
 // @Produce json
 // @Param limit query int false "Maximum results" default(25)
 // @Param offset query int false "Results offset" default(0)
 // @Success 200 {array} EventSummaryResponse
 // @Failure 500 {object} APIError
-// @Router /v1/events [get]
+// @Route /v1/events [get]
 func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 	limit, offset := s.paginate(r, 25)
 	rows, err := s.queries.ListEvents(r.Context(), db.ListEventsParams{Limit: limit, Offset: offset})
@@ -111,16 +111,16 @@ func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleCreateEvent godoc
-// @Summary Create event
+// @Title Create event
 // @Description Registers a new incident in the system.
-// @Tags Events
+// @Resource Events
 // @Accept json
 // @Produce json
 // @Param request body CreateEventRequest true "Event payload"
 // @Success 201 {object} EventSummaryResponse
 // @Failure 400 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/events [post]
+// @Route /v1/events [post]
 func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 	var req CreateEventRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
@@ -150,16 +150,16 @@ func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGetEvent godoc
-// @Summary Get event
+// @Title Get event
 // @Description Returns a detailed view of a specific incident.
-// @Tags Events
+// @Resource Events
 // @Produce json
 // @Param eventID path string true "Event ID"
 // @Success 200 {object} EventDetailResponse
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/events/{eventID} [get]
+// @Route /v1/events/{eventID} [get]
 func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {
@@ -194,9 +194,9 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUpdateEventStatus godoc
-// @Summary Update event status
+// @Title Update event status
 // @Description Sets the workflow status of an incident.
-// @Tags Events
+// @Resource Events
 // @Accept json
 // @Produce json
 // @Param eventID path string true "Event ID"
@@ -205,7 +205,7 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/events/{eventID}/status [patch]
+// @Route /v1/events/{eventID}/status [patch]
 func (s *Server) handleUpdateEventStatus(w http.ResponseWriter, r *http.Request) {
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {
@@ -236,9 +236,9 @@ func (s *Server) handleUpdateEventStatus(w http.ResponseWriter, r *http.Request)
 }
 
 // handleCreateEventLog godoc
-// @Summary Append event log entry
+// @Title Append event log entry
 // @Description Adds an entry to an incident timeline.
-// @Tags Events
+// @Resource Events
 // @Accept json
 // @Produce json
 // @Param eventID path string true "Event ID"
@@ -246,7 +246,7 @@ func (s *Server) handleUpdateEventStatus(w http.ResponseWriter, r *http.Request)
 // @Success 201 {object} EventLogResponse
 // @Failure 400 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/events/{eventID}/logs [post]
+// @Route /v1/events/{eventID}/logs [post]
 func (s *Server) handleCreateEventLog(w http.ResponseWriter, r *http.Request) {
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {
@@ -277,9 +277,9 @@ func (s *Server) handleCreateEventLog(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleListEventLogs godoc
-// @Summary List event logs
+// @Title List event logs
 // @Description Retrieves paginated timeline entries for an incident.
-// @Tags Events
+// @Resource Events
 // @Produce json
 // @Param eventID path string true "Event ID"
 // @Param limit query int false "Maximum results" default(50)
@@ -287,7 +287,7 @@ func (s *Server) handleCreateEventLog(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} EventLogResponse
 // @Failure 400 {object} APIError
 // @Failure 500 {object} APIError
-// @Router /v1/events/{eventID}/logs [get]
+// @Route /v1/events/{eventID}/logs [get]
 func (s *Server) handleListEventLogs(w http.ResponseWriter, r *http.Request) {
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {

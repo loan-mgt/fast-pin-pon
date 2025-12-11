@@ -1,0 +1,50 @@
+services:
+  sonarqube:
+    image: sonarqube:community
+    depends_on:
+      - sonar_db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar_db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    ports:
+      - 9001:9000
+    volumes:
+      - sonarqube_conf:/opt/sonarqube/conf
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_temp:/opt/sonarqube/temp
+    networks:
+      - sonarqube-net
+      - keycloak
+
+
+  sonar_db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - sonar_db:/var/lib/postgresql
+      - sonar_db_data:/var/lib/postgresql/data
+    networks:
+      - sonarqube-net
+
+volumes:
+  sonarqube_conf: null
+  sonarqube_data: null
+  sonarqube_extensions: null
+  sonarqube_logs: null
+  sonarqube_temp: null
+  sonar_db: null
+  sonar_db_data: null
+
+networks:
+  sonarqube-net:
+    name: sonarqube-net
+    driver: bridge
+  keycloak:
+    external: true
+    name: keycloak_default
