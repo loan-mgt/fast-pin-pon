@@ -13,7 +13,7 @@ Affichage:
 - Chiffre : nombre d'unités dans le système
 - Flèche : envoi en cours
 """
-from microbit import *
+from microbit import display, Image, sleep, uart
 import radio
 
 # Configuration radio

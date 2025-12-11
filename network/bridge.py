@@ -102,13 +102,8 @@ def wait_for_serial_port(port_path: str, timeout: int = 60) -> bool:
     return False
 
 
-def main():
-    # Configuration via variables d'environnement
-    api_url = get_env("API_URL", API_DEFAULT_URL)
-    serial_port = get_env("SERIAL_PORT", "")
-    interval = int(get_env("INTERVAL", "5"))
-    baud_rate = int(get_env("BAUD_RATE", "115200"))
-
+def print_config(api_url: str, interval: int, baud_rate: int):
+    """Affiche la configuration du bridge."""
     print("=" * 50)
     print("  BRIDGE API <-> micro:bit")
     print("=" * 50)
@@ -116,7 +111,9 @@ def main():
     print(f"[CONFIG] INTERVAL: {interval}s")
     print(f"[CONFIG] BAUD_RATE: {baud_rate}")
 
-    # Trouver le port série
+
+def get_serial_port(serial_port: str) -> Optional[str]:
+    """Trouve et valide le port série."""
     if not serial_port:
         serial_port = find_microbit_port()
     
@@ -126,61 +123,77 @@ def main():
         for port in serial.tools.list_ports.comports():
             print(f"  - {port.device}: {port.description}")
         print("\n[INFO] Mode simulation activé (pas d'envoi série)")
-        serial_port = None
-    else:
-        print(f"[CONFIG] SERIAL_PORT: {serial_port}")
+        return None
+    
+    print(f"[CONFIG] SERIAL_PORT: {serial_port}")
+    return serial_port
 
-    # Attendre que l'API soit prête
+
+def wait_for_api(api_url: str):
+    """Attend que l'API soit disponible."""
     print("\n[INFO] Attente de l'API...")
     while True:
         try:
             response = requests.get(f"{api_url}/healthz", timeout=2)
             if response.status_code == 200:
                 print("[INFO] API disponible!")
-                break
-        except:
+                return
+        except requests.RequestException:
             pass
         time.sleep(2)
 
-    # Connexion au port série (si disponible)
-    ser = None
-    if serial_port:
-        if not wait_for_serial_port(serial_port):
-            print(f"[WARN] Port {serial_port} non disponible, mode simulation")
-        else:
-            try:
-                ser = serial.Serial(serial_port, baud_rate, timeout=1)
-                print(f"[INFO] Connexion au micro:bit établie sur {serial_port}")
-                time.sleep(2)  # Attendre que le micro:bit soit prêt
-            except serial.SerialException as e:
-                print(f"[ERREUR] Impossible de se connecter: {e}")
 
+def connect_serial(serial_port: str, baud_rate: int) -> Optional[serial.Serial]:
+    """Établit la connexion au port série."""
+    if not serial_port:
+        return None
+    
+    if not wait_for_serial_port(serial_port):
+        print(f"[WARN] Port {serial_port} non disponible, mode simulation")
+        return None
+    
+    try:
+        ser = serial.Serial(serial_port, baud_rate, timeout=1)
+        print(f"[INFO] Connexion au micro:bit établie sur {serial_port}")
+        time.sleep(2)  # Attendre que le micro:bit soit prêt
+        return ser
+    except serial.SerialException as e:
+        print(f"[ERREUR] Impossible de se connecter: {e}")
+        return None
+
+
+def process_units(units: list, ser: Optional[serial.Serial]):
+    """Traite et envoie les unités au micro:bit."""
+    print(f"\n[INFO] {len(units)} unité(s) récupérée(s)")
+    
+    for unit in units:
+        message = format_unit_for_microbit(unit)
+        
+        if ser:
+            send_to_microbit(ser, message)
+        else:
+            print(f"[SIMU] {message}")
+        
+        time.sleep(0.5)  # Attendre 500ms entre chaque envoi
+    
+    # Envoyer END pour signaler la fin du cycle
+    if ser:
+        send_to_microbit(ser, "END")
+    else:
+        print("[SIMU] END")
+
+
+def run_bridge_loop(api_url: str, ser: Optional[serial.Serial], interval: int):
+    """Boucle principale du bridge."""
     print("\n[INFO] Démarrage de la boucle principale...")
     print("-" * 50)
 
     try:
         while True:
-            # Récupérer les unités depuis l'API
             units = fetch_units(api_url)
             
             if units:
-                print(f"\n[INFO] {len(units)} unité(s) récupérée(s)")
-                
-                for unit in units:
-                    message = format_unit_for_microbit(unit)
-                    
-                    if ser:
-                        send_to_microbit(ser, message)
-                    else:
-                        print(f"[SIMU] {message}")
-                    
-                    time.sleep(0.5)  # Attendre 500ms entre chaque envoi
-                
-                # Envoyer END pour signaler la fin du cycle
-                if ser:
-                    send_to_microbit(ser, "END")
-                else:
-                    print("[SIMU] END")
+                process_units(units, ser)
             else:
                 print("[WARN] Aucune unité récupérée")
             
@@ -191,6 +204,21 @@ def main():
     finally:
         if ser:
             ser.close()
+
+
+def main():
+    """Point d'entrée principal du bridge."""
+    # Configuration via variables d'environnement
+    api_url = get_env("API_URL", API_DEFAULT_URL)
+    serial_port = get_env("SERIAL_PORT", "")
+    interval = int(get_env("INTERVAL", "5"))
+    baud_rate = int(get_env("BAUD_RATE", "115200"))
+
+    print_config(api_url, interval, baud_rate)
+    serial_port = get_serial_port(serial_port)
+    wait_for_api(api_url)
+    ser = connect_serial(serial_port, baud_rate)
+    run_bridge_loop(api_url, ser, interval)
 
 
 if __name__ == "__main__":
