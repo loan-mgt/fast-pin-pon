@@ -17,6 +17,16 @@ services:
         max-size: "100m"
         max-file: "3"
 
+  front:
+    image: ghcr.io/loan-mgt/fast-pin-pon/front:latest
+    container_name: fast-pin-pon-front
+    networks:
+      - default
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
   postgres:
     image: ghcr.io/loan-mgt/fast-pin-pon/db:latest
     container_name: fast-pin-pon-postgres
