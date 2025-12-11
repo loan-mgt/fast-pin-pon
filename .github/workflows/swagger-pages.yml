@@ -62,7 +62,7 @@ jobs:
             <script>
               window.addEventListener('load', () => {
                 window.ui = SwaggerUIBundle({
-                  url: 'oas.yaml',
+                  url: 'oas.yml',
                   dom_id: '#swagger-ui',
                   deepLinking: true,
                   presets: [SwaggerUIBundle.presets.apis],
