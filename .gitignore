@@ -1,7 +1,3 @@
-<<<<<<< HEAD
 .env
 network\micropython.hex
 api/docs/
-=======
-.env
->>>>>>> 7976a7c24c2ba8a6b143c05b765eeca388258b6b
