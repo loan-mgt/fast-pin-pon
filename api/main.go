@@ -1,11 +1,10 @@
 // Package main wires configuration, dependencies, and HTTP server startup.
 //
-// @title Fast Pin Pon API
-// @version 0.1.0
-// @description Real-time coordination API for intervention dispatch.
-// @host api.fast-pin-pon.4loop.org
-// @BasePath /
-// @schemes https
+// @Title Fast Pin Pon API
+// @Version 0.1.0
+// @Description Real-time coordination API for intervention dispatch.
+// @Server http://localhost:8081 Local development
+// @Server https://api.fast-pin-pon.4loop.org Production (HTTPS)
 package main
 
 import (

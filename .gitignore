@@ -1,3 +1,7 @@
 .env
 network\micropython.hex
+network/output/
 api/docs/
+
+# macOS
+.DS_Store
