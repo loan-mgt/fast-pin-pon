@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 
 export interface CardProps {
-  children: ReactNode
-  className?: string
+  readonly children: ReactNode
+  readonly className?: string
 }
 
 export function Card({ children, className }: CardProps) {

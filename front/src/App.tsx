@@ -63,7 +63,7 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    void refreshEvents()
+    refreshEvents()
   }, [refreshEvents])
 
   const sortedEvents = useMemo(() => {
@@ -94,7 +94,9 @@ export function App() {
     window.addEventListener('resize', handleResize)
 
     return () => {
-      markersRef.current.forEach((marker) => marker.remove())
+      for (const marker of markersRef.current) {
+        marker.remove()
+      }
       map.remove()
       window.removeEventListener('resize', handleResize)
     }
@@ -104,7 +106,9 @@ export function App() {
     const map = mapRef.current
     if (!map) return
 
-    markersRef.current.forEach((marker) => marker.remove())
+    for (const marker of markersRef.current) {
+      marker.remove()
+    }
     markersRef.current = []
 
     const locations = sortedEvents
@@ -124,7 +128,8 @@ export function App() {
       map.flyTo({ center: [avgLng, avgLat], zoom: 6, duration: 1200 })
     }
 
-    locations.forEach(({ event, lng, lat }) => {
+    for (const location of locations) {
+      const { event, lng, lat } = location
       const marker = new maplibregl.Marker({ color: '#22d3ee' })
         .setLngLat([lng, lat])
         .setPopup(
@@ -135,8 +140,40 @@ export function App() {
         .addTo(map)
 
       markersRef.current.push(marker)
-    })
+    }
   }, [sortedEvents])
+
+  let eventsDisplay: JSX.Element
+
+  if (error) {
+    eventsDisplay = <p className="text-rose-300 text-sm">{error}</p>
+  } else if (sortedEvents.length === 0) {
+    eventsDisplay = <p className="text-slate-300 text-sm">Awaiting events…</p>
+  } else {
+    eventsDisplay = (
+      <div className="space-y-3">
+        {sortedEvents.map((event) => (
+          <article key={event.id} className="space-y-2 bg-slate-900/80 p-3 border border-slate-800/60 rounded-2xl">
+            <div className="flex justify-between items-center gap-2">
+              <h3 className="font-semibold text-white text-sm">{event.title}</h3>
+              <span className="text-[0.55rem] text-cyan-300/90 uppercase tracking-[0.4em]">
+                {severityLabel(event.severity)}
+              </span>
+            </div>
+            <p className="text-slate-400 text-xs">{event.status ?? 'Status unknown'}</p>
+            <div className="flex flex-wrap items-center gap-2 text-[0.65rem] text-slate-400">
+              <span>{formatTimestamp(event.reported_at)}</span>
+              {event.location?.latitude && event.location?.longitude && (
+                <span>
+                  {event.location.latitude.toFixed(3)}, {event.location.longitude.toFixed(3)}
+                </span>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col bg-slate-950 min-h-screen text-slate-100">
@@ -172,33 +209,7 @@ export function App() {
             <div className="text-slate-400 text-xs">Updated {lastUpdated}</div>
           </div>
 
-          {error ? (
-            <p className="text-rose-300 text-sm">{error}</p>
-          ) : sortedEvents.length === 0 ? (
-            <p className="text-slate-300 text-sm">Awaiting events…</p>
-          ) : (
-            <div className="space-y-3">
-              {sortedEvents.map((event) => (
-                <article key={event.id} className="space-y-2 bg-slate-900/80 p-3 border border-slate-800/60 rounded-2xl">
-                  <div className="flex justify-between items-center gap-2">
-                    <h3 className="font-semibold text-white text-sm">{event.title}</h3>
-                    <span className="text-[0.55rem] text-cyan-300/90 uppercase tracking-[0.4em]">
-                      {severityLabel(event.severity)}
-                    </span>
-                  </div>
-                  <p className="text-slate-400 text-xs">{event.status ?? 'Status unknown'}</p>
-                  <div className="flex flex-wrap items-center gap-2 text-[0.65rem] text-slate-400">
-                    <span>{formatTimestamp(event.reported_at)}</span>
-                    {event.location?.latitude && event.location?.longitude && (
-                      <span>
-                        {event.location.latitude.toFixed(3)}, {event.location.longitude.toFixed(3)}
-                      </span>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
+          {eventsDisplay}
 
           <Button variant="solid" className="w-full" onClick={refreshEvents} disabled={loading}>
             {loading ? 'Refreshing…' : 'Refresh list'}
