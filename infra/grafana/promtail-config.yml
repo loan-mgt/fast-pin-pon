@@ -16,3 +16,11 @@ scrape_configs:
         labels:
           job: docker
           __path__: /var/lib/docker/containers/*/*.log
+  - job_name: api
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: api
+          app: fast-pin-pon-api
+          __path__: /var/log/fast-pin-pon/*.log
