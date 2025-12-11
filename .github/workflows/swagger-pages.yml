@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'api/**'
+      - '.github/workflows/swagger-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -41,12 +42,12 @@ jobs:
 
       - name: Generate OpenAPI 3 spec
         run: |
-          "$HOME/go/bin/go-swagger3" --module-path api/ --main-file-path api/main.go --output doc/oas.yml --schema-without-pkg --generate-yaml true
+          "$HOME/go/bin/go-swagger3" --module-path . --main-file-path ./main.go --output oas.yml --schema-without-pkg --generate-yaml true
 
       - name: Prepare static site
         run: |
           mkdir -p site/swagger
-          cp doc/oas.yaml site/swagger/oas.yaml
+          cp oas.yml site/swagger/oas.yml
           cat <<'EOF' > site/swagger/index.html
           <!DOCTYPE html>
           <html lang="en">
