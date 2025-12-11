@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'api/**'
+      - '.github/workflows/swagger-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -36,17 +37,17 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Install swag CLI
-        run: go install github.com/swaggo/swag/cmd/swag@v1.16.3
+      - name: Install go-swagger3 CLI
+        run: go install github.com/parvez3019/go-swagger3@latest
 
-      - name: Generate OpenAPI artifacts
-        run: swag init -g main.go -o docs
+      - name: Generate OpenAPI 3 spec
+        run: |
+          "$HOME/go/bin/go-swagger3" --module-path . --main-file-path ./main.go --output oas.yml --schema-without-pkg --generate-yaml true
 
       - name: Prepare static site
         run: |
           mkdir -p site/swagger
-          cp docs/swagger.json site/swagger/swagger.json
-          cp docs/swagger.yaml site/swagger/swagger.yaml
+          cp oas.yml site/swagger/oas.yml
           cat <<'EOF' > site/swagger/index.html
           <!DOCTYPE html>
           <html lang="en">
@@ -61,7 +62,7 @@ jobs:
             <script>
               window.addEventListener('load', () => {
                 window.ui = SwaggerUIBundle({
-                  url: 'swagger.json',
+                  url: 'oas.yml',
                   dom_id: '#swagger-ui',
                   deepLinking: true,
                   presets: [SwaggerUIBundle.presets.apis],
