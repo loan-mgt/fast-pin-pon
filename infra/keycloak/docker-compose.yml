@@ -32,6 +32,7 @@ services:
       - ./realm-export-sdmis.json:/opt/keycloak/data/import/sdmis-realm-realm.json
     ports:
       - 8080:8080
+      - 9000:9000
 
   keycloakdb:
     image: postgres:16

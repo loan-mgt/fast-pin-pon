@@ -30,8 +30,21 @@ services:
     networks:
       - grafana
       - keycloak
+    # volumes:
+    #   - grafana-storage:/var/lib/grafana
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
     volumes:
-      - grafana-storage:/var/lib/grafana
+      - ./loki-config.yml:/etc/loki/local-config.yml
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yml
+    networks:
+      - grafana
     
   prometheus:
     image: prom/prometheus:latest
