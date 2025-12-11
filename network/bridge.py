@@ -85,6 +85,7 @@ def send_to_microbit(ser: serial.Serial, data: str):
     try:
         message = data + "\n"
         ser.write(message.encode('utf-8'))
+        ser.flush()  # S'assurer que les données sont envoyées
         print(f"[ENVOYÉ] {data}")
     except serial.SerialException as e:
         print(f"[ERREUR] Échec d'envoi: {e}")
@@ -173,7 +174,13 @@ def main():
                     else:
                         print(f"[SIMU] {message}")
                     
-                    time.sleep(0.1)
+                    time.sleep(0.5)  # Attendre 500ms entre chaque envoi
+                
+                # Envoyer END pour signaler la fin du cycle
+                if ser:
+                    send_to_microbit(ser, "END")
+                else:
+                    print("[SIMU] END")
             else:
                 print("[WARN] Aucune unité récupérée")
             

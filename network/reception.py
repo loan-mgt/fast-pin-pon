@@ -8,8 +8,13 @@ Ce code :
 
 Format reçu: UNIT:call_sign,lat,lon,status
 Statuts: AVL (available), ERT (en_route), ONS (on_site), MNT (maintenance), OFF (offline)
+
+Affichage:
+- Icône du statut pendant 800ms pour chaque unité reçue
+- Ensuite : nombre d'unités disponibles (AVL)
+- 0 si aucune unité disponible
 """
-from microbit import Image, display, sleep
+from microbit import Image, display, sleep, running_time
 import radio
 
 # Configuration radio (doit correspondre à l'émetteur)
@@ -47,30 +52,55 @@ def show_status(status):
     image = STATUS_IMAGES.get(status, Image.SQUARE)
     display.show(image)
 
-# Compteur d'unités reçues
-received_count = 0
+# Compteur d'unités disponibles (AVL)
+available_count = 0
+last_status_time = 0
+STATUS_DISPLAY_DURATION = 800  # Afficher l'icône pendant 800ms
+
+# Afficher 0 au démarrage
+display.show("0")
 
 while True:
     packet = radio.receive()
+    current_time = running_time()
+    
     if packet:
         # Parser le message
         unit_data = parse_unit_message(packet)
         if unit_data:
             call_sign, lat, lon, status = unit_data
+            
+            # Compter les unités disponibles
+            if status == "AVL":
+                available_count += 1
+            
             # Afficher le statut
             show_status(status)
+            last_status_time = current_time
+            
             # Afficher sur le port série pour debug
             print("RX:" + call_sign + "," + str(lat) + "," + str(lon) + "," + status)
-            received_count += 1
         else:
-            # Message non reconnu (ancien format GPS), afficher quand même
-            print("RX:" + packet)
-            display.show(Image.HEART)
+            # Message spécial END = fin du cycle
+            if packet == "END":
+                # Afficher le nombre d'unités disponibles
+                if available_count < 10:
+                    display.show(str(available_count))
+                else:
+                    display.show(Image.HAPPY)
+                print("Available: " + str(available_count))
+                # Reset pour le prochain cycle
+                available_count = 0
+            else:
+                print("RX(raw):" + packet)
+                display.show(Image.HEART)
+                last_status_time = current_time
     else:
-        # Pas de message, afficher le compteur ou éteindre
-        if received_count > 0:
-            display.show(str(min(received_count, 9)))
-        else:
-            display.clear()
+        # Afficher le compteur après la durée d'affichage du statut
+        if current_time - last_status_time > STATUS_DISPLAY_DURATION:
+            if available_count < 10:
+                display.show(str(available_count))
+            else:
+                display.show(Image.HAPPY)
     
     sleep(50)

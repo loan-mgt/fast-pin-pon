@@ -7,6 +7,11 @@ Ce code :
 3. Affiche le statut sur les LEDs
 
 Format reçu: UNIT:call_sign,lat,lon,status
+
+Affichage:
+- SAD face : aucune unité reçue de l'API
+- Chiffre : nombre d'unités dans le système
+- Flèche : envoi en cours
 """
 from microbit import *
 import radio
@@ -15,24 +20,18 @@ import radio
 radio.config(channel=7, length=64, power=7, queue=10)
 radio.on()
 
-# Compteur pour affichage
-units_count = 0
-last_display_update = running_time()
-
-def display_status(count):
-    """Affiche le nombre d'unités sur les LEDs."""
-    if count == 0:
-        display.show(Image.SAD)
-    elif count < 10:
-        display.show(str(count))
-    else:
-        display.show(Image.HAPPY)
+# Nombre total d'unités reçues dans le dernier cycle
+total_units = 0
+has_received_data = False
 
 # Buffer pour les données série
 serial_buffer = ""
 
+# Afficher SAD au démarrage (en attente de données)
+display.show(Image.SAD)
+
 while True:
-    # Lire les données du port série (USB) via stdin
+    # Lire les données du port série (USB)
     try:
         incoming = uart.any()
         if incoming:
@@ -49,16 +48,28 @@ while True:
                     if line.startswith("UNIT:"):
                         # Retransmettre par radio
                         radio.send(line)
-                        units_count += 1
+                        total_units += 1
+                        has_received_data = True
+                        # Afficher flèche pendant l'envoi
                         display.show(Image.ARROW_E)
-                        sleep(50)
+                        sleep(100)
+                        
+                        # Après l'envoi, afficher le nombre d'unités
+                        if total_units < 10:
+                            display.show(str(total_units))
+                        else:
+                            display.show(Image.HAPPY)
+                    
+                    elif line == "END":
+                        # Fin du cycle - envoyer END au récepteur
+                        radio.send("END")
+                        # Reset pour le prochain cycle
+                        total_units = 0
     except:
         pass
     
-    # Mise à jour de l'affichage toutes les 3 secondes
-    if running_time() - last_display_update > 3000:
-        display_status(units_count)
-        units_count = 0
-        last_display_update = running_time()
+    # Si on n'a jamais reçu de données, afficher SAD
+    if not has_received_data:
+        display.show(Image.SAD)
     
     sleep(10)
