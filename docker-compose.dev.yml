@@ -6,6 +6,8 @@ services:
     container_name: fast-pin-pon-api
     env_file:
       - .env.example
+    environment:
+      - LOG_FILE=/var/log/fast-pin-pon/api.log
     ports:
       - "8081:8080"
     depends_on:

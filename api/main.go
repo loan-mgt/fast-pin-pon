@@ -9,8 +9,10 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -49,9 +51,34 @@ func newLogger(cfg config.Config) zerolog.Logger {
 	if err != nil {
 		level = zerolog.InfoLevel
 	}
-	logger := log.Level(level).With().Str("env", cfg.Env).Str("app", cfg.AppName).Logger()
+	writers := []io.Writer{openLogFile(cfg.LogFile)}
 	if cfg.Env == "development" {
-		logger = logger.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC822})
+		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC822})
+	} else {
+		writers = append(writers, os.Stdout)
 	}
+	logger := log.Level(level).
+		With().
+		Str("env", cfg.Env).
+		Str("app", cfg.AppName).
+		Logger().
+		Output(zerolog.MultiLevelWriter(writers...))
 	return logger
+}
+
+func openLogFile(path string) *os.File {
+	if path == "" {
+		path = "logs/api.log"
+	}
+	dir := filepath.Dir(path)
+	if dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			log.Fatal().Err(err).Str("path", dir).Msg("create log directory")
+		}
+	}
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		log.Fatal().Err(err).Str("path", path).Msg("open log file")
+	}
+	return file
 }
