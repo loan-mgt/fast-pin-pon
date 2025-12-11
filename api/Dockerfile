@@ -22,7 +22,9 @@ FROM alpine:3.20
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates && \
     addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
+    adduser -u 1001 -S appuser -G appgroup && \
+    mkdir -p /var/log/fast-pin-pon && \
+    chown -R appuser:appgroup /var/log/fast-pin-pon
 
 # Set working directory
 WORKDIR /app
