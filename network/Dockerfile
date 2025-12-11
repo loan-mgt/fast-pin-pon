@@ -2,11 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Installer les dépendances
+# Installer les dépendances et créer l'utilisateur non-root
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-RUN addgroup -S nonroot \
+RUN pip install --no-cache-dir -r requirements.txt \
+    && addgroup -S nonroot \
     && adduser -S nonroot -G nonroot
 
 USER nonroot
