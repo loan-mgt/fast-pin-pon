@@ -18,6 +18,21 @@ services:
       options:
         max-size: "100m"
         max-file: "3"
+  
+  front:
+    build:
+      context: front/
+      dockerfile: Dockerfile
+    container_name: fast-pin-pon-front
+    ports:
+      - "8080:80"
+    networks:
+      - internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
 
   postgres:
     image: ghcr.io/loan-mgt/fast-pin-pon/db:latest
