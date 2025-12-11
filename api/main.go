@@ -3,10 +3,9 @@
 // @title Fast Pin Pon API
 // @version 0.1.0
 // @description Real-time coordination API for intervention dispatch.
-// Local dev
-// @server url=http://localhost:8081 description=Local development
-// Production (HTTPS)
-// @server url=https://api.fast-pin-pon.4loop.org description=Production
+// @host api.fast-pin-pon.4loop.org
+// @host localhost:8081
+// @schemes https http
 // @BasePath /
 package main
 
