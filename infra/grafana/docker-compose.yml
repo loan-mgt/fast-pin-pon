@@ -41,43 +41,10 @@ services:
       - "3100:3100"
     volumes:
       - ./loki-config.yml:/etc/loki/local-config.yml
-      - loki-data:/tmp/loki
+      - loki-data:/loki
     command: -config.file=/etc/loki/local-config.yml
     networks:
       - grafana
-      - internal
-
-  api:
-    image: ghcr.io/loan-mgt/fast-pin-pon/api:latest
-    container_name: fast-pin-pon-api
-    env_file:
-      - .env
-    environment:
-      - PORT=9031
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - internal
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "3"
-
-  promtail:
-    image: grafana/promtail:latest
-    container_name: promtail
-    volumes:
-      - /var/log:/var/log
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - ./promtail-config.yml:/etc/promtail/config.yml
-    command: -config.file=/etc/promtail/config.yml
-    networks:
-      - grafana
-      - internal
-    restart: unless-stopped
-
     
   prometheus:
     image: prom/prometheus:latest
@@ -107,7 +74,6 @@ services:
 
 networks:
   grafana:
-  internal: null
   keycloak:
     external: true
     name: keycloak_default
