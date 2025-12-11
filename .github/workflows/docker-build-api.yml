@@ -7,7 +7,7 @@ on:
     tags:
       - 'v*'
     paths:
-      - 'database/**'
+      - 'api/**'
   workflow_dispatch:
   pull_request:
     branches:
