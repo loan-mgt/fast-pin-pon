@@ -41,13 +41,12 @@ jobs:
 
       - name: Generate OpenAPI 3 spec
         run: |
-          "$HOME/go/bin/go-swagger3" --module-path . --main-file-path ./main.go --output docs/oas.json --schema-without-pkg --generate-yaml true
+          "$HOME/go/bin/go-swagger3" --module-path api/ --main-file-path api/main.go --output doc/oas.yml --schema-without-pkg --generate-yaml true
 
       - name: Prepare static site
         run: |
           mkdir -p site/swagger
-          cp docs/oas.json site/swagger/oas.json
-          cp docs/oas.yaml site/swagger/oas.yaml
+          cp doc/oas.yaml site/swagger/oas.yaml
           cat <<'EOF' > site/swagger/index.html
           <!DOCTYPE html>
           <html lang="en">
@@ -62,7 +61,7 @@ jobs:
             <script>
               window.addEventListener('load', () => {
                 window.ui = SwaggerUIBundle({
-                  url: 'oas.json',
+                  url: 'oas.yaml',
                   dom_id: '#swagger-ui',
                   deepLinking: true,
                   presets: [SwaggerUIBundle.presets.apis],
