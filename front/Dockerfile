@@ -14,22 +14,11 @@ FROM nginx:1.29.4-alpine3.23-slim AS runtime
 RUN rm -rf /usr/share/nginx/html/*
 COPY --from=builder --chmod=0555 /app/dist /usr/share/nginx/html
 
-RUN mkdir -p /var/cache/nginx/client_temp && \
-        mkdir -p /var/cache/nginx/proxy_temp && \
-        mkdir -p /var/cache/nginx/fastcgi_temp && \
-        mkdir -p /var/cache/nginx/uwsgi_temp && \
-        mkdir -p /var/cache/nginx/scgi_temp && \
-        chown -R nginx:nginx /var/cache/nginx && \
-        chown -R nginx:nginx /etc/nginx/ && \
-        chmod -R 755 /etc/nginx/ && \
-        chown -R nginx:nginx /var/log/nginx
-
-RUN mkdir -p /etc/nginx/ssl/ && \
-    chown -R nginx:nginx /etc/nginx/ssl/ && \
-    chmod -R 755 /etc/nginx/ssl/
-
-RUN touch /var/run/nginx.pid && \
-        chown -R nginx:nginx /var/run/nginx.pid /run/nginx.pid
+RUN mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp /var/cache/nginx/scgi_temp && \
+        mkdir -p /etc/nginx/ssl && \
+        touch /var/run/nginx.pid && \
+        chown -R nginx:nginx /var/cache/nginx /etc/nginx /etc/nginx/ssl /var/log/nginx /var/run/nginx.pid /run/nginx.pid && \
+        chmod -R 755 /etc/nginx /etc/nginx/ssl
 USER nginx
 
 EXPOSE 80
