@@ -247,6 +247,27 @@ def read_serial_data(ser: serial.Serial, serial_buffer: str) -> str:
     return serial_buffer
 
 
+def handle_security_reject(line: str) -> None:
+    """Affiche les messages de rejet de sécurité."""
+    parts = line.split(":", 2)
+    if len(parts) >= 2:
+        reason = parts[1]
+        details = parts[2] if len(parts) > 2 else ""
+        print(f"[SÉCURITÉ] Message rejeté - Raison: {reason} {details}")
+
+
+def process_line(api_url: str, line: str, last_statuses: Dict[str, str]) -> None:
+    """Traite une ligne reçue du port série."""
+    if line.startswith("REJECT:"):
+        handle_security_reject(line)
+        return
+
+    unit_data = parse_unit_message(line)
+    if unit_data:
+        call_sign, lat, lon, status = unit_data
+        process_unit_data(api_url, call_sign, lat, lon, status, last_statuses)
+
+
 def process_serial_buffer(api_url: str, serial_buffer: str,
                           last_statuses: Dict[str, str]) -> str:
     """Traite le buffer série et retourne le reste non traité."""
@@ -255,19 +276,7 @@ def process_serial_buffer(api_url: str, serial_buffer: str,
         line = line.strip()
 
         if line:
-            # Afficher les rejets de sécurité
-            if line.startswith("REJECT:"):
-                parts = line.split(":", 2)
-                if len(parts) >= 2:
-                    reason = parts[1]
-                    details = parts[2] if len(parts) > 2 else ""
-                    print(f"[SÉCURITÉ] Message rejeté - Raison: {reason} {details}")
-                continue
-            
-            unit_data = parse_unit_message(line)
-            if unit_data:
-                call_sign, lat, lon, status = unit_data
-                process_unit_data(api_url, call_sign, lat, lon, status, last_statuses)
+            process_line(api_url, line, last_statuses)
 
     return serial_buffer
 

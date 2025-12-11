@@ -98,7 +98,7 @@ def build_secure_message(data):
 def send_secure(data):
     """Envoie un message sécurisé et attend l'ACK."""
     global waiting_for_ack, last_message, retry_count, last_retry_time
-    message, seq = build_secure_message(data)
+    message, _ = build_secure_message(data)
     radio.send(message)
     last_message = message
     waiting_for_ack = True

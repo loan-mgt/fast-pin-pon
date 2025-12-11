@@ -104,9 +104,8 @@ def parse_unit_data(data):
 
 def is_duplicate(call_sign, seq):
     """Vérifie si c'est un doublon (même séquence déjà reçue)."""
-    if call_sign in last_sequences:
-        if last_sequences[call_sign] == seq:
-            return True
+    if call_sign in last_sequences and last_sequences[call_sign] == seq:
+        return True
     last_sequences[call_sign] = seq
     return False
 
