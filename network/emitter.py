@@ -65,7 +65,7 @@ while True:
                         radio.send("END")
                         # Reset pour le prochain cycle
                         total_units = 0
-    except:
+    except (OSError, ValueError, TypeError):
         pass
     
     # Si on n'a jamais reçu de données, afficher SAD

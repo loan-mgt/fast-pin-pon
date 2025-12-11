@@ -23,11 +23,11 @@ radio.on()
 
 # Images pour les différents statuts
 STATUS_IMAGES = {
-    "AVL": Image.HAPPY,      # Disponible = content
-    "ERT": Image.ARROW_E,    # En route = flèche
-    "ONS": Image.TARGET,     # Sur site = cible
-    "MNT": Image.CONFUSED,   # Maintenance = confus
-    "OFF": Image.ASLEEP,     # Hors ligne = endormi
+    "AVL": Image.HAPPY,      # Disponible : content
+    "ERT": Image.ARROW_E,    # En route : flèche
+    "ONS": Image.TARGET,     # Sur site : cible
+    "MNT": Image.CONFUSED,   # Maintenance : confus
+    "OFF": Image.ASLEEP,     # Hors ligne : endormi
 }
 
 def parse_unit_message(message):
@@ -43,7 +43,7 @@ def parse_unit_message(message):
             lon = float(parts[2])
             status = parts[3]
             return (call_sign, lat, lon, status)
-    except:
+    except (ValueError, IndexError, AttributeError):
         pass
     return None
 
