@@ -48,13 +48,14 @@ button_press_start = 0
 SEND_INTERVAL = 5000
 BLINK_INTERVAL = 300
 LONG_PRESS_DURATION = 2000
+MSG_FORMAT = "UNIT:{},{:.6f},{:.6f},{}"
 
 # Afficher l'ID au démarrage
 display.scroll(UNIT_ID, delay=80)
 sleep(500)
 
 # Envoyer le statut initial
-msg = "UNIT:{},{:.6f},{:.6f},{}".format(UNIT_ID, GPS_LAT, GPS_LON, current_status)
+msg = MSG_FORMAT.format(UNIT_ID, GPS_LAT, GPS_LON, current_status)
 radio.send(msg)
 last_send_time = running_time()
 
@@ -77,7 +78,7 @@ while True:
                     current_status = STATUS_AVL
                 else:
                     current_status = STATUS_OFF
-                msg = "UNIT:{},{:.6f},{:.6f},{}".format(UNIT_ID, GPS_LAT, GPS_LON, current_status)
+                msg = MSG_FORMAT.format(UNIT_ID, GPS_LAT, GPS_LON, current_status)
                 radio.send(msg)
                 last_send_time = now
             else:
@@ -87,7 +88,7 @@ while True:
                         current_status = STATUS_ERT
                     else:
                         current_status = STATUS_AVL
-                    msg = "UNIT:{},{:.6f},{:.6f},{}".format(UNIT_ID, GPS_LAT, GPS_LON, current_status)
+                    msg = MSG_FORMAT.format(UNIT_ID, GPS_LAT, GPS_LON, current_status)
                     radio.send(msg)
                     last_send_time = now
     
@@ -107,7 +108,7 @@ while True:
     
     # Envoi périodique
     if now - last_send_time > SEND_INTERVAL:
-        msg = "UNIT:{},{:.6f},{:.6f},{}".format(UNIT_ID, GPS_LAT, GPS_LON, current_status)
+        msg = MSG_FORMAT.format(UNIT_ID, GPS_LAT, GPS_LON, current_status)
         radio.send(msg)
         last_send_time = now
     
