@@ -6,11 +6,28 @@ services:
     container_name: fast-pin-pon-api
     env_file:
       - .env.example
+    environment:
+      - LOG_FILE=/var/log/fast-pin-pon/api.log
     ports:
       - "8081:8080"
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+  
+  front:
+    build:
+      context: front/
+      dockerfile: Dockerfile
+    container_name: fast-pin-pon-front
+    ports:
+      - "8080:80"
     networks:
       - internal
     logging:
