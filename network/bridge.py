@@ -259,10 +259,7 @@ def process_serial_buffer(api_url: str, serial_buffer: str,
             if unit_data:
                 call_sign, lat, lon, status = unit_data
                 process_unit_data(api_url, call_sign, lat, lon, status, last_statuses)
-            elif line.startswith("RAW:"):
-                print(f"[DEBUG] {line}")
-            else:
-                print(f"[?] {line}")
+            # Ignorer les messages RAW et non reconnus
 
     return serial_buffer
 
