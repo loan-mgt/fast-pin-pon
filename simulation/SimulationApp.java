@@ -3,8 +3,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -14,6 +14,8 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Simple simulator:
@@ -22,6 +24,7 @@ import java.util.concurrent.TimeUnit;
  * - Periodically pushes unit status/location and event heartbeats.
  */
 public class SimulationApp {
+    private static final Logger LOG = Logger.getLogger(SimulationApp.class.getName());
 
     public static void main(String[] args) {
         String apiBaseUrl = "http://localhost:8081";
@@ -120,6 +123,13 @@ public class SimulationApp {
         private final Instant simStart = Instant.now();
         private Instant lastIncidentAt = simStart;
         private boolean firstIncidentSpawned = false;
+        private static final String SIM_INCIDENT_PREFIX = "[SIM] Incident ";
+
+        // Base names
+        private static final String BASE_VILLEURBANNE = "Villeurbanne";
+        private static final String BASE_CONFLUENCE = "Lyon Confluence";
+        private static final String BASE_PART_DIEU = "Lyon Part-Dieu";
+        private static final String BASE_CUSSET = "Cusset";
 
         // Backend status constants to avoid enum mismatches
         private static final String EVENT_STATUS_ACK = "acknowledged";
@@ -145,17 +155,17 @@ public class SimulationApp {
         private static final int TARGET_FLEET_SIZE = 35;
 
         private static final BaseLocation[] BASES = new BaseLocation[]{
-                new BaseLocation("Villeurbanne", 45.7719, 4.8902),
-                new BaseLocation("Lyon Confluence", 45.7421, 4.8158),
-                new BaseLocation("Lyon Part-Dieu", 45.7601, 4.8590),
-                new BaseLocation("Cusset", 45.7744, 4.8957),
+                new BaseLocation(BASE_VILLEURBANNE, 45.7719, 4.8902),
+                new BaseLocation(BASE_CONFLUENCE, 45.7421, 4.8158),
+                new BaseLocation(BASE_PART_DIEU, 45.7601, 4.8590),
+                new BaseLocation(BASE_CUSSET, 45.7744, 4.8957),
         };
 
         private static final Map<String, List<String>> BASE_PRIORITY = Map.of(
-                "Lyon Confluence", List.of("Lyon Confluence", "Lyon Part-Dieu", "Villeurbanne", "Cusset"),
-                "Lyon Part-Dieu", List.of("Lyon Part-Dieu", "Villeurbanne", "Lyon Confluence", "Cusset"),
-                "Villeurbanne", List.of("Villeurbanne", "Lyon Part-Dieu", "Cusset", "Lyon Confluence"),
-                "Cusset", List.of("Cusset", "Villeurbanne", "Lyon Part-Dieu", "Lyon Confluence")
+                BASE_CONFLUENCE, List.of(BASE_CONFLUENCE, BASE_PART_DIEU, BASE_VILLEURBANNE, BASE_CUSSET),
+                BASE_PART_DIEU, List.of(BASE_PART_DIEU, BASE_VILLEURBANNE, BASE_CONFLUENCE, BASE_CUSSET),
+                BASE_VILLEURBANNE, List.of(BASE_VILLEURBANNE, BASE_PART_DIEU, BASE_CUSSET, BASE_CONFLUENCE),
+                BASE_CUSSET, List.of(BASE_CUSSET, BASE_VILLEURBANNE, BASE_PART_DIEU, BASE_CONFLUENCE)
         );
 
         SimulationEngine(ApiClient api) {
@@ -164,7 +174,7 @@ public class SimulationApp {
         }
 
         private String nearestBaseName(double lat, double lon) {
-            String name = "Lyon";
+            String name = BASE_PART_DIEU;
             double best = Double.MAX_VALUE;
             for (BaseLocation b : BASES) {
                 double d = Math.pow(lat - b.lat, 2) + Math.pow(lon - b.lon, 2);
@@ -178,45 +188,64 @@ public class SimulationApp {
 
         private void bootstrapUnits() {
             List<ApiClient.UnitInfo> units = api.loadUnits();
-            if (api.unitTypeCodes.isEmpty()) {
-                for (ApiClient.UnitInfo u : units) {
-                    if (u.unitTypeCode != null && !u.unitTypeCode.isEmpty() && !api.unitTypeCodes.contains(u.unitTypeCode)) {
-                        api.unitTypeCodes.add(u.unitTypeCode);
-                    }
+            collectUnitTypes(units);
+            createMissingUnits(units);
+            materializeVehicles(units);
+            LOG.info("[SIM] Units loaded: " + vehicles.size());
+        }
+
+        private void collectUnitTypes(List<ApiClient.UnitInfo> units) {
+            if (!api.unitTypeCodes.isEmpty()) {
+                return;
+            }
+            for (ApiClient.UnitInfo u : units) {
+                if (u.unitTypeCode != null && !u.unitTypeCode.isEmpty() && !api.unitTypeCodes.contains(u.unitTypeCode)) {
+                    api.unitTypeCodes.add(u.unitTypeCode);
                 }
             }
+        }
 
+        private void createMissingUnits(List<ApiClient.UnitInfo> units) {
             int idx = 0;
             while (units.size() < TARGET_FLEET_SIZE) {
-                String typeCode = api.pickUnitType();
-                if (typeCode == null && !units.isEmpty()) {
-                    typeCode = units.get(0).unitTypeCode;
-                }
+                String typeCode = pickUsableType(units);
                 if (typeCode == null) {
                     break; // cannot create without a unit type code
                 }
-                String callSign = String.format("U%02d", units.size() + 1);
                 BaseLocation base = BASES[idx % BASES.length];
-                double lat = base.lat + (random.nextDouble() - 0.5) * 0.01;
-                double lon = base.lon + (random.nextDouble() - 0.5) * 0.01;
-                ApiClient.UnitInfo created = api.createUnit(callSign, typeCode, base.name, lat, lon);
+                ApiClient.UnitInfo created = api.createUnit(
+                        String.format("U%02d", units.size() + 1),
+                        typeCode,
+                        base.name,
+                        base.lat + (random.nextDouble() - 0.5) * 0.01,
+                        base.lon + (random.nextDouble() - 0.5) * 0.01
+                );
                 if (created == null) {
                     break;
                 }
                 units.add(created);
                 idx++;
             }
+        }
 
+        private String pickUsableType(List<ApiClient.UnitInfo> units) {
+            String typeCode = api.pickUnitType();
+            if (typeCode != null) {
+                return typeCode;
+            }
+            if (!units.isEmpty()) {
+                return units.get(0).unitTypeCode;
+            }
+            return null;
+        }
+
+        private void materializeVehicles(List<ApiClient.UnitInfo> units) {
             for (ApiClient.UnitInfo u : units) {
                 double lat = u.latitude != null ? u.latitude : CITY_CENTER_LAT + (random.nextDouble() - 0.5) * 0.02;
                 double lon = u.longitude != null ? u.longitude : CITY_CENTER_LON + (random.nextDouble() - 0.5) * 0.02;
-                String home = u.homeBase;
-                if (home == null || home.isEmpty()) {
-                    home = nearestBaseName(lat, lon);
-                }
+                String home = (u.homeBase == null || u.homeBase.isEmpty()) ? nearestBaseName(lat, lon) : u.homeBase;
                 vehicles.add(new Vehicle(u.id, u.callSign, u.unitTypeCode, home, lat, lon));
             }
-            System.out.println("[SIM] Units loaded: " + vehicles.size());
         }
 
         public synchronized void tick() {
@@ -254,7 +283,7 @@ public class SimulationApp {
                     }
                 }
                 sb.append(" | Active units = ").append(active);
-                System.out.println(sb.toString());
+                LOG.info(sb.toString());
                 logIncidentsSnapshot(activeIncidents);
             }
         }
@@ -284,7 +313,7 @@ public class SimulationApp {
         private void createIncident(IncidentType type, double lat, double lon, int gravite) {
             Incident incident = new Incident(++incidentSequence, type, lat, lon, gravite);
             incidents.add(incident);
-            System.out.println("\n[SIM] Incident " + incident.number + ": " + incident.id + " | Type: " + type + " | G: " + gravite +
+            LOG.info("\n" + SIM_INCIDENT_PREFIX + incident.number + ": " + incident.id + " | Type: " + type + " | G: " + gravite +
                     " | Area: " + nearestBaseName(lat, lon) + " | Loc: (" + String.format(Locale.US, "%.5f, %.5f", lat, lon) + ")");
 
             String eventId = api.createEvent(incident);
@@ -297,7 +326,7 @@ public class SimulationApp {
             if (interventionId != null) {
                 incident.interventionId = interventionId;
                 String ts = INTERVENTION_TS.format(Instant.now());
-                System.out.println("[SIM] Intervention created at " + ts + " for incident " + incident.number +
+                LOG.info("[SIM] Intervention created at " + ts + " for incident " + incident.number +
                         " in " + nearestBaseName(lat, lon));
                 dispatchUnits(interventionId, incident);
             }
@@ -313,7 +342,7 @@ public class SimulationApp {
             }
 
             if (availableVehicles.isEmpty()) {
-                System.out.println("[SIM] No available units for incident " + incident.id);
+                LOG.info("[SIM] No available units for incident " + incident.id);
                 return;
             }
 
@@ -337,7 +366,7 @@ public class SimulationApp {
                 v.assignmentId = api.assignUnit(interventionId, v.unitId, "unit");
                 v.lastUpdate = Instant.now();
                 v.enRouteSince = v.lastUpdate;
-                System.out.println("[SIM] Assign " + v.callSign + " (from " + nvl(v.homeBase, "N/A") + ") -> incident " + incident.number +
+                LOG.info("[SIM] Assign " + v.callSign + " (from " + nvl(v.homeBase, "N/A") + ") -> incident " + incident.number +
                         " (assignment " + v.assignmentId + ")");
                 // small pause to simulate sequential decision-making
                 try {
@@ -400,7 +429,7 @@ public class SimulationApp {
             }
             inc.etat = IncidentState.RESOLU;
             inc.lastUpdate = Instant.now();
-            System.out.println("[SIM] Incident " + inc.number + " resolved (" + reason + ")");
+            LOG.info(SIM_INCIDENT_PREFIX + inc.number + " resolved (" + reason + ")");
             if (PATCH_EVENT_STATUS) {
                 api.updateEventStatus(inc.eventId, EVENT_STATUS_CLOSED);
             }
@@ -421,7 +450,24 @@ public class SimulationApp {
         }
 
         private void advanceVehicles() {
-            // Process vehicles by incident number to favor older incidents first
+            for (Vehicle v : orderedVehiclesByIncident()) {
+                switch (v.etat) {
+                    case DISPONIBLE:
+                        break;
+                    case EN_ROUTE:
+                        handleEnRoute(v);
+                        break;
+                    case SUR_PLACE:
+                        handleSurPlace(v);
+                        break;
+                    case RETOUR:
+                        handleReturn(v);
+                        break;
+                }
+            }
+        }
+
+        private List<Vehicle> orderedVehiclesByIncident() {
             List<Vehicle> ordered = new ArrayList<>(vehicles);
             ordered.sort((a, b) -> {
                 if (a.currentIncident == null && b.currentIncident == null) return 0;
@@ -429,52 +475,52 @@ public class SimulationApp {
                 if (b.currentIncident == null) return -1;
                 return Integer.compare(a.currentIncident.number, b.currentIncident.number);
             });
-            for (Vehicle v : ordered) {
-                switch (v.etat) {
-                    case DISPONIBLE:
-                        break;
-                    case EN_ROUTE:
-                        if (v.currentIncident != null) {
-                            moveTowards(v, v.currentIncident.lat, v.currentIncident.lon, 0.02); // faster travel for simulation
-                            v.lastUpdate = Instant.now();
-                            long travelSeconds = v.enRouteSince == null ? Long.MAX_VALUE :
-                                    Instant.now().getEpochSecond() - v.enRouteSince.getEpochSecond();
-                            if (travelSeconds >= MIN_TRAVEL_SECONDS) { // force arrival at exactly 10s
-                                v.etat = VehicleState.SUR_PLACE;
-                                v.lastUpdate = Instant.now();
-                                v.enRouteSince = null;
-                                if (PATCH_ASSIGNMENT_STATUS) {
-                                    api.updateAssignmentStatus(v.assignmentId, ASSIGNMENT_STATUS_ARRIVED);
-                                }
-                                printIncidentStatusLine(v.currentIncident);
-                                if (v.currentIncident.interventionId != null && PATCH_INTERVENTION_STATUS) {
-                                    api.updateInterventionStatus(v.currentIncident.interventionId, INTERVENTION_STATUS_ON_SITE);
-                                }
-                            }
-                        }
-                        break;
-                    case SUR_PLACE:
-                        if (v.currentIncident != null && v.currentIncident.etat == IncidentState.RESOLU) {
-                            v.etat = VehicleState.RETOUR;
-                            v.lastUpdate = Instant.now();
-                        }
-                        break;
-                    case RETOUR:
-                        moveTowards(v, CITY_CENTER_LAT, CITY_CENTER_LON, 0.02);
-                        v.lastUpdate = Instant.now();
-                        long returnSeconds = v.returnSince == null ? Long.MAX_VALUE :
-                                Instant.now().getEpochSecond() - v.returnSince.getEpochSecond();
-                        if (returnSeconds >= RETURN_SECONDS) {
-                            v.etat = VehicleState.DISPONIBLE;
-                            v.currentIncident = null;
-                            v.assignmentId = null;
-                            v.enRouteSince = null;
-                            v.returnSince = null;
-                            v.lastUpdate = Instant.now();
-                            System.out.println("[SIM] " + v.callSign + " back available");
-                        }
-                        break;
+            return ordered;
+        }
+
+        private void handleEnRoute(Vehicle v) {
+            if (v.currentIncident == null) {
+                return;
+            }
+            moveTowards(v, v.currentIncident.lat, v.currentIncident.lon, 0.02);
+            v.lastUpdate = Instant.now();
+            long travelSeconds = v.enRouteSince == null ? Long.MAX_VALUE :
+                    Instant.now().getEpochSecond() - v.enRouteSince.getEpochSecond();
+            if (travelSeconds >= MIN_TRAVEL_SECONDS) {
+                v.etat = VehicleState.SUR_PLACE;
+                v.lastUpdate = Instant.now();
+                v.enRouteSince = null;
+                if (PATCH_ASSIGNMENT_STATUS) {
+                    api.updateAssignmentStatus(v.assignmentId, ASSIGNMENT_STATUS_ARRIVED);
                 }
+                printIncidentStatusLine(v.currentIncident);
+                if (v.currentIncident.interventionId != null && PATCH_INTERVENTION_STATUS) {
+                    api.updateInterventionStatus(v.currentIncident.interventionId, INTERVENTION_STATUS_ON_SITE);
+                }
+            }
+        }
+
+        private void handleSurPlace(Vehicle v) {
+            if (v.currentIncident != null && v.currentIncident.etat == IncidentState.RESOLU) {
+                v.etat = VehicleState.RETOUR;
+                v.returnSince = Instant.now();
+                v.lastUpdate = v.returnSince;
+            }
+        }
+
+        private void handleReturn(Vehicle v) {
+            moveTowards(v, CITY_CENTER_LAT, CITY_CENTER_LON, 0.02);
+            v.lastUpdate = Instant.now();
+            long returnSeconds = v.returnSince == null ? Long.MAX_VALUE :
+                    Instant.now().getEpochSecond() - v.returnSince.getEpochSecond();
+            if (returnSeconds >= RETURN_SECONDS) {
+                v.etat = VehicleState.DISPONIBLE;
+                v.currentIncident = null;
+                v.assignmentId = null;
+                v.enRouteSince = null;
+                v.returnSince = null;
+                v.lastUpdate = Instant.now();
+                            LOG.info("[SIM] " + v.callSign + " back available");
             }
         }
 
@@ -519,7 +565,7 @@ public class SimulationApp {
                 involved.sort((a, b) -> a.callSign.compareToIgnoreCase(b.callSign));
                 String area = nearestBaseName(incident.lat, incident.lon);
                 StringBuilder line = new StringBuilder();
-                line.append("[SIM] Incident ").append(incident.number).append(" - ").append(area).append(" : ");
+                line.append(SIM_INCIDENT_PREFIX).append(incident.number).append(" - ").append(area).append(" : ");
                 for (int i = 0; i < involved.size(); i++) {
                     Vehicle v = involved.get(i);
                     line.append(v.callSign).append(" [").append(readableState(v.etat)).append("]");
@@ -527,7 +573,7 @@ public class SimulationApp {
                         line.append(", ");
                     }
                 }
-                System.out.println(line.toString());
+                LOG.info(line.toString());
             }
         }
 
@@ -544,7 +590,7 @@ public class SimulationApp {
             involved.sort((a, b) -> a.callSign.compareToIgnoreCase(b.callSign));
             String area = nearestBaseName(incident.lat, incident.lon);
             StringBuilder sb = new StringBuilder();
-            sb.append("[SIM] Incident ").append(incident.number).append(" - ").append(area).append(" : ");
+            sb.append(SIM_INCIDENT_PREFIX).append(incident.number).append(" - ").append(area).append(" : ");
             for (int i = 0; i < involved.size(); i++) {
                 Vehicle v = involved.get(i);
                 sb.append(v.callSign).append(" [").append(readableState(v.etat)).append("]");
@@ -552,7 +598,7 @@ public class SimulationApp {
                     sb.append(", ");
                 }
             }
-            System.out.println(sb.toString());
+            LOG.info(sb.toString());
         }
 
         private String readableState(VehicleState state) {
@@ -646,7 +692,7 @@ public class SimulationApp {
                         .build(), HttpResponse.BodyHandlers.ofString());
 
                 if (resp.statusCode() >= 400) {
-                    System.err.println("[API] GET /v1/units -> " + resp.statusCode() + " body=" + resp.body());
+                    LOG.severe("[API] GET /v1/units -> " + resp.statusCode() + " body=" + resp.body());
                     return res;
                 }
 
@@ -670,7 +716,7 @@ public class SimulationApp {
                     idx = idPos + 4;
                 }
             } catch (Exception e) {
-                System.err.println("[API] GET /v1/units error: " + e.getMessage());
+                LOG.log(Level.SEVERE, "[API] GET /v1/units error", e);
             }
             return res;
         }
@@ -678,7 +724,7 @@ public class SimulationApp {
         String createEvent(Incident inc) {
             String typeCode = pickEventType();
             if (typeCode == null) {
-                System.err.println("[API] No event type code available; cannot create event.");
+                LOG.warning("[API] No event type code available; cannot create event.");
                 return null;
             }
             String title = "SIM-" + inc.type + "-" + inc.id.toString().substring(0, 8);
@@ -694,14 +740,14 @@ public class SimulationApp {
                         .build(), HttpResponse.BodyHandlers.ofString());
 
                 if (resp.statusCode() >= 400) {
-                    System.err.println("[API] POST /v1/events -> " + resp.statusCode() + " body=" + resp.body());
+                    LOG.severe("[API] POST /v1/events -> " + resp.statusCode() + " body=" + resp.body());
                     return null;
                 }
                 String id = extractString(resp.body(), "\"id\"", 0);
-                System.out.println("[API] Event created (id=" + id + ")");
+                LOG.info("[API] Event created (id=" + id + ")");
                 return id;
             } catch (Exception e) {
-                System.err.println("[API] POST /v1/events error: " + e.getMessage());
+                LOG.log(Level.SEVERE, "[API] POST /v1/events error", e);
                 return null;
             }
         }
@@ -717,13 +763,13 @@ public class SimulationApp {
                         .POST(HttpRequest.BodyPublishers.ofString(json))
                         .build(), HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() >= 400) {
-                    System.err.println("[API] POST /v1/interventions -> " + resp.statusCode() + " body=" + resp.body());
+                    LOG.severe("[API] POST /v1/interventions -> " + resp.statusCode() + " body=" + resp.body());
                     return null;
                 }
                 String id = extractString(resp.body(), "\"id\"", 0);
                 return id;
             } catch (Exception e) {
-                System.err.println("[API] POST /v1/interventions error: " + e.getMessage());
+                LOG.log(Level.SEVERE, "[API] POST /v1/interventions error", e);
                 return null;
             }
         }
@@ -739,12 +785,12 @@ public class SimulationApp {
                         .POST(HttpRequest.BodyPublishers.ofString(json))
                         .build(), HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() >= 400) {
-                    System.err.println("[API] POST assignment -> " + resp.statusCode() + " body=" + resp.body());
+                    LOG.severe("[API] POST assignment -> " + resp.statusCode() + " body=" + resp.body());
                     return null;
                 }
                 return extractString(resp.body(), "\"id\"", 0);
             } catch (Exception e) {
-                System.err.println("[API] POST assignment error: " + e.getMessage());
+                LOG.log(Level.SEVERE, "[API] POST assignment error", e);
                 return null;
             }
         }
