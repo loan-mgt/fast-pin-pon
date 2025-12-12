@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const errUnitNotFound = "unit not found"
+
 type CreateUnitRequest struct {
 	CallSign     string  `json:"call_sign" validate:"required"`
 	UnitTypeCode string  `json:"unit_type_code" validate:"required"`
@@ -150,7 +152,7 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 	})
 	if err != nil {
 		if isNotFound(err) {
-			s.writeError(w, http.StatusNotFound, "unit not found", nil)
+			s.writeError(w, http.StatusNotFound, errUnitNotFound, nil)
 			return
 		}
 		s.writeError(w, http.StatusInternalServerError, "failed to update unit", err.Error())
@@ -206,7 +208,7 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 	})
 	if err != nil {
 		if isNotFound(err) {
-			s.writeError(w, http.StatusNotFound, "unit not found", nil)
+			s.writeError(w, http.StatusNotFound, errUnitNotFound, nil)
 			return
 		}
 		s.writeError(w, http.StatusInternalServerError, "failed to update unit location", err.Error())
@@ -360,7 +362,7 @@ func (s *Server) handleAssignMicrobit(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if isNotFound(err) {
-			s.writeError(w, http.StatusNotFound, "unit not found", nil)
+			s.writeError(w, http.StatusNotFound, errUnitNotFound, nil)
 			return
 		}
 		if isUniqueViolation(err) {
@@ -407,7 +409,7 @@ func (s *Server) handleUnassignMicrobit(w http.ResponseWriter, r *http.Request) 
 	row, err := s.queries.UnassignMicrobit(r.Context(), unitID)
 	if err != nil {
 		if isNotFound(err) {
-			s.writeError(w, http.StatusNotFound, "unit not found", nil)
+			s.writeError(w, http.StatusNotFound, errUnitNotFound, nil)
 			return
 		}
 		s.writeError(w, http.StatusInternalServerError, "failed to unassign microbit", err.Error())

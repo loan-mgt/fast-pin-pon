@@ -122,10 +122,9 @@ while True:
                 status_idx = (status_idx + 1) % 4
                 send_msg()
 
-    if button_b.was_pressed():
-        if status_idx < 4:
-            status_idx = (status_idx - 1) % 4
-            send_msg()
+    if button_b.was_pressed() and status_idx < 4:
+        status_idx = (status_idx - 1) % 4
+        send_msg()
 
     show()
 

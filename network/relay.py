@@ -40,7 +40,7 @@ def parse_msg(p):
         if sign(data, seq) != int(parts[3]):
             return (None, None, "SIG")
         return (seq, data, None)
-    except:
+    except (ValueError, IndexError, AttributeError):
         pass
     return (None, None, "ERR")
 
@@ -51,7 +51,7 @@ def parse_mbit(d):
             parts = d[5:].split(",")
             if len(parts) >= 2:
                 return (parts[0], parts[1])
-    except:
+    except (ValueError, IndexError, AttributeError):
         pass
     return None
 
