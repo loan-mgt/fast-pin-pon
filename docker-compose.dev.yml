@@ -36,6 +36,25 @@ services:
         max-size: "100m"
         max-file: "3"
 
+  front:
+    build:
+      context: front/
+      dockerfile: Dockerfile
+    container_name: fast-pin-pon-front
+    env_file:
+      - .env.example
+    ports:
+      - "8080:80"
+    networks:
+      - internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    volumes:
+      - ./front/nginx.conf:/etc/nginx/conf.d/default.conf
+
   postgres:
     image: ghcr.io/loan-mgt/fast-pin-pon/db:latest
     container_name: fast-pin-pon-postgres
@@ -46,7 +65,6 @@ services:
       POSTGRES_PASSWORD: fastpinpon
     volumes:
       - postgres-data:/var/lib/postgresql
-      - ./migrations:/docker-entrypoint-initdb.d:ro
     networks:
       - internal
     healthcheck:
@@ -54,6 +72,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  maptiler-server:
+    image: maptiler/server:latest
+    container_name: fast-pin-pon-map
+    restart: unless-stopped
+    ports:
+      - "3650:3650"        # Exposes MapTiler Server API
+    volumes:
+      - ./maps:/data      # Mount your .mbtiles here
+    command: --adminPassword=${ADMIN_PASS:-"admin123"}
+    networks:
+      - internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
 
 networks:
   internal: null

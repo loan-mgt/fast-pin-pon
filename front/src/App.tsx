@@ -6,33 +6,42 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { Button } from './components/ui/button'
 import { Card } from './components/ui/card'
 
+type GeoPoint = {
+  latitude: number
+  longitude: number
+}
+
 type EventSummary = {
   id: string
   title: string
-  reported_at?: string
-  status?: string
-  severity?: number
-  location?: {
-    latitude?: number
-    longitude?: number
-  }
+  description?: string
+  report_source?: string
+  address?: string
+  location: GeoPoint
+  severity: number
+  status: string
+  event_type_code: string
+  event_type_name: string
+  reported_at: string
+  updated_at: string
+  closed_at?: string
 }
 
 const API_URL = 'https://api.fast-pin-pon.4loop.org/v1/events?limit=25'
-const DEFAULT_CENTER: [number, number] = [-98.5795, 39.8283]
+const DEFAULT_CENTER: [number, number] = [4.8467, 45.7485]
 
-const formatTimestamp = (value?: string) =>
+const formatTimestamp = (value?: string): string =>
   value
     ? new Date(value).toLocaleString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        month: 'short',
-        day: 'numeric',
-      })
+      hour: 'numeric',
+      minute: '2-digit',
+      month: 'short',
+      day: 'numeric',
+    })
     : 'Unknown'
 
-const severityLabel = (severity?: number) => {
-  if (!severity) return 'Pending'
+const severityLabel = (severity?: number): string => {
+  if (severity === undefined) return 'Pending'
   if (severity <= 2) return 'Low'
   if (severity === 3) return 'Medium'
   return 'High'
@@ -69,8 +78,8 @@ export function App() {
 
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {
-      const aTime = a.reported_at ? new Date(a.reported_at).getTime() : 0
-      const bTime = b.reported_at ? new Date(b.reported_at).getTime() : 0
+      const aTime = new Date(a.reported_at).getTime()
+      const bTime = new Date(b.reported_at).getTime()
       return bTime - aTime
     })
   }, [events])
@@ -87,6 +96,7 @@ export function App() {
       style: 'https://demotiles.maplibre.org/style.json',
       center: DEFAULT_CENTER,
       zoom: 3.5,
+      maxZoom: 19,
     })
 
     mapRef.current = map
@@ -118,10 +128,7 @@ export function App() {
         lng: event.location?.longitude,
         lat: event.location?.latitude,
       }))
-      .filter(
-        (item): item is { event: EventSummary; lng: number; lat: number } =>
-          typeof item.lng === 'number' && typeof item.lat === 'number',
-      )
+      .filter((item) => item.lng !== 0 && item.lat !== 0)
 
     if (locations.length) {
       const avgLng = locations.reduce((sum, loc) => sum + loc.lng, 0) / locations.length
@@ -207,14 +214,41 @@ export function App() {
               <p className="text-slate-400 text-xs uppercase tracking-[0.35em]">Live events</p>
               <p className="font-semibold text-white text-lg">Latest incidents</p>
             </div>
-            <div className="text-slate-400 text-xs">Updated {lastUpdated}</div>
+            <div className="flex items-center gap-3">
+              <div className="text-slate-400 text-xs text-right">
+                <span className="block opacity-70 text-[10px] uppercase tracking-wider">Updated</span>
+                {lastUpdated}
+              </div>
+              <button
+                onClick={refreshEvents}
+                disabled={loading}
+                className="hover:bg-slate-800 disabled:opacity-50 p-2 rounded-full text-slate-400 hover:text-white transition-colors"
+                aria-label="Refresh events"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={loading ? 'animate-spin' : ''}
+                >
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                  <path d="M8 16H3v5" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {eventsDisplay}
 
-          <Button variant="solid" className="w-full" onClick={refreshEvents} disabled={loading}>
-            {loading ? 'Refreshing…' : 'Refresh list'}
-          </Button>
+
         </Card>
       </main>
     </div>
