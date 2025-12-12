@@ -13,7 +13,7 @@ FROM nginx:1.29.4-alpine3.23-slim AS runtime
 # Remove default nginx content and copy the Vite build output.
 RUN rm -rf /usr/share/nginx/html/*
 COPY --from=builder --chmod=0555 /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=0555 nginx.conf /etc/nginx/conf.d/default.conf
 
 RUN mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp /var/cache/nginx/scgi_temp && \
         mkdir -p /etc/nginx/ssl && \
