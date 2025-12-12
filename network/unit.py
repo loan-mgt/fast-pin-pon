@@ -8,7 +8,7 @@ radio.on()
 SECRET_KEY = "FPP2024"
 MICROBIT_ID = "MB001"
 
-# 0=AVL, 1=UWY, 2=ONS, 3=UNA, 4=OFF
+# 0:AVL, 1:UWY, 2:ONS, 3:UNA, 4:OFF
 status_idx = 0
 last_active = 0
 seq_num = 0
@@ -148,9 +148,8 @@ while True:
         continue
 
     # Bouton A: AVL/UWY/ONS -> UNA
-    if button_a.was_pressed():
-        if status_idx in (0, 1, 2):
-            set_status(3)
+    if button_a.was_pressed() and status_idx in (0, 1, 2):
+        set_status(3)
 
     # Bouton B: transitions directes
     if button_b.was_pressed():
