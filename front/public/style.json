@@ -50,7 +50,7 @@
       "type": "vector",
       "tiles": ["__TILE_URL__"],
       "minzoom": 0,
-      "maxzoom": 22
+      "maxzoom": 14
     }
   },
   "sprite": "https://openmaptiles.github.io/osm-bright-gl-style/sprite",

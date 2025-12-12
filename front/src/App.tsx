@@ -177,7 +177,12 @@ export function App() {
       style: '/style.json',
       center: initialState.center,
       zoom: initialState.zoom,
+      minZoom: 10,
       maxZoom: 19,
+      maxBounds: [
+        [4.290161, 45.375302],   // southwest
+        [5.386047, 46.0999]    // northeast
+      ]
     })
 
     mapRef.current = map
