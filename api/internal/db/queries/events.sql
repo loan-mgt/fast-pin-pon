@@ -83,9 +83,9 @@ WHERE e.id = $1;
 -- name: UpdateEventStatus :one
 UPDATE events
 SET
-    status = $2,
+    status = $2::event_status,
     updated_at = NOW(),
-    closed_at = CASE WHEN $2 = 'closed' THEN NOW() ELSE closed_at END
+    closed_at = CASE WHEN $2::event_status = 'closed' THEN NOW() ELSE closed_at END
 WHERE id = $1
 RETURNING
     id,
