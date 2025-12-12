@@ -461,43 +461,40 @@ export function App() {
             maxHeight: isPanelCollapsed ? 'none' : `calc(100vh - ${panelPosition.y + 100}px)`,
             cursor: isDragging ? 'grabbing' : 'default',
           }}
-          onMouseDown={(e) => {
-            // Permettre le drag depuis le header seulement
-            const target = e.target as HTMLElement
-            if (target.closest('.panel-content')) return
-            e.preventDefault()
-            setIsDragging(true)
-            dragStartRef.current = {
-              x: e.clientX,
-              y: e.clientY,
-              panelX: panelPosition.x,
-              panelY: panelPosition.y,
-            }
-            
-            const handleMouseMove = (moveEvent: MouseEvent) => {
-              const deltaX = moveEvent.clientX - dragStartRef.current.x
-              const deltaY = moveEvent.clientY - dragStartRef.current.y
-              setPanelPosition({
-                x: dragStartRef.current.panelX + deltaX,
-                y: dragStartRef.current.panelY + deltaY,
-              })
-            }
-            
-            const handleMouseUp = () => {
-              setIsDragging(false)
-              document.removeEventListener('mousemove', handleMouseMove)
-              document.removeEventListener('mouseup', handleMouseUp)
-            }
-            
-            document.addEventListener('mousemove', handleMouseMove)
-            document.addEventListener('mouseup', handleMouseUp)
-          }}
         >
           <button
             type="button"
             className="flex justify-between items-center cursor-grab select-none panel-header flex-shrink-0 w-full bg-transparent border-none text-left"
             onClick={() => {
               if (!isDragging) setIsPanelCollapsed(!isPanelCollapsed)
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsDragging(true)
+              dragStartRef.current = {
+                x: e.clientX,
+                y: e.clientY,
+                panelX: panelPosition.x,
+                panelY: panelPosition.y,
+              }
+              
+              const handleMouseMove = (moveEvent: MouseEvent) => {
+                const deltaX = moveEvent.clientX - dragStartRef.current.x
+                const deltaY = moveEvent.clientY - dragStartRef.current.y
+                setPanelPosition({
+                  x: dragStartRef.current.panelX + deltaX,
+                  y: dragStartRef.current.panelY + deltaY,
+                })
+              }
+              
+              const handleMouseUp = () => {
+                setIsDragging(false)
+                document.removeEventListener('mousemove', handleMouseMove)
+                document.removeEventListener('mouseup', handleMouseUp)
+              }
+              
+              document.addEventListener('mousemove', handleMouseMove)
+              document.addEventListener('mouseup', handleMouseUp)
             }}
           >
             <div className="flex items-center gap-2">

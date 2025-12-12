@@ -1,17 +1,13 @@
-import type { CSSProperties, ReactNode, MouseEventHandler } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 
 export interface CardProps {
   readonly children: ReactNode
   readonly className?: string
   readonly style?: CSSProperties
-  readonly onMouseDown?: MouseEventHandler<HTMLDivElement>
-  readonly onMouseMove?: MouseEventHandler<HTMLDivElement>
-  readonly onMouseUp?: MouseEventHandler<HTMLDivElement>
-  readonly onMouseLeave?: MouseEventHandler<HTMLDivElement>
 }
 
-export function Card({ children, className, style, onMouseDown, onMouseMove, onMouseUp, onMouseLeave }: CardProps) {
+export function Card({ children, className, style }: CardProps) {
   return (
     <section
       aria-label="Card"
@@ -20,10 +16,6 @@ export function Card({ children, className, style, onMouseDown, onMouseMove, onM
         className,
       )}
       style={style}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseLeave}
     >
       {children}
     </section>
