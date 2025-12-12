@@ -1,8 +1,10 @@
-name: Build Front Docker Image
+name: Build Database Docker Image
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
     paths:
       - 'database/**'
       - '.github/workflows/bp-database.yml'
