@@ -1,4 +1,4 @@
-# micro:bit Unit Controller - Always active
+# micro:bit Unit Controller - Direct transitions
 from microbit import display, Image, sleep, running_time, button_a, button_b
 import radio
 
@@ -8,12 +8,13 @@ radio.on()
 SECRET_KEY = "FPP2024"
 MICROBIT_ID = "MB001"
 
+# 0:AVL, 1:UWY, 2:ONS, 3:UNA, 4:OFF
 status_idx = 0
+last_active = 0
 seq_num = 0
 last_send = 0
 last_blink = 0
 led_on = True
-btn_a_start = 0
 waiting_ack = False
 last_msg = ""
 retries = 0
@@ -81,6 +82,16 @@ def check_ack():
             waiting_ack = False
 
 
+def set_status(new_idx):
+    global status_idx, last_active
+    if new_idx == status_idx:
+        return
+    if status_idx != 4:
+        last_active = status_idx
+    status_idx = new_idx
+    send_msg()
+
+
 def show():
     global led_on, last_blink
     if status_idx == 4:
@@ -104,27 +115,52 @@ display.scroll(MICROBIT_ID, delay=80)
 sleep(300)
 send_msg()
 
+cooldown_until = 0
+
 while True:
     now = running_time()
     check_ack()
 
-    if button_a.is_pressed():
-        if btn_a_start == 0:
-            btn_a_start = now
-    else:
-        if btn_a_start > 0:
-            dur = now - btn_a_start
-            btn_a_start = 0
-            if dur >= 2000:
-                status_idx = 0 if status_idx == 4 else 4
-                send_msg()
-            elif status_idx < 4:
-                status_idx = (status_idx + 1) % 4
-                send_msg()
+    # A+B long -> toggle OFF
+    if button_a.is_pressed() and button_b.is_pressed():
+        start = running_time()
+        while button_a.is_pressed() and button_b.is_pressed():
+            sleep(10)
+        if running_time() - start >= 1200:
+            if status_idx == 4:
+                set_status(last_active)
+            else:
+                set_status(4)
+        # Attendre relâchement complet + cooldown
+        while button_a.is_pressed() or button_b.is_pressed():
+            sleep(10)
+        # Vider les événements was_pressed accumulés
+        button_a.was_pressed()
+        button_b.was_pressed()
+        cooldown_until = running_time() + 300
+        show()
+        continue
 
-    if button_b.was_pressed() and status_idx < 4:
-        status_idx = (status_idx - 1) % 4
-        send_msg()
+    # Ignorer pendant cooldown
+    if now < cooldown_until:
+        show()
+        sleep(50)
+        continue
+
+    # Bouton A: AVL/UWY/ONS -> UNA
+    if button_a.was_pressed() and status_idx in (0, 1, 2):
+        set_status(3)
+
+    # Bouton B: transitions directes
+    if button_b.was_pressed():
+        if status_idx == 0:      # AVL -> UWY
+            set_status(1)
+        elif status_idx == 1:    # UWY -> ONS
+            set_status(2)
+        elif status_idx == 2:    # ONS -> AVL
+            set_status(0)
+        elif status_idx == 3:    # UNA -> AVL
+            set_status(0)
 
     show()
 
