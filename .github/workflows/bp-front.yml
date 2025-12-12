@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feat/map-v2
     tags:
       - 'v*'
     paths:
