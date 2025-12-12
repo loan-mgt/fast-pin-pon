@@ -21,7 +21,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   FOLDER: maptiler
-  PUSH_EVENT: false
+  PUSH_EVENT: true
   #${{ github.event_name == 'push' }}
 
 jobs:
