@@ -7,3 +7,5 @@ COPY --chown=keycloak:keycloak realm-export.json /opt/keycloak/data/import/00.ma
 COPY --chown=keycloak:keycloak realm-export-sdmis.json /opt/keycloak/data/import/sdmis-realm-realm.json
 
 RUN sed -i "s@__GRAFANA_URL__@${GRAFANA_URL}@g" /opt/keycloak/data/import/sdmis-realm-realm.json
+
+USER keycloak
