@@ -17,11 +17,9 @@ on:
 
 jobs:
   build:
-      name: Build Swagger Site
-      runs-on: ubuntu-latest
-      defaults:
-        run:
-          working-directory: api
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
+    name: Build Front Docker Image
+    uses: ./.github/workflows/call-build.yml
+    with:
+      folder: front
+      push_event: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    secrets: inherit
