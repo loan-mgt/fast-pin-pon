@@ -12,6 +12,7 @@ type Config struct {
 	AppName  string         `env:"APP_NAME" envDefault:"fast-pin-pon-api"`
 	Env      string         `env:"APP_ENV" envDefault:"development"`
 	LogLevel string         `env:"LOG_LEVEL" envDefault:"info"`
+	LogFile  string         `env:"LOG_FILE" envDefault:"logs/api.log"`
 	HTTP     HTTPConfig     `envPrefix:"HTTP_"`
 	Database DatabaseConfig `envPrefix:"DB_"`
 }
