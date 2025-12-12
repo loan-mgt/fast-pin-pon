@@ -83,7 +83,7 @@ export function App() {
   const [lastUpdated, setLastUpdated] = useState<string>('—')
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
   const [panelPosition, setPanelPosition] = useState(() => ({
-    x: typeof globalThis.window === 'undefined' ? 16 : globalThis.window.innerWidth - 400,
+    x: globalThis.window === undefined ? 16 : globalThis.window.innerWidth - 400,
     y: 16
   }))
   const [isDragging, setIsDragging] = useState(false)
@@ -493,18 +493,11 @@ export function App() {
             document.addEventListener('mouseup', handleMouseUp)
           }}
         >
-          <div
-            role="button"
-            tabIndex={0}
-            className="flex justify-between items-center cursor-grab select-none panel-header flex-shrink-0"
+          <button
+            type="button"
+            className="flex justify-between items-center cursor-grab select-none panel-header flex-shrink-0 w-full bg-transparent border-none text-left"
             onClick={() => {
               if (!isDragging) setIsPanelCollapsed(!isPanelCollapsed)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                if (!isDragging) setIsPanelCollapsed(!isPanelCollapsed)
-              }
             }}
           >
             <div className="flex items-center gap-2">
@@ -528,7 +521,7 @@ export function App() {
                 </svg>
               )}
             </div>
-          </div>
+          </button>
 
           {!isPanelCollapsed && (
             <div className="mt-4 pb-4 panel-content flex-1 min-h-0 overflow-y-auto">

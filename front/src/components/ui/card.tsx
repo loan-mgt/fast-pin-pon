@@ -12,10 +12,9 @@ export interface CardProps {
 }
 
 export function Card({ children, className, style, onMouseDown, onMouseMove, onMouseUp, onMouseLeave }: CardProps) {
-  const hasMouseHandlers = onMouseDown || onMouseMove || onMouseUp || onMouseLeave
   return (
-    <div
-      role={hasMouseHandlers ? 'region' : undefined}
+    <section
+      aria-label="Card"
       className={cn(
         'bg-slate-900/70 backdrop-blur-xl shadow-[0_8px_32px_rgba(59,130,246,0.15)] p-6 border border-blue-500/20 rounded-3xl',
         className,
@@ -27,6 +26,6 @@ export function Card({ children, className, style, onMouseDown, onMouseMove, onM
       onMouseLeave={onMouseLeave}
     >
       {children}
-    </div>
+    </section>
   )
 }
