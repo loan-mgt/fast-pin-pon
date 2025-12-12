@@ -5,6 +5,7 @@ SELECT
     unit_type_code,
     home_base,
     status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -40,6 +41,7 @@ INSERT INTO units (
     unit_type_code,
     home_base,
     status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -53,6 +55,7 @@ SELECT
     unit_type_code,
     home_base,
     status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -73,6 +76,7 @@ RETURNING
     unit_type_code,
     home_base,
     status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -98,6 +102,107 @@ RETURNING
     unit_type_code,
     home_base,
     status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at;
+
+-- name: AssignMicrobit :one
+UPDATE units
+SET
+    microbit_id = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at;
+
+-- name: UnassignMicrobit :one
+UPDATE units
+SET
+    microbit_id = NULL,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at;
+
+-- name: GetUnitByMicrobitID :one
+SELECT
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at
+FROM units
+WHERE microbit_id = $1;
+
+-- name: UpdateUnitStatusByMicrobitID :one
+UPDATE units
+SET
+    status = $2,
+    last_contact_at = NOW(),
+    updated_at = NOW()
+WHERE microbit_id = $1
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at;
+
+-- name: UpdateUnitLocationByMicrobitID :one
+UPDATE units
+SET
+    location = ST_SetSRID(
+        ST_MakePoint(
+            sqlc.arg(longitude)::double precision,
+            sqlc.arg(latitude)::double precision
+        ),
+        4326
+    )::geography,
+    last_contact_at = NOW(),
+    updated_at = NOW()
+WHERE microbit_id = sqlc.arg(microbit_id)
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,

@@ -144,8 +144,7 @@ func (ns NullEventStatus) Value() (driver.Value, error) {
 type InterventionStatus string
 
 const (
-	InterventionStatusPlanned   InterventionStatus = "planned"
-	InterventionStatusEnRoute   InterventionStatus = "en_route"
+	InterventionStatusCreated   InterventionStatus = "created"
 	InterventionStatusOnSite    InterventionStatus = "on_site"
 	InterventionStatusCompleted InterventionStatus = "completed"
 	InterventionStatusCancelled InterventionStatus = "cancelled"
@@ -190,9 +189,9 @@ type UnitStatus string
 
 const (
 	UnitStatusAvailable   UnitStatus = "available"
-	UnitStatusEnRoute     UnitStatus = "en_route"
+	UnitStatusUnderWay    UnitStatus = "under_way"
 	UnitStatusOnSite      UnitStatus = "on_site"
-	UnitStatusMaintenance UnitStatus = "maintenance"
+	UnitStatusUnavailable UnitStatus = "unavailable"
 	UnitStatusOffline     UnitStatus = "offline"
 )
 
@@ -320,6 +319,7 @@ type Unit struct {
 	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	MicrobitID    *string            `json:"microbit_id"`
 }
 
 type UnitTelemetry struct {

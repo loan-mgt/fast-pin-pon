@@ -5,6 +5,9 @@ BEGIN;
 -------------------------
 -- UNIT STATUS ENUM FIX
 -------------------------
+-- 0. Drop default before changing type
+ALTER TABLE units ALTER COLUMN status DROP DEFAULT;
+
 -- 1. Create new enum with the desired final values
 CREATE TYPE unit_status_new AS ENUM ('available', 'under_way', 'on_site', 'unavailable', 'offline');
 
@@ -24,10 +27,16 @@ DROP TYPE unit_status;
 -- 4. Rename new enum
 ALTER TYPE unit_status_new RENAME TO unit_status;
 
+-- 5. Restore default
+ALTER TABLE units ALTER COLUMN status SET DEFAULT 'available';
+
 
 -------------------------
 -- INTERVENTION STATUS ENUM FIX
 -------------------------
+-- 0. Drop default before changing type
+ALTER TABLE interventions ALTER COLUMN status DROP DEFAULT;
+
 -- 1. Create new enum with only desired final values
 CREATE TYPE intervention_status_new AS ENUM ('created', 'on_site', 'completed', 'cancelled');
 
@@ -49,11 +58,7 @@ DROP TYPE intervention_status;
 -- 4. Rename
 ALTER TYPE intervention_status_new RENAME TO intervention_status;
 
-
--------------------------
--- UPDATE DEFAULTS
--------------------------
-ALTER TABLE units ALTER COLUMN status SET DEFAULT 'available';
+-- 5. Restore default
 ALTER TABLE interventions ALTER COLUMN status SET DEFAULT 'created';
 
 COMMIT;
@@ -66,6 +71,9 @@ BEGIN;
 -------------------------
 -- RECREATE ORIGINAL unit_status
 -------------------------
+-- 0. Drop default before changing type
+ALTER TABLE units ALTER COLUMN status DROP DEFAULT;
+
 CREATE TYPE unit_status_old AS ENUM ('available', 'en_route', 'on_site', 'maintenance', 'offline');
 
 ALTER TABLE units
@@ -80,9 +88,15 @@ ALTER TABLE units
 DROP TYPE unit_status;
 ALTER TYPE unit_status_old RENAME TO unit_status;
 
+-- Restore default
+ALTER TABLE units ALTER COLUMN status SET DEFAULT 'available';
+
 -------------------------
 -- RECREATE ORIGINAL intervention_status
 -------------------------
+-- 0. Drop default before changing type
+ALTER TABLE interventions ALTER COLUMN status DROP DEFAULT;
+
 CREATE TYPE intervention_status_old AS ENUM ('planned', 'en_route', 'on_site', 'completed', 'cancelled');
 
 ALTER TABLE interventions
@@ -96,9 +110,7 @@ ALTER TABLE interventions
 DROP TYPE intervention_status;
 ALTER TYPE intervention_status_old RENAME TO intervention_status;
 
-
--- Restore defaults
-ALTER TABLE units ALTER COLUMN status SET DEFAULT 'available';
+-- Restore default
 ALTER TABLE interventions ALTER COLUMN status SET DEFAULT 'planned';
 
 COMMIT;

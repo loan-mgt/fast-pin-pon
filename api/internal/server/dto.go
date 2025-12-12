@@ -106,6 +106,7 @@ type UnitResponse struct {
 	UnitTypeCode string     `json:"unit_type_code"`
 	HomeBase     string     `json:"home_base,omitempty"`
 	Status       string     `json:"status"`
+	MicrobitID   string     `json:"microbit_id,omitempty"`
 	Location     GeoPoint   `json:"location"`
 	LastContact  *time.Time `json:"last_contact_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
