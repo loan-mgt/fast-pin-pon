@@ -25,9 +25,3 @@ jobs:
       steps:
         - name: Checkout code
           uses: actions/checkout@v4
-
-  call-build:
-    uses: ./.github/workflows/build-and-push.yml
-    with:
-      folder: front
-      push_event: ${{ github.event_name != 'pull_request' }}
