@@ -46,7 +46,6 @@ services:
       POSTGRES_PASSWORD: fastpinpon
     volumes:
       - postgres-data:/var/lib/postgresql
-      - ./migrations:/docker-entrypoint-initdb.d:ro
     networks:
       - internal
     healthcheck:
@@ -54,6 +53,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  maptiler-server:
+    image: maptiler/tileserver-gl:v5.5.0-pre.7
+    container_name: fast-pin-pon-map
+    restart: unless-stopped
+    ports:
+      - "3650:8080"     
+    volumes:
+      - ./maptiler/maps:/data  
+    networks:
+      - internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
 
 networks:
   internal: null
