@@ -8,7 +8,7 @@ import (
 
 type CreateInterventionRequest struct {
 	EventID      string  `json:"event_id" validate:"required,uuid4"`
-	Status       string  `json:"status" validate:"omitempty,oneof=planned en_route on_site completed cancelled"`
+	Status       string  `json:"status" validate:"omitempty,oneof=created completed cancelled"`
 	Priority     int32   `json:"priority" validate:"omitempty,min=1,max=5"`
 	DecisionMode string  `json:"decision_mode" validate:"omitempty,oneof=auto_suggested manual"`
 	CreatedBy    *string `json:"created_by"`
@@ -16,7 +16,7 @@ type CreateInterventionRequest struct {
 }
 
 type UpdateInterventionStatusRequest struct {
-	Status string `json:"status" validate:"required,oneof=planned en_route on_site completed cancelled"`
+	Status string `json:"status" validate:"required,oneof=created completed cancelled"`
 }
 
 type CreateAssignmentRequest struct {
