@@ -181,7 +181,7 @@ export function App() {
       maxZoom: 19,
       maxBounds: [
         [4.290161, 45.375302],   // southwest
-        [5.386047, 46.099900]    // northeast
+        [5.386047, 46.0999]    // northeast
       ]
     })
 
