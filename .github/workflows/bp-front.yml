@@ -16,6 +16,16 @@ on:
   workflow_dispatch:
 
 jobs:
+  build:
+      name: Build Swagger Site
+      runs-on: ubuntu-latest
+      defaults:
+        run:
+          working-directory: api
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
   call-build:
     uses: ./.github/workflows/build-and-push.yml
     with:
