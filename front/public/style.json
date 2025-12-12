@@ -48,8 +48,7 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "tiles": [
-        "http://localhost:8080/maps/lyon/{z}/{x}/{y}.pbf"],
+      "tiles": ["__TILE_URL__"],
       "minzoom": 0,
       "maxzoom": 22
     }

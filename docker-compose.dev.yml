@@ -25,6 +25,8 @@ services:
     build:
       context: front/
       dockerfile: Dockerfile
+      args:
+        MAP_TILE_URL: "http://localhost:8080/maps/lyon/{z}/{x}/{y}.pbf"
     container_name: fast-pin-pon-front
     ports:
       - "8080:80"

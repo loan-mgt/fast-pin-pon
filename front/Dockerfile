@@ -1,16 +1,22 @@
 FROM node:20-alpine AS builder
 
+ARG MAP_TILE_URL="http://fast-pin-pon.4loop.org/maps/lyon/{z}/{x}/{y}.pbf"
+ENV MAP_TILE_URL=${MAP_TILE_URL}
+
 WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci --ignore-scripts
 
 COPY . .
+
+# Replace placeholder before building
+RUN sed -i "s|__TILE_URL__|${MAP_TILE_URL}|g" public/style.json
+
 RUN npm run build
 
 FROM nginx:1.29.4-alpine3.23-slim AS runtime
 
-# Remove default nginx content and copy the Vite build output.
 RUN rm -rf /usr/share/nginx/html/*
 COPY --from=builder --chmod=0555 /app/dist /usr/share/nginx/html
 COPY --chmod=0555 nginx.conf /etc/nginx/conf.d/default.conf
@@ -20,6 +26,7 @@ RUN mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache
         touch /var/run/nginx.pid && \
         chown -R nginx:nginx /var/cache/nginx /etc/nginx /etc/nginx/ssl /var/log/nginx /var/run/nginx.pid /run/nginx.pid && \
         chmod -R 755 /etc/nginx /etc/nginx/ssl
+
 USER nginx
 
 EXPOSE 80
