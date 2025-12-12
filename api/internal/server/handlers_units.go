@@ -342,7 +342,7 @@ func mapCreateUnitRow(row db.CreateUnitRow) UnitResponse {
 // @Failure 404 {object} APIError
 // @Failure 409 {object} APIError
 // @Failure 500 {object} APIError
-// @Route /v1/units/{unitID}/microbit [post]
+// @Route /v1/units/{unitID}/microbit [put]
 func (s *Server) handleAssignMicrobit(w http.ResponseWriter, r *http.Request) {
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
