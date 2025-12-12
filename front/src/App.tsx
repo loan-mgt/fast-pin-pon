@@ -83,14 +83,14 @@ export function App() {
   const [lastUpdated, setLastUpdated] = useState<string>('—')
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
   const [panelPosition, setPanelPosition] = useState(() => ({
-    x: typeof window !== 'undefined' ? window.innerWidth - 400 : 16,
+    x: typeof globalThis.window === 'undefined' ? 16 : globalThis.window.innerWidth - 400,
     y: 16
   }))
   const [isDragging, setIsDragging] = useState(false)
   const dragStartRef = useRef({ x: 0, y: 0, panelX: 0, panelY: 0 })
   const [refreshInterval, setRefreshInterval] = useState<number>(() => {
     const saved = localStorage.getItem(REFRESH_INTERVAL_KEY)
-    return saved ? parseInt(saved, 10) : 10
+    return saved ? Number.parseInt(saved, 10) : 10
   })
 
   const refreshData = useCallback(async () => {
@@ -144,7 +144,7 @@ export function App() {
   }, [refreshData, refreshInterval])
 
   const handleIntervalChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = parseInt(event.target.value, 10)
+    const value = Number.parseInt(event.target.value, 10)
     setRefreshInterval(value)
     localStorage.setItem(REFRESH_INTERVAL_KEY, value.toString())
   }
@@ -494,9 +494,17 @@ export function App() {
           }}
         >
           <div
+            role="button"
+            tabIndex={0}
             className="flex justify-between items-center cursor-grab select-none panel-header flex-shrink-0"
             onClick={() => {
               if (!isDragging) setIsPanelCollapsed(!isPanelCollapsed)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                if (!isDragging) setIsPanelCollapsed(!isPanelCollapsed)
+              }
             }}
           >
             <div className="flex items-center gap-2">
