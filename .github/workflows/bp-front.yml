@@ -1,0 +1,26 @@
+name: Build Front Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+    paths:
+      - 'front/**'
+      - '.github/workflows/bp-front.yml'
+  pull_request:
+    branches:
+      - main
+      - '**'
+    paths:
+      - 'front/**'
+      - '.github/workflows/bp-front.yml'
+  workflow_dispatch:
+
+jobs:
+  call-build:
+    uses: ./.github/workflows/build-and-push.yml
+    with:
+      folder: front
+      push_event: ${{ github.event_name != 'pull_request' }}

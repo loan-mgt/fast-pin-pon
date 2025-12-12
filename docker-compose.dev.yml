@@ -55,13 +55,13 @@ services:
       retries: 5
 
   maptiler-server:
-    image: maptiler/tileserver-gl:latest
+    image: maptiler/tileserver-gl:v5.5.0-pre.7
     container_name: fast-pin-pon-map
     restart: unless-stopped
     ports:
-      - "3650:8080"        # Exposes MapTiler Server API
+      - "3650:8080"     
     volumes:
-      - ./maps:/data      # Mount your .mbtiles here
+      - ./maptiler/maps:/data  
     networks:
       - internal
     logging:

@@ -1,0 +1,26 @@
+name: Build Maptiler Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+    paths:
+      - 'maptiler/**'
+      - '.github/workflows/bp-maptiler.yml'
+  pull_request:
+    branches:
+      - main
+      - '**'
+    paths:
+      - 'maptiler/**'
+      - '.github/workflows/bp-maptiler.yml'
+  workflow_dispatch:
+
+jobs:
+  call-build:
+    uses: ./.github/workflows/build-and-push.yml
+    with:
+      folder: maptiler
+      push_event: ${{ github.event_name != 'pull_request' }}

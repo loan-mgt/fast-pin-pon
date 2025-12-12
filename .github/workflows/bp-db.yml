@@ -1,0 +1,26 @@
+name: Build DB Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+    paths:
+      - 'database/**'
+      - '.github/workflows/bp-db.yml'
+  pull_request:
+    branches:
+      - main
+      - '**'
+    paths:
+      - 'database/**'
+      - '.github/workflows/bp-db.yml'
+  workflow_dispatch:
+
+jobs:
+  call-build:
+    uses: ./.github/workflows/build-and-push.yml
+    with:
+      folder: database
+      push_event: ${{ github.event_name != 'pull_request' }}
