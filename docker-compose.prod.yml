@@ -22,6 +22,7 @@ services:
     container_name: fast-pin-pon-front
     networks:
       - default
+      - internal
     logging:
       driver: json-file
       options:

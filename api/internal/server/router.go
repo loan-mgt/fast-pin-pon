@@ -18,7 +18,7 @@ func (s *Server) routes() http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:8080", "https://fast-pin-pon.4loop.org"},
+		AllowedOrigins:   []string{"http://localhost:8080", "http://fast-pin-pon.4loop.org", "https://fast-pin-pon.4loop.org"},
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
 		AllowCredentials: false,
