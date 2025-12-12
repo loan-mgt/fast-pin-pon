@@ -5,11 +5,7 @@ on:
     branches:
       - main
       - feat/map-v2
-    tags:
-      - 'v*'
-    paths:
-      - 'front/**'
-      - '.github/workflows/bp-front.yml'
+
   pull_request:
     branches:
       - main
