@@ -13,13 +13,13 @@ type CreateUnitRequest struct {
 	CallSign     string  `json:"call_sign" validate:"required"`
 	UnitTypeCode string  `json:"unit_type_code" validate:"required"`
 	HomeBase     *string `json:"home_base"`
-	Status       string  `json:"status" validate:"required,oneof=available en_route on_site maintenance offline"`
+	Status       string  `json:"status" validate:"required,oneof=available under_way on_site unavailable offline"`
 	Latitude     float64 `json:"latitude" validate:"required,latitude"`
 	Longitude    float64 `json:"longitude" validate:"required,longitude"`
 }
 
 type UpdateUnitStatusRequest struct {
-	Status string `json:"status" validate:"required,oneof=available en_route on_site maintenance offline"`
+	Status string `json:"status" validate:"required,oneof=available under_way on_site unavailable offline"`
 }
 
 type UpdateUnitLocationRequest struct {
