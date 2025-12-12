@@ -29,15 +29,17 @@ type EventSummary = {
 
 const API_URL = 'https://api.fast-pin-pon.4loop.org/v1/events?limit=25'
 const DEFAULT_CENTER: [number, number] = [4.8467, 45.7485]
+const DEFAULT_ZOOM = 11
+const MAP_STATE_KEY = 'mapState'
 
 const formatTimestamp = (value?: string): string =>
   value
     ? new Date(value).toLocaleString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      month: 'short',
-      day: 'numeric',
-    })
+        hour: 'numeric',
+        minute: '2-digit',
+        month: 'short',
+        day: 'numeric',
+      })
     : 'Unknown'
 
 const severityLabel = (severity?: number): string => {
@@ -59,12 +61,15 @@ export function App() {
 
     try {
       const response = await fetch(API_URL)
-      if (!response.ok) {
-        throw new Error('Failed to fetch events')
-      }
+      if (!response.ok) throw new Error('Failed to fetch events')
       const data: EventSummary[] = await response.json()
       setEvents(data)
-      setLastUpdated(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }))
+      setLastUpdated(
+        new Date().toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+        }),
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -91,16 +96,33 @@ export function App() {
   useEffect(() => {
     if (!mapContainerRef.current) return
 
+    // Load saved state from localStorage if available
+    const savedState = localStorage.getItem(MAP_STATE_KEY)
+    const initialState = savedState
+      ? JSON.parse(savedState)
+      : { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM }
+
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: 'https://demotiles.maplibre.org/style.json',
-      center: DEFAULT_CENTER,
-      zoom: 3.5,
+      style: '/style.json',
+      center: initialState.center,
+      zoom: initialState.zoom,
       maxZoom: 19,
     })
 
     mapRef.current = map
     map.on('load', () => map.resize())
+
+    // Persist map center & zoom when moved
+    map.on('moveend', () => {
+      const center = map.getCenter()
+      const zoom = map.getZoom()
+      localStorage.setItem(
+        MAP_STATE_KEY,
+        JSON.stringify({ center: [center.lng, center.lat], zoom }),
+      )
+    })
+
     const handleResize = () => map.resize()
     window.addEventListener('resize', handleResize)
 
@@ -117,11 +139,11 @@ export function App() {
     const map = mapRef.current
     if (!map) return
 
-    for (const marker of markersRef.current) {
-      marker.remove()
-    }
+    // Remove old markers
+    for (const marker of markersRef.current) marker.remove()
     markersRef.current = []
 
+    // Prepare marker locations
     const locations = sortedEvents
       .map((event) => ({
         event,
@@ -131,18 +153,29 @@ export function App() {
       .filter((item) => item.lng !== 0 && item.lat !== 0)
 
     if (locations.length) {
-      const avgLng = locations.reduce((sum, loc) => sum + loc.lng, 0) / locations.length
-      const avgLat = locations.reduce((sum, loc) => sum + loc.lat, 0) / locations.length
-      map.flyTo({ center: [avgLng, avgLat], zoom: 6, duration: 1200 })
+      // Use saved map state if available, otherwise default to zoom 11
+      const savedState = localStorage.getItem(MAP_STATE_KEY)
+      const center = savedState
+        ? JSON.parse(savedState).center
+        : [
+            locations.reduce((sum, loc) => sum + loc.lng, 0) / locations.length,
+            locations.reduce((sum, loc) => sum + loc.lat, 0) / locations.length,
+          ]
+      const zoom = savedState ? JSON.parse(savedState).zoom : DEFAULT_ZOOM
+
+      map.flyTo({ center, zoom, duration: 1200 })
     }
 
+    // Add new markers
     for (const location of locations) {
       const { event, lng, lat } = location
       const marker = new maplibregl.Marker({ color: '#22d3ee' })
         .setLngLat([lng, lat])
         .setPopup(
           new maplibregl.Popup({ offset: 24 }).setHTML(
-            `<strong>${event.title}</strong><br/><small>${formatTimestamp(event.reported_at)}</small>`,
+            `<strong>${event.title}</strong><br/><small>${formatTimestamp(
+              event.reported_at,
+            )}</small>`,
           ),
         )
         .addTo(map)
@@ -161,7 +194,10 @@ export function App() {
     eventsDisplay = (
       <div className="space-y-3">
         {sortedEvents.map((event) => (
-          <article key={event.id} className="space-y-2 bg-slate-900/80 p-3 border border-slate-800/60 rounded-2xl">
+          <article
+            key={event.id}
+            className="space-y-2 bg-slate-900/80 p-3 border border-slate-800/60 rounded-2xl"
+          >
             <div className="flex justify-between items-center gap-2">
               <h3 className="font-semibold text-white text-sm">{event.title}</h3>
               <span className="text-[0.55rem] text-cyan-300/90 uppercase tracking-[0.4em]">
@@ -247,8 +283,6 @@ export function App() {
           </div>
 
           {eventsDisplay}
-
-
         </Card>
       </main>
     </div>
