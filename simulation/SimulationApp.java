@@ -263,32 +263,48 @@ public class SimulationApp {
         }
 
         private void logTickStatus() {
-            int active = 0;
+            List<Incident> activeIncidents = collectActiveIncidents();
+            if (activeIncidents.isEmpty()) {
+                return;
+            }
+            int active = countActiveUnits();
+            logActiveIncidentSummary(activeIncidents, active);
+            logIncidentsSnapshot(activeIncidents);
+        }
+
+        private List<Incident> collectActiveIncidents() {
             List<Incident> activeIncidents = new ArrayList<>();
             for (Incident inc : incidents) {
                 if (inc.etat != IncidentState.RESOLU) {
                     activeIncidents.add(inc);
                 }
             }
+            return activeIncidents;
+        }
+
+        private int countActiveUnits() {
+            int active = 0;
             for (Vehicle v : vehicles) {
                 if (v.currentIncident != null && v.currentIncident.etat != IncidentState.RESOLU) {
                     active++;
                 }
             }
-            if (!activeIncidents.isEmpty()) {
-                if (LOG.isLoggable(Level.INFO)) {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < activeIncidents.size(); i++) {
-                        sb.append("{").append(activeIncidents.get(i).number).append("}");
-                        if (i < activeIncidents.size() - 1) {
-                            sb.append(",");
-                        }
-                    }
-                    LOG.log(Level.INFO, "[SIM] Treating incident : {0} | Active units = {1}",
-                            new Object[]{sb.toString(), active});
-                }
-                logIncidentsSnapshot(activeIncidents);
+            return active;
+        }
+
+        private void logActiveIncidentSummary(List<Incident> activeIncidents, int active) {
+            if (!LOG.isLoggable(Level.INFO)) {
+                return;
             }
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < activeIncidents.size(); i++) {
+                sb.append("{").append(activeIncidents.get(i).number).append("}");
+                if (i < activeIncidents.size() - 1) {
+                    sb.append(",");
+                }
+            }
+            LOG.log(Level.INFO, "[SIM] Treating incident : {0} | Active units = {1}",
+                    new Object[]{sb, active});
         }
 
         private void maybeSpawnIncident() {
@@ -681,7 +697,11 @@ public class SimulationApp {
         final List<String> unitTypeCodes = new ArrayList<>();
         private static final String LOG_BODY_SUFFIX = " body=";
         private static final String JSON_ID_FIELD = "\"id\"";
+        private static final String CODE_FIELD = "\"code\"";
         private static final String APPLICATION_JSON = "application/json";
+        private static final String STATUS_PATH_SUFFIX = "/status";
+        private static final String STATUS_BODY_PREFIX = "{ \"status\": \"";
+        private static final String STATUS_BODY_SUFFIX = "\" }";
 
         ApiClient(String baseUrlRaw) {
             this.baseUrl = baseUrlRaw.endsWith("/") ? baseUrlRaw.substring(0, baseUrlRaw.length() - 1) : baseUrlRaw;
@@ -726,11 +746,11 @@ public class SimulationApp {
                 String body = resp.body();
                 int idx = 0;
                 while (true) {
-                    int idPos = body.indexOf("\"id\"", idx);
+                    int idPos = body.indexOf(JSON_ID_FIELD, idx);
                     if (idPos == -1) {
                         break;
                     }
-                    String id = extractString(body, "\"id\"", idPos);
+                    String id = extractString(body, JSON_ID_FIELD, idPos);
                     String callSign = extractNearest(body, "\"call_sign\"", idPos);
                     String homeBase = extractNearest(body, "\"home_base\"", idPos);
                     String typeCode = extractNearest(body, "\"unit_type_code\"", idPos);
@@ -743,6 +763,9 @@ public class SimulationApp {
                     idx = idPos + 4;
                 }
             } catch (Exception e) {
+                if (wasInterrupted(e)) {
+                    return res;
+                }
                 LOG.log(Level.SEVERE, "[API] GET /v1/units error", e);
             }
             return res;
@@ -771,10 +794,13 @@ public class SimulationApp {
                             new Object[]{resp.statusCode(), resp.body()});
                     return null;
                 }
-                String id = extractString(resp.body(), "\"id\"", 0);
+                String id = extractString(resp.body(), JSON_ID_FIELD, 0);
                 LOG.info("[API] Event created (id=" + id + ")");
                 return id;
             } catch (Exception e) {
+                if (wasInterrupted(e)) {
+                    return null;
+                }
                 LOG.log(Level.SEVERE, "[API] POST /v1/events error", e);
                 return null;
             }
@@ -795,9 +821,12 @@ public class SimulationApp {
                             new Object[]{resp.statusCode(), resp.body()});
                     return null;
                 }
-                String id = extractString(resp.body(), "\"id\"", 0);
+                String id = extractString(resp.body(), JSON_ID_FIELD, 0);
                 return id;
             } catch (Exception e) {
+                if (wasInterrupted(e)) {
+                    return null;
+                }
                 LOG.log(Level.SEVERE, "[API] POST /v1/interventions error", e);
                 return null;
             }
@@ -818,8 +847,11 @@ public class SimulationApp {
                             new Object[]{resp.statusCode(), resp.body()});
                     return null;
                 }
-                return extractString(resp.body(), "\"id\"", 0);
+                return extractString(resp.body(), JSON_ID_FIELD, 0);
             } catch (Exception e) {
+                if (wasInterrupted(e)) {
+                    return null;
+                }
                 LOG.log(Level.SEVERE, "[API] POST assignment error", e);
                 return null;
             }
@@ -829,35 +861,36 @@ public class SimulationApp {
             if (assignmentId == null || assignmentId.isBlank()) {
                 return;
             }
-            patchJson("/v1/assignments/" + assignmentId + "/status", "{ \"status\": \"" + escape(status) + "\" }");
+            patchJson("/v1/assignments/" + assignmentId + STATUS_PATH_SUFFIX, statusPayload(status));
         }
 
         void updateInterventionStatus(String interventionId, String status) {
             if (interventionId == null || interventionId.isBlank()) {
                 return;
             }
-            patchJson("/v1/interventions/" + interventionId + "/status", "{ \"status\": \"" + escape(status) + "\" }");
+            patchJson("/v1/interventions/" + interventionId + STATUS_PATH_SUFFIX, statusPayload(status));
         }
 
         void updateEventStatus(String eventId, String status) {
             if (eventId == null || eventId.isBlank()) {
                 return;
             }
-            patchJson("/v1/events/" + eventId + "/status", "{ \"status\": \"" + escape(status) + "\" }");
+            patchJson("/v1/events/" + eventId + STATUS_PATH_SUFFIX, statusPayload(status));
         }
 
         void logHeartbeat(String eventId) {
             if (eventId == null) {
                 return;
             }
-            postJson("/v1/events/" + eventId + "/logs", "{ \"actor\": \"simulator\", \"code\": \"heartbeat\", \"payload\": [] }");
+            postJson("/v1/events/" + eventId + "/logs",
+                    "{ \"actor\": \"simulator\", " + CODE_FIELD + ": \"heartbeat\", \"payload\": [] }");
         }
 
         void updateUnitStatus(String unitId, String status) {
             if (unitId == null || unitId.isBlank()) {
                 return;
             }
-            patchJson("/v1/units/" + unitId + "/status", "{ \"status\": \"" + escape(status) + "\" }");
+            patchJson("/v1/units/" + unitId + STATUS_PATH_SUFFIX, statusPayload(status));
         }
 
         void updateUnitLocation(String unitId, double lat, double lon, Instant recordedAt) {
@@ -868,6 +901,10 @@ public class SimulationApp {
                     "{ \"latitude\": %.6f, \"longitude\": %.6f, \"recorded_at\": \"%s\" }",
                     lat, lon, iso.format(recordedAt));
             patchJson("/v1/units/" + unitId + "/location", json);
+        }
+
+        private String statusPayload(String status) {
+            return STATUS_BODY_PREFIX + escape(status) + STATUS_BODY_SUFFIX;
         }
 
         // ---- helpers ----
@@ -885,11 +922,11 @@ public class SimulationApp {
                 String body = resp.body();
                 int idx = 0;
                 while (true) {
-                    int pos = body.indexOf("\"code\"", idx);
+                    int pos = body.indexOf(CODE_FIELD, idx);
                     if (pos == -1) {
                         break;
                     }
-                    String code = extractString(body, "\"code\"", pos);
+                    String code = extractString(body, CODE_FIELD, pos);
                     if (code != null) {
                         eventTypeCodes.add(code);
                     }
@@ -897,6 +934,9 @@ public class SimulationApp {
                 }
                 System.out.println("[API] Event types: " + eventTypeCodes);
             } catch (Exception e) {
+                if (wasInterrupted(e)) {
+                    return;
+                }
                 LOG.log(Level.SEVERE, "[API] GET /v1/event-types error", e);
             }
         }
@@ -922,11 +962,11 @@ public class SimulationApp {
                 String body = resp.body();
                 int idx = 0;
                 while (true) {
-                    int pos = body.indexOf("\"code\"", idx);
+                    int pos = body.indexOf(CODE_FIELD, idx);
                     if (pos == -1) {
                         break;
                     }
-                    String code = extractString(body, "\"code\"", pos);
+                    String code = extractString(body, CODE_FIELD, pos);
                     if (code != null && !unitTypeCodes.contains(code)) {
                         unitTypeCodes.add(code);
                     }
@@ -934,6 +974,9 @@ public class SimulationApp {
                 }
                 System.out.println("[API] Unit types: " + unitTypeCodes);
             } catch (Exception e) {
+                if (wasInterrupted(e)) {
+                    return;
+                }
                 LOG.log(Level.SEVERE, "[API] GET /v1/unit-types error", e);
             }
         }
@@ -960,12 +1003,15 @@ public class SimulationApp {
                             new Object[]{resp.statusCode(), resp.body()});
                     return null;
                 }
-                String id = extractString(resp.body(), "\"id\"", 0);
+                String id = extractString(resp.body(), JSON_ID_FIELD, 0);
                 if (id == null) {
                     return null;
                 }
                 return new UnitInfo(id, callSign, homeBase, unitTypeCode, "available", lat, lon);
             } catch (Exception e) {
+                if (wasInterrupted(e)) {
+                    return null;
+                }
                 LOG.log(Level.SEVERE, "[API] POST /v1/units error", e);
                 return null;
             }
@@ -983,6 +1029,9 @@ public class SimulationApp {
                             new Object[]{path, resp.statusCode(), resp.body()});
                 }
             } catch (Exception e) {
+                if (wasInterrupted(e)) {
+                    return;
+                }
                 LOG.log(Level.SEVERE, "[API] POST " + path + " error", e);
             }
         }
@@ -999,8 +1048,19 @@ public class SimulationApp {
                             new Object[]{path, resp.statusCode(), resp.body(), body});
                 }
             } catch (Exception e) {
+                if (wasInterrupted(e)) {
+                    return;
+                }
                 LOG.log(Level.SEVERE, "[API] PATCH " + path + " error", e);
             }
+        }
+
+        private boolean wasInterrupted(Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+                return true;
+            }
+            return false;
         }
 
         private static String extractString(String body, String field, int from) {
