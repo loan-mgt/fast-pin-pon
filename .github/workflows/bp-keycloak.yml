@@ -1,4 +1,4 @@
-name: Build Maptiler Docker Image
+name: Build Keycloak Docker Image
 on:
   push:
     branches:
@@ -6,21 +6,21 @@ on:
     tags:
       - 'v*'
     paths:
-      - 'maptiler/**'
-      - '.github/workflows/bp-maptiler.yml'
+      - 'infra/keycloak/**'
+      - '.github/workflows/bp-keycloak.yml'
   pull_request:
     branches:
       - main
       - '**'
     paths:
-      - 'maptiler/**'
-      - '.github/workflows/bp-maptiler.yml'
+      - 'infra/keycloak/**'
+      - '.github/workflows/bp-keycloak.yml'
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  FOLDER: maptiler
+  FOLDER: infra/keycloak
   PUSH_EVENT: ${{ github.event_name == 'push' }}
 
 jobs:
