@@ -18,7 +18,7 @@ on:
 jobs:
   build:
     name: Build Front Docker Image
-    uses: ./.github/workflows/call-build.yml
+    uses: ./.github/workflows/build-and-push.yml
     with:
       folder: front
       push_event: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
