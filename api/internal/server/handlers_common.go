@@ -153,3 +153,13 @@ func pgUUIDFromString(value string) (pgtype.UUID, error) {
 func isNotFound(err error) bool {
 	return errors.Is(err, pgx.ErrNoRows)
 }
+
+func isUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	// PostgreSQL unique violation error code is 23505
+	return strings.Contains(err.Error(), "23505") ||
+		strings.Contains(err.Error(), "unique constraint") ||
+		strings.Contains(err.Error(), "duplicate key")
+}

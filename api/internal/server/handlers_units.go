@@ -6,6 +6,7 @@ import (
 
 	db "fast/pin/internal/db/sqlc"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -26,6 +27,10 @@ type UpdateUnitLocationRequest struct {
 	Latitude   float64    `json:"latitude" validate:"required,latitude"`
 	Longitude  float64    `json:"longitude" validate:"required,longitude"`
 	RecordedAt *time.Time `json:"recorded_at"`
+}
+
+type AssignMicrobitRequest struct {
+	MicrobitID string `json:"microbit_id" validate:"required,min=1,max=50"`
 }
 
 type UnitTelemetryRequest struct {
@@ -59,6 +64,7 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 			UnitTypeCode: row.UnitTypeCode,
 			HomeBase:     row.HomeBase,
 			Status:       row.Status,
+			MicrobitID:   row.MicrobitID,
 			Longitude:    row.Longitude,
 			Latitude:     row.Latitude,
 			LastContact:  row.LastContactAt,
@@ -157,6 +163,7 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
 		Status:       row.Status,
+		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
 		Latitude:     row.Latitude,
 		LastContact:  row.LastContactAt,
@@ -212,6 +219,7 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
 		Status:       row.Status,
+		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
 		Latitude:     row.Latitude,
 		LastContact:  row.LastContactAt,
@@ -278,6 +286,7 @@ type unitRowData struct {
 	UnitTypeCode string
 	HomeBase     *string
 	Status       db.UnitStatus
+	MicrobitID   *string
 	Longitude    float64
 	Latitude     float64
 	LastContact  pgtype.Timestamptz
@@ -292,6 +301,7 @@ func mapUnitRow(data unitRowData) UnitResponse {
 		UnitTypeCode: data.UnitTypeCode,
 		HomeBase:     optionalString(data.HomeBase),
 		Status:       string(data.Status),
+		MicrobitID:   optionalString(data.MicrobitID),
 		Location:     GeoPoint{Latitude: data.Latitude, Longitude: data.Longitude},
 		LastContact:  timestamptzPtr(data.LastContact),
 		CreatedAt:    data.CreatedAt.Time,
@@ -306,6 +316,7 @@ func mapCreateUnitRow(row db.CreateUnitRow) UnitResponse {
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     optionalString(row.HomeBase),
 		Status:       string(row.Status),
+		MicrobitID:   optionalString(row.MicrobitID),
 		Location: GeoPoint{
 			Latitude:  row.Latitude,
 			Longitude: row.Longitude,
@@ -314,4 +325,148 @@ func mapCreateUnitRow(row db.CreateUnitRow) UnitResponse {
 		CreatedAt:   row.CreatedAt.Time,
 		UpdatedAt:   row.UpdatedAt.Time,
 	}
+}
+
+// handleAssignMicrobit godoc
+// @Title Assign microbit to unit
+// @Description Assigns a micro:bit device to control a unit's status.
+// @Resource Units
+// @Accept json
+// @Produce json
+// @Param unitID path string true "Unit ID"
+// @Param request body AssignMicrobitRequest true "Microbit assignment payload"
+// @Success 200 {object} UnitResponse
+// @Failure 400 {object} APIError
+// @Failure 404 {object} APIError
+// @Failure 409 {object} APIError
+// @Failure 500 {object} APIError
+// @Route /v1/units/{unitID}/microbit [post]
+func (s *Server) handleAssignMicrobit(w http.ResponseWriter, r *http.Request) {
+	unitID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	var req AssignMicrobitRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
+		return
+	}
+
+	row, err := s.queries.AssignMicrobit(r.Context(), db.AssignMicrobitParams{
+		ID:         unitID,
+		MicrobitID: &req.MicrobitID,
+	})
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, "unit not found", nil)
+			return
+		}
+		if isUniqueViolation(err) {
+			s.writeError(w, http.StatusConflict, "microbit already assigned to another unit", nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to assign microbit", err.Error())
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, mapUnitRow(unitRowData{
+		ID:           row.ID,
+		CallSign:     row.CallSign,
+		UnitTypeCode: row.UnitTypeCode,
+		HomeBase:     row.HomeBase,
+		Status:       row.Status,
+		MicrobitID:   row.MicrobitID,
+		Longitude:    row.Longitude,
+		Latitude:     row.Latitude,
+		LastContact:  row.LastContactAt,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}))
+}
+
+// handleUnassignMicrobit godoc
+// @Title Unassign microbit from unit
+// @Description Removes the micro:bit device assignment from a unit.
+// @Resource Units
+// @Produce json
+// @Param unitID path string true "Unit ID"
+// @Success 200 {object} UnitResponse
+// @Failure 400 {object} APIError
+// @Failure 404 {object} APIError
+// @Failure 500 {object} APIError
+// @Route /v1/units/{unitID}/microbit [delete]
+func (s *Server) handleUnassignMicrobit(w http.ResponseWriter, r *http.Request) {
+	unitID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	row, err := s.queries.UnassignMicrobit(r.Context(), unitID)
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, "unit not found", nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to unassign microbit", err.Error())
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, mapUnitRow(unitRowData{
+		ID:           row.ID,
+		CallSign:     row.CallSign,
+		UnitTypeCode: row.UnitTypeCode,
+		HomeBase:     row.HomeBase,
+		Status:       row.Status,
+		MicrobitID:   row.MicrobitID,
+		Longitude:    row.Longitude,
+		Latitude:     row.Latitude,
+		LastContact:  row.LastContactAt,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}))
+}
+
+// handleGetUnitByMicrobit godoc
+// @Title Get unit by microbit ID
+// @Description Retrieves a unit by its assigned microbit ID.
+// @Resource Units
+// @Param microbitID path string true "Microbit ID"
+// @Produce json
+// @Success 200 {object} UnitResponse
+// @Failure 404 {object} APIError
+// @Failure 500 {object} APIError
+// @Route /v1/units/by-microbit/{microbitID} [get]
+func (s *Server) handleGetUnitByMicrobit(w http.ResponseWriter, r *http.Request) {
+	microbitID := chi.URLParam(r, "microbitID")
+	if microbitID == "" {
+		s.writeError(w, http.StatusBadRequest, "microbit_id is required", nil)
+		return
+	}
+
+	row, err := s.queries.GetUnitByMicrobitID(r.Context(), &microbitID)
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, "unit not found for this microbit", nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to get unit by microbit", err.Error())
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, mapUnitRow(unitRowData{
+		ID:           row.ID,
+		CallSign:     row.CallSign,
+		UnitTypeCode: row.UnitTypeCode,
+		HomeBase:     row.HomeBase,
+		Status:       row.Status,
+		MicrobitID:   row.MicrobitID,
+		Longitude:    row.Longitude,
+		Latitude:     row.Latitude,
+		LastContact:  row.LastContactAt,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}))
 }

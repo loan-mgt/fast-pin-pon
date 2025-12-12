@@ -67,7 +67,7 @@ func (s *Server) handleCreateIntervention(w http.ResponseWriter, r *http.Request
 		Notes:        req.Notes,
 	}
 	if params.Status == "" {
-		params.Status = db.InterventionStatusPlanned
+		params.Status = db.InterventionStatusCreated
 	}
 	if params.DecisionMode == "" {
 		params.DecisionMode = db.DecisionModeManual

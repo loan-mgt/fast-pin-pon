@@ -11,6 +11,64 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const assignMicrobit = `-- name: AssignMicrobit :one
+UPDATE units
+SET
+    microbit_id = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at
+`
+
+type AssignMicrobitParams struct {
+	ID         pgtype.UUID `json:"id"`
+	MicrobitID *string     `json:"microbit_id"`
+}
+
+type AssignMicrobitRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CallSign      string             `json:"call_sign"`
+	UnitTypeCode  string             `json:"unit_type_code"`
+	HomeBase      *string            `json:"home_base"`
+	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) AssignMicrobit(ctx context.Context, arg AssignMicrobitParams) (AssignMicrobitRow, error) {
+	row := q.db.QueryRow(ctx, assignMicrobit, arg.ID, arg.MicrobitID)
+	var i AssignMicrobitRow
+	err := row.Scan(
+		&i.ID,
+		&i.CallSign,
+		&i.UnitTypeCode,
+		&i.HomeBase,
+		&i.Status,
+		&i.MicrobitID,
+		&i.Longitude,
+		&i.Latitude,
+		&i.LastContactAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createUnit = `-- name: CreateUnit :one
 INSERT INTO units (
     call_sign,
@@ -38,6 +96,7 @@ INSERT INTO units (
     unit_type_code,
     home_base,
     status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -61,6 +120,7 @@ type CreateUnitRow struct {
 	UnitTypeCode  string             `json:"unit_type_code"`
 	HomeBase      *string            `json:"home_base"`
 	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
 	Longitude     float64            `json:"longitude"`
 	Latitude      float64            `json:"latitude"`
 	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
@@ -85,6 +145,7 @@ func (q *Queries) CreateUnit(ctx context.Context, arg CreateUnitParams) (CreateU
 		&i.UnitTypeCode,
 		&i.HomeBase,
 		&i.Status,
+		&i.MicrobitID,
 		&i.Longitude,
 		&i.Latitude,
 		&i.LastContactAt,
@@ -101,6 +162,7 @@ SELECT
     unit_type_code,
     home_base,
     status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -116,6 +178,7 @@ type GetUnitRow struct {
 	UnitTypeCode  string             `json:"unit_type_code"`
 	HomeBase      *string            `json:"home_base"`
 	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
 	Longitude     float64            `json:"longitude"`
 	Latitude      float64            `json:"latitude"`
 	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
@@ -132,6 +195,57 @@ func (q *Queries) GetUnit(ctx context.Context, id pgtype.UUID) (GetUnitRow, erro
 		&i.UnitTypeCode,
 		&i.HomeBase,
 		&i.Status,
+		&i.MicrobitID,
+		&i.Longitude,
+		&i.Latitude,
+		&i.LastContactAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUnitByMicrobitID = `-- name: GetUnitByMicrobitID :one
+SELECT
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at
+FROM units
+WHERE microbit_id = $1
+`
+
+type GetUnitByMicrobitIDRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CallSign      string             `json:"call_sign"`
+	UnitTypeCode  string             `json:"unit_type_code"`
+	HomeBase      *string            `json:"home_base"`
+	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetUnitByMicrobitID(ctx context.Context, microbitID *string) (GetUnitByMicrobitIDRow, error) {
+	row := q.db.QueryRow(ctx, getUnitByMicrobitID, microbitID)
+	var i GetUnitByMicrobitIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CallSign,
+		&i.UnitTypeCode,
+		&i.HomeBase,
+		&i.Status,
+		&i.MicrobitID,
 		&i.Longitude,
 		&i.Latitude,
 		&i.LastContactAt,
@@ -221,6 +335,7 @@ SELECT
     unit_type_code,
     home_base,
     status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -236,6 +351,7 @@ type ListUnitsRow struct {
 	UnitTypeCode  string             `json:"unit_type_code"`
 	HomeBase      *string            `json:"home_base"`
 	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
 	Longitude     float64            `json:"longitude"`
 	Latitude      float64            `json:"latitude"`
 	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
@@ -258,6 +374,7 @@ func (q *Queries) ListUnits(ctx context.Context) ([]ListUnitsRow, error) {
 			&i.UnitTypeCode,
 			&i.HomeBase,
 			&i.Status,
+			&i.MicrobitID,
 			&i.Longitude,
 			&i.Latitude,
 			&i.LastContactAt,
@@ -272,6 +389,59 @@ func (q *Queries) ListUnits(ctx context.Context) ([]ListUnitsRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const unassignMicrobit = `-- name: UnassignMicrobit :one
+UPDATE units
+SET
+    microbit_id = NULL,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at
+`
+
+type UnassignMicrobitRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CallSign      string             `json:"call_sign"`
+	UnitTypeCode  string             `json:"unit_type_code"`
+	HomeBase      *string            `json:"home_base"`
+	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UnassignMicrobit(ctx context.Context, id pgtype.UUID) (UnassignMicrobitRow, error) {
+	row := q.db.QueryRow(ctx, unassignMicrobit, id)
+	var i UnassignMicrobitRow
+	err := row.Scan(
+		&i.ID,
+		&i.CallSign,
+		&i.UnitTypeCode,
+		&i.HomeBase,
+		&i.Status,
+		&i.MicrobitID,
+		&i.Longitude,
+		&i.Latitude,
+		&i.LastContactAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateUnitLocation = `-- name: UpdateUnitLocation :one
@@ -293,6 +463,7 @@ RETURNING
     unit_type_code,
     home_base,
     status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -313,6 +484,7 @@ type UpdateUnitLocationRow struct {
 	UnitTypeCode  string             `json:"unit_type_code"`
 	HomeBase      *string            `json:"home_base"`
 	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
 	Longitude     float64            `json:"longitude"`
 	Latitude      float64            `json:"latitude"`
 	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
@@ -334,6 +506,73 @@ func (q *Queries) UpdateUnitLocation(ctx context.Context, arg UpdateUnitLocation
 		&i.UnitTypeCode,
 		&i.HomeBase,
 		&i.Status,
+		&i.MicrobitID,
+		&i.Longitude,
+		&i.Latitude,
+		&i.LastContactAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUnitLocationByMicrobitID = `-- name: UpdateUnitLocationByMicrobitID :one
+UPDATE units
+SET
+    location = ST_SetSRID(
+        ST_MakePoint(
+            $1::double precision,
+            $2::double precision
+        ),
+        4326
+    )::geography,
+    last_contact_at = NOW(),
+    updated_at = NOW()
+WHERE microbit_id = $3
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at
+`
+
+type UpdateUnitLocationByMicrobitIDParams struct {
+	Longitude  float64 `json:"longitude"`
+	Latitude   float64 `json:"latitude"`
+	MicrobitID *string `json:"microbit_id"`
+}
+
+type UpdateUnitLocationByMicrobitIDRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CallSign      string             `json:"call_sign"`
+	UnitTypeCode  string             `json:"unit_type_code"`
+	HomeBase      *string            `json:"home_base"`
+	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUnitLocationByMicrobitID(ctx context.Context, arg UpdateUnitLocationByMicrobitIDParams) (UpdateUnitLocationByMicrobitIDRow, error) {
+	row := q.db.QueryRow(ctx, updateUnitLocationByMicrobitID, arg.Longitude, arg.Latitude, arg.MicrobitID)
+	var i UpdateUnitLocationByMicrobitIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CallSign,
+		&i.UnitTypeCode,
+		&i.HomeBase,
+		&i.Status,
+		&i.MicrobitID,
 		&i.Longitude,
 		&i.Latitude,
 		&i.LastContactAt,
@@ -355,6 +594,7 @@ RETURNING
     unit_type_code,
     home_base,
     status,
+    microbit_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -373,6 +613,7 @@ type UpdateUnitStatusRow struct {
 	UnitTypeCode  string             `json:"unit_type_code"`
 	HomeBase      *string            `json:"home_base"`
 	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
 	Longitude     float64            `json:"longitude"`
 	Latitude      float64            `json:"latitude"`
 	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
@@ -389,6 +630,66 @@ func (q *Queries) UpdateUnitStatus(ctx context.Context, arg UpdateUnitStatusPara
 		&i.UnitTypeCode,
 		&i.HomeBase,
 		&i.Status,
+		&i.MicrobitID,
+		&i.Longitude,
+		&i.Latitude,
+		&i.LastContactAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUnitStatusByMicrobitID = `-- name: UpdateUnitStatusByMicrobitID :one
+UPDATE units
+SET
+    status = $2,
+    last_contact_at = NOW(),
+    updated_at = NOW()
+WHERE microbit_id = $1
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at
+`
+
+type UpdateUnitStatusByMicrobitIDParams struct {
+	MicrobitID *string    `json:"microbit_id"`
+	Status     UnitStatus `json:"status"`
+}
+
+type UpdateUnitStatusByMicrobitIDRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CallSign      string             `json:"call_sign"`
+	UnitTypeCode  string             `json:"unit_type_code"`
+	HomeBase      *string            `json:"home_base"`
+	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUnitStatusByMicrobitID(ctx context.Context, arg UpdateUnitStatusByMicrobitIDParams) (UpdateUnitStatusByMicrobitIDRow, error) {
+	row := q.db.QueryRow(ctx, updateUnitStatusByMicrobitID, arg.MicrobitID, arg.Status)
+	var i UpdateUnitStatusByMicrobitIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CallSign,
+		&i.UnitTypeCode,
+		&i.HomeBase,
+		&i.Status,
+		&i.MicrobitID,
 		&i.Longitude,
 		&i.Latitude,
 		&i.LastContactAt,

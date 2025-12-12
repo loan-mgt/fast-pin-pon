@@ -50,6 +50,9 @@ func (s *Server) routes() http.Handler {
 		v1.Patch("/units/{unitID}/status", s.handleUpdateUnitStatus)
 		v1.Patch("/units/{unitID}/location", s.handleUpdateUnitLocation)
 		v1.Post("/units/{unitID}/telemetry", s.handleInsertTelemetry)
+		v1.Put("/units/{unitID}/microbit", s.handleAssignMicrobit)
+		v1.Delete("/units/{unitID}/microbit", s.handleUnassignMicrobit)
+		v1.Get("/units/by-microbit/{microbitID}", s.handleGetUnitByMicrobit)
 
 	})
 
