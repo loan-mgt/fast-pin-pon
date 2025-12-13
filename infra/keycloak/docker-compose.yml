@@ -1,6 +1,11 @@
 services:
   keycloak_web:
-    image: quay.io/keycloak/keycloak:latest
+    # image: quay.io/keycloak/keycloak:26.4
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - GRAFANA_URL=http://localhost:3000
     container_name: keycloak_web_1
     restart: unless-stopped
     command: start-dev --import-realm
@@ -27,9 +32,6 @@ services:
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
     depends_on:
       - keycloakdb
-    volumes:
-      - ./realm-export.json:/opt/keycloak/data/import/00.master-admin.json
-      - ./realm-export-sdmis.json:/opt/keycloak/data/import/sdmis-realm-realm.json
     ports:
       - 8080:8080
       - 9000:9000
