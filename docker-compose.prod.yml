@@ -28,7 +28,6 @@ services:
       options:
         max-size: 100m
         max-file: "3"
-
   maptiler-server:
     image: ghcr.io/loan-mgt/fast-pin-pon/maptiler:main
     container_name: fast-pin-pon-map
@@ -36,11 +35,10 @@ services:
     networks:
       - internal
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "100m"
+        max-size: 100m
         max-file: "3"
-
   postgres:
     image: ghcr.io/loan-mgt/fast-pin-pon/db:main
     container_name: fast-pin-pon-postgres
@@ -60,8 +58,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-
   keycloak_web:
     image: ghcr.io/loan-mgt/fast-pin-pon/infra/keycloak:latest
     container_name: fast-pin-pon-keycloak
@@ -69,6 +65,7 @@ services:
     command: start-dev --import-realm
     networks:
       - internal-keycloak
+      - internal
       - default
     environment:
       KC_DB: ${KC_DB}
@@ -82,21 +79,18 @@ services:
       KC_LOG_LEVEL: info
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
-
       # On utilise des noms "custom" que seul votre JSON connait.
       MY_ADMIN_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
       MY_ADMIN_PASS: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
       MY_ADMIN_EMAIL: ${MY_ADMIN_EMAIL}
       MY_ADMIN_FNAME: ${MY_ADMIN_FNAME}
       MY_ADMIN_LNAME: ${MY_ADMIN_LNAME}
-
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
     depends_on:
       - keycloakdb
     ports:
       - 8082:8080
       - 9000:9000
-
   keycloakdb:
     image: postgres:16
     container_name: fast-pin-pon-keycloak-db
@@ -109,8 +103,6 @@ services:
       POSTGRES_DB: ${KC_POSTGRES_DB}
       POSTGRES_USER: ${KC_POSTGRES_USER}
       POSTGRES_PASSWORD: ${KC_POSTGRES_PASSWORD}
-
-
   grafana:
     image: ghcr.io/loan-mgt/fast-pin-pon/infra/grafana:latest
     container_name: fast-pin-pon-grafana
@@ -136,79 +128,16 @@ services:
       # --- MAPPING DES RÔLES ---
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: ${GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH}
     ports:
-      - 3000:3000
+      - 3002:3000
     networks:
       - default
+      - internal
       - internal-grafana
-      - internal-keycloak
-
-  # loki:
-  #   image: grafana/loki:latest
-  #   container_name: loki
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3100:3100"
-  #   volumes:
-  #     - ./infra/grafana/loki-config.yml:/etc/loki/local-config.yml
-  #     - loki-data:/loki
-  #   command: -config.file=/etc/loki/local-config.yml
-  #   networks:
-  #     - internal-grafana
-    
-  # promtail:
-  #   image: grafana/promtail:3.0.0
-  #   container_name: promtail
-  #   volumes:
-  #     - ./infra/grafana/promtail-config.yml:/etc/promtail/config.yml
-  #     - /var/lib/docker/containers:/var/lib/docker/containers:ro
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #     - api-logs:/var/log/fast-pin-pon:ro
-  #   command: -config.file=/etc/promtail/config.yml
-  #   depends_on:
-  #     - loki
-  #   networks:
-  #     - grafana
-  #     - internal
-
-  # prometheus:
-  #   image: prom/prometheus:latest
-  #   container_name: prometheus
-  #   volumes:
-  #     - ./infra/grafana/prometheus.yml:/etc/prometheus/prometheus.yml
-  #   ports:
-  #     - "9090:9090"
-  #   networks:
-  #     - grafana
-  #     - keycloak
-
-  # cadvisor:
-  #   image: gcr.io/cadvisor/cadvisor:latest
-  #   container_name: cadvisor
-  #   ports:
-  #     - "8082:8080"
-  #   volumes:
-  #     - /:/rootfs:ro
-  #     - /var/run:/var/run:ro
-  #     - /sys:/sys:ro
-  #     - /var/lib/docker/:/var/lib/docker:ro
-  #     - /dev/disk/:/dev/disk:ro
-  #   networks:
-  #     - grafana
-  #   privileged: true 
-
 networks:
-  # grafana:
-  # keycloak:
-  #   external: true
-  #   name: keycloak_default
   internal: null
-  default: null
-  internal-grafana: null
   internal-keycloak: null
-
+  internal-grafana: null
+  default: null
 volumes:
-  kc-db-data:
-  grafana-storage:
-  postgres-data:
-  loki-data:
-  api-logs:
+  kc-db-data: null
+  postgres-data: null
