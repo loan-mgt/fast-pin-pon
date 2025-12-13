@@ -1,6 +1,6 @@
 FROM node:20-alpine AS builder
 
-ARG MAP_TILE_URL="http://fast-pin-pon.4loop.org/maps/lyon/{z}/{x}/{y}.pbf"
+ARG MAP_TILE_URL="https://fast-pin-pon.4loop.org/maps/lyon/{z}/{x}/{y}.pbf"
 ENV MAP_TILE_URL=${MAP_TILE_URL}
 
 WORKDIR /app
