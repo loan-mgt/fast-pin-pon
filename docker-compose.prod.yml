@@ -85,6 +85,7 @@ services:
       MY_ADMIN_EMAIL: ${MY_ADMIN_EMAIL}
       MY_ADMIN_FNAME: ${MY_ADMIN_FNAME}
       MY_ADMIN_LNAME: ${MY_ADMIN_LNAME}
+      PROXY_ADDRESS_FORWARDING: true
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
     depends_on:
       - keycloakdb
@@ -108,6 +109,9 @@ services:
     container_name: fast-pin-pon-grafana
     restart: unless-stopped
     environment:
+      GF_AUTH_DISABLE_LOGIN_FORM: true
+      GF_AUTH_BASIC_ENABLED: false
+      GF_SERVER_ROOT_URL: https://dash.fast-pin-pon.4loop.org
       GF_INSTALL_PLUGINS: ${PACKAGE_PLUGINS_GRAFANA}
       # --- ADMIN PAR DÉFAUT (Sécurité de base) ---
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
