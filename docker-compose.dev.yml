@@ -15,6 +15,8 @@ services:
       - default
     environment:
       - LOG_FILE=/var/log/fast-pin-pon/api.log
+    volumes:
+      - logs:/var/log
     logging:
       driver: json-file
       options:
@@ -39,7 +41,7 @@ services:
         max-size: "100m"
         max-file: "3"
     ports:
-      - "8080:80"
+      - "8080:8080"
 
   postgres:
     image: ghcr.io/loan-mgt/fast-pin-pon/db:main
@@ -102,6 +104,8 @@ services:
       KC_LOG_LEVEL: info
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
+      KC_LOG: console,file
+      KC_LOG_FILE: /opt/keycloak/data/logs/keycloak/keycloak.log
 
       # On utilise des noms "custom" que seul votre JSON connait.
       MY_ADMIN_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
@@ -163,6 +167,31 @@ services:
       - default
       - internal-grafana
       - internal-keycloak
+  
+  loki:
+    build:
+      context: ./infra/loki
+      dockerfile: Dockerfile
+    container_name: fast-pin-pon-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yml
+    networks:
+      - internal-grafana
+    
+  promtail:
+    build:
+      context: ./infra/promtail
+      dockerfile: Dockerfile
+    container_name: fast-pin-pon-promtail
+    volumes:
+      - logs:/var/log:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - internal-grafana
 
 networks:
   internal: null
@@ -173,3 +202,5 @@ networks:
 volumes:
   postgres-data:
   kc-db-data:
+  loki-data:
+  logs:
