@@ -61,40 +61,86 @@ services:
       timeout: 5s
       retries: 5
 
-  # grafana:
-  #   build:
-  #     context: ./
-  #     dockerfile: Dockerfile
-  #   container_name: grafana
-  #   restart: always
-  #   environment:
-  #     GF_INSTALL_PLUGINS: ${PACKAGE_PLUGINS_GRAFANA}
-  #     # --- ADMIN PAR DÉFAUT (Sécurité de base) ---
-  #     GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
-  #     GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
-  #     # --- ACTIVATION OAUTH2 (SSO) ---
-  #     GF_AUTH_GENERIC_OAUTH_ENABLED: ${GF_AUTH_GENERIC_OAUTH_ENABLED}
-  #     GF_AUTH_GENERIC_OAUTH_NAME: ${GF_AUTH_GENERIC_OAUTH_NAME}
-  #     GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: ${GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP}
-  #     # Identifiants du Client Keycloak
-  #     GF_AUTH_GENERIC_OAUTH_CLIENT_ID: ${GF_AUTH_GENERIC_OAUTH_CLIENT_ID}
-  #     GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ${GRAFANA_SSO}
-  #     GF_AUTH_GENERIC_OAUTH_SCOPES: ${GF_AUTH_GENERIC_OAUTH_SCOPES}
-  #     # --- URLs (Le point critique) ---
-  #     GF_AUTH_GENERIC_OAUTH_AUTH_URL: ${GF_AUTH_GENERIC_OAUTH_AUTH_URL}
-  #     # URL pour le serveur Grafana (Back) -> Doit utiliser le nom du conteneur Keycloak
-  #     GF_AUTH_GENERIC_OAUTH_TOKEN_URL: ${GF_AUTH_GENERIC_OAUTH_TOKEN_URL}
-  #     GF_AUTH_GENERIC_OAUTH_API_URL: ${GF_AUTH_GENERIC_OAUTH_API_URL}
-  #     # --- MAPPING DES RÔLES ---
-  #     GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: ${GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH}
-  #   ports:
-  #     - 3000:3000
-  #   networks:
-  #     - grafana
-  #     - keycloak
-  #   volumes:
-  #     - ./infra/grafana/provisioning:/etc/grafana/provisioning
 
+  keycloak_web:
+    image: ghcr.io/loan-mgt/fast-pin-pon/infra/keycloak:latest
+    container_name: fast-pin-pon-keycloak
+    restart: unless-stopped
+    command: start-dev --import-realm
+    networks:
+      - internal-keycloak
+      - default
+    environment:
+      KC_DB: ${KC_DB}
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${KC_POSTGRES_USER}
+      KC_DB_PASSWORD: ${KC_POSTGRES_PASSWORD}
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+
+      # On utilise des noms "custom" que seul votre JSON connait.
+      MY_ADMIN_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      MY_ADMIN_PASS: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      MY_ADMIN_EMAIL: ${MY_ADMIN_EMAIL}
+      MY_ADMIN_FNAME: ${MY_ADMIN_FNAME}
+      MY_ADMIN_LNAME: ${MY_ADMIN_LNAME}
+
+      JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
+    depends_on:
+      - keycloakdb
+    ports:
+      - 8082:8080
+      - 9000:9000
+
+  keycloakdb:
+    image: postgres:16
+    container_name: fast-pin-pon-keycloak-db
+    restart: unless-stopped
+    networks:
+      - internal-keycloak
+    volumes:
+      - kc-db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${KC_POSTGRES_DB}
+      POSTGRES_USER: ${KC_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${KC_POSTGRES_PASSWORD}
+
+
+  grafana:
+    image: ghcr.io/loan-mgt/fast-pin-pon/infra/grafana:latest
+    container_name: fast-pin-pon-grafana
+    restart: unless-stopped
+    environment:
+      GF_INSTALL_PLUGINS: ${PACKAGE_PLUGINS_GRAFANA}
+      # --- ADMIN PAR DÉFAUT (Sécurité de base) ---
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
+      # --- ACTIVATION OAUTH2 (SSO) ---
+      GF_AUTH_GENERIC_OAUTH_ENABLED: ${GF_AUTH_GENERIC_OAUTH_ENABLED}
+      GF_AUTH_GENERIC_OAUTH_NAME: ${GF_AUTH_GENERIC_OAUTH_NAME}
+      GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: ${GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP}
+      # Identifiants du Client Keycloak
+      GF_AUTH_GENERIC_OAUTH_CLIENT_ID: ${GF_AUTH_GENERIC_OAUTH_CLIENT_ID}
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ${GRAFANA_SSO}
+      GF_AUTH_GENERIC_OAUTH_SCOPES: ${GF_AUTH_GENERIC_OAUTH_SCOPES}
+      # --- URLs (Le point critique) ---
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: ${GF_AUTH_GENERIC_OAUTH_AUTH_URL}
+      # URL pour le serveur Grafana (Back) -> Doit utiliser le nom du conteneur Keycloak
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: ${GF_AUTH_GENERIC_OAUTH_TOKEN_URL}
+      GF_AUTH_GENERIC_OAUTH_API_URL: ${GF_AUTH_GENERIC_OAUTH_API_URL}
+      # --- MAPPING DES RÔLES ---
+      GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: ${GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH}
+    ports:
+      - 3000:3000
+    networks:
+      - default
+      - internal-grafana
+      - internal-keycloak
 
   # loki:
   #   image: grafana/loki:latest
@@ -107,7 +153,7 @@ services:
   #     - loki-data:/loki
   #   command: -config.file=/etc/loki/local-config.yml
   #   networks:
-  #     - grafana
+  #     - internal-grafana
     
   # promtail:
   #   image: grafana/promtail:3.0.0
@@ -155,9 +201,13 @@ networks:
   # keycloak:
   #   external: true
   #   name: keycloak_default
-  internal:
+  internal: null
+  default: null
+  internal-grafana: null
+  internal-keycloak: null
 
 volumes:
+  kc-db-data:
   grafana-storage:
   postgres-data:
   loki-data:
