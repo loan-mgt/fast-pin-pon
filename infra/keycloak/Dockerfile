@@ -8,6 +8,7 @@ RUN sed -i "s@__GRAFANA_URL__@${GRAFANA_URL}@g" /opt/keycloak/data/import/sdmis-
 
 USER root
 RUN mkdir -p /opt/keycloak/data/logs/keycloak \
+    && chmod 777 -R /opt/keycloak/data/logs \
     && chown -R keycloak:keycloak /opt/keycloak/data/logs
 
 USER keycloak
