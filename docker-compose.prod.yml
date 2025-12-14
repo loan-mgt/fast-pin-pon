@@ -12,6 +12,8 @@ services:
       - default
     environment:
       - LOG_FILE=/var/log/fast-pin-pon/api.log
+    volumes:
+      - logs:/var/log:rw
     logging:
       driver: json-file
       options:
@@ -22,17 +24,6 @@ services:
     container_name: fast-pin-pon-front
     networks:
       - default
-      - internal
-    logging:
-      driver: json-file
-      options:
-        max-size: 100m
-        max-file: "3"
-  maptiler-server:
-    image: ghcr.io/loan-mgt/fast-pin-pon/maptiler:main
-    container_name: fast-pin-pon-map
-    restart: unless-stopped
-    networks:
       - internal
     logging:
       driver: json-file
@@ -58,14 +49,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  maptiler-server:
+    image: ghcr.io/loan-mgt/fast-pin-pon/maptiler:main
+    container_name: fast-pin-pon-map
+    restart: unless-stopped
+    networks:
+      - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
   keycloak_web:
-    image: ghcr.io/loan-mgt/fast-pin-pon/infra/keycloak:latest
+    build:
+      context: ./infra/keycloak
+      dockerfile: Dockerfile
+      args:
+        - GRAFANA_URL=http://localhost:3000
     container_name: fast-pin-pon-keycloak
     restart: unless-stopped
     command: start-dev --import-realm
     networks:
       - internal-keycloak
-      - internal
       - default
     environment:
       KC_DB: ${KC_DB}
@@ -79,6 +84,9 @@ services:
       KC_LOG_LEVEL: info
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
+      KC_LOG: console,file
+      KC_LOG_FILE: /opt/keycloak/data/logs/keycloak/keycloak.log
+
       # On utilise des noms "custom" que seul votre JSON connait.
       MY_ADMIN_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
       MY_ADMIN_PASS: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
@@ -89,6 +97,8 @@ services:
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
     depends_on:
       - keycloakdb
+    volumes:
+      - logs:/opt/keycloak/data/logs:rw
     ports:
       - 8082:8080
       - 9000:9000
@@ -135,13 +145,37 @@ services:
       - 3002:3000
     networks:
       - default
-      - internal
+      - internal-grafana
+      - internal-keycloak
+  
+  loki:
+    image: ghcr.io/loan-mgt/fast-pin-pon/infra/loki:latest
+    container_name: fast-pin-pon-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yml
+    networks:
+      - internal-grafana
+    
+  promtail:
+    image: ghcr.io/loan-mgt/fast-pin-pon/infra/promtail:latest
+    container_name: fast-pin-pon-promtail
+    volumes:
+      - logs:/opt/logs:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
       - internal-grafana
 networks:
   internal: null
-  internal-keycloak: null
-  internal-grafana: null
   default: null
+  internal-grafana: null
+  internal-keycloak: null
+
 volumes:
-  kc-db-data: null
-  postgres-data: null
+  postgres-data:
+  kc-db-data:
+  loki-data:
+  logs:
