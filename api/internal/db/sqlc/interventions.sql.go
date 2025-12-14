@@ -270,9 +270,9 @@ func (q *Queries) ListInterventionsByEvent(ctx context.Context, eventID pgtype.U
 const updateAssignmentStatus = `-- name: UpdateAssignmentStatus :one
 UPDATE intervention_assignments
 SET
-    status = $2,
-    arrived_at = CASE WHEN $2 = 'arrived' THEN NOW() ELSE arrived_at END,
-    released_at = CASE WHEN $2 = 'released' THEN NOW() ELSE released_at END
+    status = $2::assignment_status,
+    arrived_at = CASE WHEN $2::assignment_status = 'arrived' THEN NOW() ELSE arrived_at END,
+    released_at = CASE WHEN $2::assignment_status = 'released' THEN NOW() ELSE released_at END
 WHERE id = $1
 RETURNING
     id,
@@ -309,9 +309,9 @@ func (q *Queries) UpdateAssignmentStatus(ctx context.Context, arg UpdateAssignme
 const updateInterventionStatus = `-- name: UpdateInterventionStatus :one
 UPDATE interventions
 SET
-    status = $2,
-    started_at = CASE WHEN $2 = 'en_route' AND started_at IS NULL THEN NOW() ELSE started_at END,
-    completed_at = CASE WHEN $2 = 'completed' THEN NOW() ELSE completed_at END
+    status = $2::intervention_status,
+    started_at = CASE WHEN $2::intervention_status = 'en_route' AND started_at IS NULL THEN NOW() ELSE started_at END,
+    completed_at = CASE WHEN $2::intervention_status = 'completed' THEN NOW() ELSE completed_at END
 WHERE id = $1
 RETURNING
     id,
