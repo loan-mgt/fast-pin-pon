@@ -23,4 +23,12 @@ scrape_configs:
         labels:
           job: api
           app: fast-pin-pon-api
-          __path__: /var/log/fast-pin-pon/*.log
+          __path__: /opt/logs/fast-pin-pon/*.log
+  - job_name: keycloak
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: keycloak
+          app: fast-pin-pon-keycloak
+          __path__: /opt/logs/keycloak/*.log

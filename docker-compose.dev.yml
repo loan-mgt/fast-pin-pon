@@ -16,7 +16,7 @@ services:
     environment:
       - LOG_FILE=/var/log/fast-pin-pon/api.log
     volumes:
-      - logs:/var/log
+      - logs-api:/tmp/log/fast-pin-pon:rw
     logging:
       driver: json-file
       options:
@@ -117,6 +117,8 @@ services:
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
     depends_on:
       - keycloakdb
+    volumes:
+      - logs-keycloak:/opt/keycloak/data/logs:rw
     ports:
       - 8082:8080
       - 9000:9000
@@ -187,8 +189,11 @@ services:
       context: ./infra/promtail
       dockerfile: Dockerfile
     container_name: fast-pin-pon-promtail
+    depends_on:
+      - keycloak_web
     volumes:
-      - logs:/var/log:ro
+      # - logs-api:/opt/logs/fast-pin-pon:ro
+      - logs-keycloak:/opt/logs:ro
     command: -config.file=/etc/promtail/config.yml
     networks:
       - internal-grafana
@@ -203,4 +208,5 @@ volumes:
   postgres-data:
   kc-db-data:
   loki-data:
-  logs:
+  logs-api:
+  logs-keycloak:
