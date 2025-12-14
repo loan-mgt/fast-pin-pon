@@ -16,7 +16,7 @@ services:
     environment:
       - LOG_FILE=/var/log/fast-pin-pon/api.log
     volumes:
-      - logs-api:/tmp/log/fast-pin-pon:rw
+      - logs-api:/var/log/fast-pin-pon:rw
     logging:
       driver: json-file
       options:
@@ -118,7 +118,7 @@ services:
     depends_on:
       - keycloakdb
     volumes:
-      - logs-keycloak:/opt/keycloak/data/logs:rw
+      - logs-keycloak:/opt/keycloak/data/logs/keycloak:rw
     ports:
       - 8082:8080
       - 9000:9000
@@ -192,8 +192,8 @@ services:
     depends_on:
       - keycloak_web
     volumes:
-      # - logs-api:/opt/logs/fast-pin-pon:ro
-      - logs-keycloak:/opt/logs:ro
+      - logs-api:/opt/logs/fast-pin-pon:ro
+      - logs-keycloak:/opt/logs/keycloak:ro
     command: -config.file=/etc/promtail/config.yml
     networks:
       - internal-grafana
