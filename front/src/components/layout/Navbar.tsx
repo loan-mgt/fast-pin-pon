@@ -18,7 +18,7 @@ export function Navbar({
     onRefresh,
     isSpinning,
     lastUpdated,
-}: NavbarProps): JSX.Element {
+}: Readonly<NavbarProps>): JSX.Element {
     return (
         <nav className="bg-slate-950/90 border-slate-900/70 border-b">
             <div className="flex justify-between items-center gap-4 mx-auto px-6 py-4 max-w-6xl">

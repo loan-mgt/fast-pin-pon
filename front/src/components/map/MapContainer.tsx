@@ -14,7 +14,7 @@ interface MapContainerProps {
     units: UnitSummary[]
 }
 
-export function MapContainer({ events, units }: MapContainerProps): JSX.Element {
+export function MapContainer({ events, units }: Readonly<MapContainerProps>): JSX.Element {
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const eventMarkersRef = useRef<maplibregl.Marker[]>([])

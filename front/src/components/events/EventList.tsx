@@ -7,7 +7,7 @@ interface EventListProps {
     error: string | null
 }
 
-export function EventList({ events, error }: EventListProps): JSX.Element {
+export function EventList({ events, error }: Readonly<EventListProps>): JSX.Element {
     if (error) {
         return <p className="text-rose-300 text-sm">{error}</p>
     }
@@ -32,7 +32,7 @@ export function EventList({ events, error }: EventListProps): JSX.Element {
                     <p className="text-slate-400 text-xs">{event.status ?? 'Status unknown'}</p>
                     <div className="flex flex-wrap items-center gap-2 text-[0.65rem] text-slate-400">
                         <span>{formatTimestamp(event.reported_at)}</span>
-                        {event.location?.latitude && event.location?.longitude && (
+                        {event.location?.latitude != null && event.location?.longitude != null && (
                             <span>
                                 {event.location.latitude.toFixed(3)}, {event.location.longitude.toFixed(3)}
                             </span>

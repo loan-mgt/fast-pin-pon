@@ -9,7 +9,7 @@ interface EventPanelProps {
     error: string | null
 }
 
-export function EventPanel({ events, error }: EventPanelProps): JSX.Element {
+export function EventPanel({ events, error }: Readonly<EventPanelProps>): JSX.Element {
     const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
     const [panelPosition, setPanelPosition] = useState(() => ({
         x: globalThis.window === undefined ? 16 : globalThis.window.innerWidth - 400,
