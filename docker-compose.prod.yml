@@ -61,16 +61,13 @@ services:
         max-size: 100m
         max-file: "3"
   keycloak_web:
-    build:
-      context: ./infra/keycloak
-      dockerfile: Dockerfile
-      args:
-        - GRAFANA_URL=http://localhost:3000
+    image: ghcr.io/loan-mgt/fast-pin-pon/infra/keycloak:latest
     container_name: fast-pin-pon-keycloak
     restart: unless-stopped
     command: start-dev --import-realm
     networks:
       - internal-keycloak
+      - internal
       - default
     environment:
       KC_DB: ${KC_DB}
@@ -86,7 +83,6 @@ services:
       KC_HEALTH_ENABLED: true
       KC_LOG: console,file
       KC_LOG_FILE: /opt/keycloak/data/logs/keycloak/keycloak.log
-
       # On utilise des noms "custom" que seul votre JSON connait.
       MY_ADMIN_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
       MY_ADMIN_PASS: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
@@ -170,10 +166,9 @@ services:
       - internal-grafana
 networks:
   internal: null
-  default: null
-  internal-grafana: null
   internal-keycloak: null
-
+  internal-grafana: null
+  default: null
 volumes:
   postgres-data:
   kc-db-data:

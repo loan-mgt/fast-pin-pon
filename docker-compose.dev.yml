@@ -1,84 +1,32 @@
+include:
+  - docker-compose.prod.yml
+
 services:
   api:
     build:
       context: api/
       dockerfile: Dockerfile
-    container_name: fast-pin-pon-api
     env_file:
       - .env.example
       - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - internal
-      - default
-    environment:
-      - LOG_FILE=/var/log/fast-pin-pon/api.log
-    volumes:
-      - logs:/var/log:rw
-    logging:
-      driver: json-file
-      options:
-        max-size: 100m
-        max-file: "3"
     ports:
       - "8081:8080"
-  
+
   front:
     build:
       context: front/
       dockerfile: Dockerfile
       args:
         MAP_TILE_URL: "http://localhost:8080/maps/lyon/{z}/{x}/{y}.pbf"
-    container_name: fast-pin-pon-front
-    networks:
-      - default
-      - internal
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "3"
     ports:
       - "8080:8080"
-
-  postgres:
-    image: ghcr.io/loan-mgt/fast-pin-pon/db:main
-    container_name: fast-pin-pon-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: fastpinpon
-      POSTGRES_USER: fastpinpon
-      POSTGRES_PASSWORD: fastpinpon
-    volumes:
-      - postgres-data:/var/lib/postgresql
-    networks:
-      - internal
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - pg_isready -U fastpinpon -d fastpinpon
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   maptiler-server:
     build:
       context: ./maptiler
       dockerfile: Dockerfile
-    container_name: fast-pin-pon-map
-    restart: unless-stopped
-    networks:
-      - internal
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "3"
     ports:
       - "3650:8080"
-
 
   keycloak_web:
     build:
@@ -86,123 +34,20 @@ services:
       dockerfile: Dockerfile
       args:
         - GRAFANA_URL=http://localhost:3000
-    container_name: fast-pin-pon-keycloak
-    restart: unless-stopped
-    command: start-dev --import-realm
-    networks:
-      - internal-keycloak
-      - default
-    environment:
-      KC_DB: ${KC_DB}
-      KC_DB_URL: ${KC_DB_URL}
-      KC_DB_USERNAME: ${KC_POSTGRES_USER}
-      KC_DB_PASSWORD: ${KC_POSTGRES_PASSWORD}
-      KC_HOSTNAME: ${KC_HOSTNAME}
-      KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
-      KC_LOG_LEVEL: info
-      KC_METRICS_ENABLED: true
-      KC_HEALTH_ENABLED: true
-      KC_LOG: console,file
-      KC_LOG_FILE: /opt/keycloak/data/logs/keycloak/keycloak.log
-
-      # On utilise des noms "custom" que seul votre JSON connait.
-      MY_ADMIN_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
-      MY_ADMIN_PASS: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
-      MY_ADMIN_EMAIL: ${MY_ADMIN_EMAIL}
-      MY_ADMIN_FNAME: ${MY_ADMIN_FNAME}
-      MY_ADMIN_LNAME: ${MY_ADMIN_LNAME}
-
-      JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
-    depends_on:
-      - keycloakdb
-    volumes:
-      - logs:/opt/keycloak/data/logs:rw
-    ports:
-      - 8082:8080
-      - 9000:9000
-
-  keycloakdb:
-    image: postgres:16
-    container_name: fast-pin-pon-keycloak-db
-    restart: unless-stopped
-    networks:
-      - internal-keycloak
-    volumes:
-      - kc-db-data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: ${KC_POSTGRES_DB}
-      POSTGRES_USER: ${KC_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${KC_POSTGRES_PASSWORD}
-
 
   grafana:
     build:
       context: ./infra/grafana
       dockerfile: Dockerfile
-    container_name: fast-pin-pon-grafana
-    restart: unless-stopped
-    environment:
-      GF_INSTALL_PLUGINS: ${PACKAGE_PLUGINS_GRAFANA}
-      # --- ADMIN PAR DÉFAUT (Sécurité de base) ---
-      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
-      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
-      # --- ACTIVATION OAUTH2 (SSO) ---
-      GF_AUTH_GENERIC_OAUTH_ENABLED: ${GF_AUTH_GENERIC_OAUTH_ENABLED}
-      GF_AUTH_GENERIC_OAUTH_NAME: ${GF_AUTH_GENERIC_OAUTH_NAME}
-      GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: ${GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP}
-      # Identifiants du Client Keycloak
-      GF_AUTH_GENERIC_OAUTH_CLIENT_ID: ${GF_AUTH_GENERIC_OAUTH_CLIENT_ID}
-      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ${GRAFANA_SSO}
-      GF_AUTH_GENERIC_OAUTH_SCOPES: ${GF_AUTH_GENERIC_OAUTH_SCOPES}
-      # --- URLs (Le point critique) ---
-      GF_AUTH_GENERIC_OAUTH_AUTH_URL: ${GF_AUTH_GENERIC_OAUTH_AUTH_URL}
-      # URL pour le serveur Grafana (Back) -> Doit utiliser le nom du conteneur Keycloak
-      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: ${GF_AUTH_GENERIC_OAUTH_TOKEN_URL}
-      GF_AUTH_GENERIC_OAUTH_API_URL: ${GF_AUTH_GENERIC_OAUTH_API_URL}
-      # --- MAPPING DES RÔLES ---
-      GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: ${GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH}
     ports:
-      - 3000:3000
-    networks:
-      - default
-      - internal-grafana
-      - internal-keycloak
-  
+      - "3000:3000"
+
   loki:
     build:
       context: ./infra/loki
       dockerfile: Dockerfile
-    container_name: fast-pin-pon-loki
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    volumes:
-      - loki-data:/loki
-    command: -config.file=/etc/loki/local-config.yml
-    networks:
-      - internal-grafana
-    
+  
   promtail:
     build:
       context: ./infra/promtail
       dockerfile: Dockerfile
-    container_name: fast-pin-pon-promtail
-    volumes:
-      - logs:/opt/logs:ro
-    command: -config.file=/etc/promtail/config.yml
-    networks:
-      - internal-grafana
-
-networks:
-  internal: null
-  default: null
-  internal-grafana: null
-  internal-keycloak: null
-
-volumes:
-  postgres-data:
-  kc-db-data:
-  loki-data:
-  logs:

@@ -3,6 +3,9 @@ FROM node:20-alpine AS builder
 ARG MAP_TILE_URL="https://fast-pin-pon.4loop.org/maps/lyon/{z}/{x}/{y}.pbf"
 ENV MAP_TILE_URL=${MAP_TILE_URL}
 
+ARG API_BASE_URL="https://api.fast-pin-pon.4loop.org/v1"
+ENV VITE_API_BASE_URL=${API_BASE_URL}
+
 WORKDIR /app
 
 COPY package*.json ./
