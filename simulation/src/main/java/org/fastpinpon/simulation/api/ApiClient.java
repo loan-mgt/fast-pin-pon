@@ -258,7 +258,7 @@ public final class ApiClient {
                 }
             }
         }
-        LOG.info("[API] Event types: " + eventTypeCodes);
+        LOG.log(Level.INFO, "[API] Event types: {0}", eventTypeCodes);
     }
 
     private String pickEventType() {
@@ -277,7 +277,7 @@ public final class ApiClient {
                 }
             }
         }
-        LOG.info("[API] Unit types: " + unitTypeCodes);
+        LOG.log(Level.INFO, "[API] Unit types: {0}", unitTypeCodes);
     }
 
     private <T> T execute(Call<T> call, String action) {
