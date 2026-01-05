@@ -37,7 +37,7 @@ services:
     environment:
       - API_BASE_URL=http://api:8080
     volumes:
-      - simulation-logs:/app/logs
+      - logs:/app/logs:rw
   postgres:
     image: ghcr.io/loan-mgt/fast-pin-pon/db:main
     container_name: fast-pin-pon-postgres
@@ -167,7 +167,6 @@ services:
     container_name: fast-pin-pon-promtail
     volumes:
       - logs:/opt/logs:ro
-      - simulation-logs:/opt/simulation-logs:ro
     command: -config.file=/etc/promtail/config.yml
     networks:
       - internal-grafana
@@ -181,4 +180,3 @@ volumes:
   kc-db-data: null
   loki-data: null
   logs: null
-  simulation-logs: null

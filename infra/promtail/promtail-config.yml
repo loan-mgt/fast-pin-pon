@@ -39,4 +39,4 @@ scrape_configs:
         labels:
           job: simulation
           app: fast-pin-pon-simulation
-          __path__: /opt/simulation-logs/fast-pin-pon/*.log
+          __path__: /opt/logs/simulation/*.log*

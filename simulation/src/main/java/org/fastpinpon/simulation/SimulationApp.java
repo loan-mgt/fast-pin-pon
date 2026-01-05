@@ -19,7 +19,7 @@ public class SimulationApp {
     private static final String API_BASE_URL_KEY = "API_BASE_URL";
     private static final String LOG_FILE_ENV = "SIMULATION_LOG_FILE";
     private static final String FILE_LOGGING_ENABLED_ENV = "SIMULATION_FILE_LOGGING_ENABLED";
-    private static final String DEFAULT_LOG_FILE = "/app/logs/fast-pin-pon/simulation.log";
+    private static final String DEFAULT_LOG_FILE = "/app/logs/simulation/simulation.log";
 
     public static void main(String[] args) {
         configureFileLogging();
