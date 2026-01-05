@@ -11,7 +11,7 @@ interface UnitPanelProps {
 export function UnitPanel({ units }: Readonly<UnitPanelProps>): JSX.Element {
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(true)
 
-  const normalizeStatus = (status: string) => status?.toLowerCase().replaceAll(/[-\s]/g, '_') ?? ''
+  const normalizeStatus = (status: string) => status?.toLowerCase().replace(/[-\s]/g, '_') ?? ''
 
   const availableUnits = units.filter((unit) => {
     const status = normalizeStatus(unit.status)
