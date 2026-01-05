@@ -2,6 +2,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.text.MessageFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -699,6 +700,7 @@ public class SimulationApp {
         private static final String JSON_ID_FIELD = "\"id\"";
         private static final String CODE_FIELD = "\"code\"";
         private static final String APPLICATION_JSON = "application/json";
+        private static final String CONTENT_TYPE_HEADER = "Content-Type";
         private static final String STATUS_PATH_SUFFIX = "/status";
         private static final String STATUS_BODY_PREFIX = "{ \"status\": \"";
         private static final String STATUS_BODY_SUFFIX = "\" }";
@@ -738,8 +740,9 @@ public class SimulationApp {
                         .build(), HttpResponse.BodyHandlers.ofString());
 
                 if (resp.statusCode() >= 400) {
-                    LOG.log(Level.SEVERE, "[API] GET /v1/units -> {0}" + LOG_BODY_SUFFIX + "{1}",
-                            new Object[]{resp.statusCode(), resp.body()});
+                    LOG.log(Level.SEVERE, () -> MessageFormat.format(
+                            "[API] GET /v1/units -> {0}" + LOG_BODY_SUFFIX + "{1}",
+                            resp.statusCode(), resp.body()));
                     return res;
                 }
 
@@ -785,17 +788,18 @@ public class SimulationApp {
             try {
                 HttpResponse<String> resp = http.send(HttpRequest.newBuilder()
                         .uri(URI.create(baseUrl + "/v1/events"))
-                        .header("Content-Type", APPLICATION_JSON)
+                        .header(CONTENT_TYPE_HEADER, APPLICATION_JSON)
                         .POST(HttpRequest.BodyPublishers.ofString(json))
                         .build(), HttpResponse.BodyHandlers.ofString());
 
                 if (resp.statusCode() >= 400) {
-                    LOG.log(Level.SEVERE, "[API] POST /v1/events -> {0}" + LOG_BODY_SUFFIX + "{1}",
-                            new Object[]{resp.statusCode(), resp.body()});
+                    LOG.log(Level.SEVERE, () -> MessageFormat.format(
+                            "[API] POST /v1/events -> {0}" + LOG_BODY_SUFFIX + "{1}",
+                            resp.statusCode(), resp.body()));
                     return null;
                 }
                 String id = extractString(resp.body(), JSON_ID_FIELD, 0);
-                LOG.info("[API] Event created (id=" + id + ")");
+                LOG.log(Level.INFO, "[API] Event created (id={0})", id);
                 return id;
             } catch (Exception e) {
                 if (wasInterrupted(e)) {
@@ -813,16 +817,16 @@ public class SimulationApp {
             try {
                 HttpResponse<String> resp = http.send(HttpRequest.newBuilder()
                         .uri(URI.create(baseUrl + "/v1/interventions"))
-                        .header("Content-Type", APPLICATION_JSON)
+                        .header(CONTENT_TYPE_HEADER, APPLICATION_JSON)
                         .POST(HttpRequest.BodyPublishers.ofString(json))
                         .build(), HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() >= 400) {
-                    LOG.log(Level.SEVERE, "[API] POST /v1/interventions -> {0}" + LOG_BODY_SUFFIX + "{1}",
-                            new Object[]{resp.statusCode(), resp.body()});
+                    LOG.log(Level.SEVERE, () -> MessageFormat.format(
+                            "[API] POST /v1/interventions -> {0}" + LOG_BODY_SUFFIX + "{1}",
+                            resp.statusCode(), resp.body()));
                     return null;
                 }
-                String id = extractString(resp.body(), JSON_ID_FIELD, 0);
-                return id;
+                return extractString(resp.body(), JSON_ID_FIELD, 0);
             } catch (Exception e) {
                 if (wasInterrupted(e)) {
                     return null;
@@ -839,12 +843,13 @@ public class SimulationApp {
             try {
                 HttpResponse<String> resp = http.send(HttpRequest.newBuilder()
                         .uri(URI.create(baseUrl + "/v1/interventions/" + interventionId + "/assignments"))
-                        .header("Content-Type", APPLICATION_JSON)
+                        .header(CONTENT_TYPE_HEADER, APPLICATION_JSON)
                         .POST(HttpRequest.BodyPublishers.ofString(json))
                         .build(), HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() >= 400) {
-                    LOG.log(Level.SEVERE, "[API] POST assignment -> {0}" + LOG_BODY_SUFFIX + "{1}",
-                            new Object[]{resp.statusCode(), resp.body()});
+                    LOG.log(Level.SEVERE, () -> MessageFormat.format(
+                            "[API] POST assignment -> {0}" + LOG_BODY_SUFFIX + "{1}",
+                            resp.statusCode(), resp.body()));
                     return null;
                 }
                 return extractString(resp.body(), JSON_ID_FIELD, 0);
@@ -915,8 +920,9 @@ public class SimulationApp {
                         .GET()
                         .build(), HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() >= 400) {
-                    LOG.log(Level.SEVERE, "[API] GET /v1/event-types -> {0}" + LOG_BODY_SUFFIX + "{1}",
-                            new Object[]{resp.statusCode(), resp.body()});
+                    LOG.log(Level.SEVERE, () -> MessageFormat.format(
+                            "[API] GET /v1/event-types -> {0}" + LOG_BODY_SUFFIX + "{1}",
+                            resp.statusCode(), resp.body()));
                     return;
                 }
                 String body = resp.body();
@@ -932,7 +938,7 @@ public class SimulationApp {
                     }
                     idx = pos + 6;
                 }
-                System.out.println("[API] Event types: " + eventTypeCodes);
+                LOG.info(() -> "[API] Event types: " + eventTypeCodes);
             } catch (Exception e) {
                 if (wasInterrupted(e)) {
                     return;
@@ -955,8 +961,9 @@ public class SimulationApp {
                         .GET()
                         .build(), HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() >= 400) {
-                    LOG.log(Level.SEVERE, "[API] GET /v1/unit-types -> {0}" + LOG_BODY_SUFFIX + "{1}",
-                            new Object[]{resp.statusCode(), resp.body()});
+                    LOG.log(Level.SEVERE, () -> MessageFormat.format(
+                            "[API] GET /v1/unit-types -> {0}" + LOG_BODY_SUFFIX + "{1}",
+                            resp.statusCode(), resp.body()));
                     return;
                 }
                 String body = resp.body();
@@ -972,7 +979,7 @@ public class SimulationApp {
                     }
                     idx = pos + 6;
                 }
-                System.out.println("[API] Unit types: " + unitTypeCodes);
+                LOG.info(() -> "[API] Unit types: " + unitTypeCodes);
             } catch (Exception e) {
                 if (wasInterrupted(e)) {
                     return;
@@ -995,19 +1002,20 @@ public class SimulationApp {
             try {
                 HttpResponse<String> resp = http.send(HttpRequest.newBuilder()
                         .uri(URI.create(baseUrl + "/v1/units"))
-                        .header("Content-Type", APPLICATION_JSON)
+                        .header(CONTENT_TYPE_HEADER, APPLICATION_JSON)
                         .POST(HttpRequest.BodyPublishers.ofString(json))
                         .build(), HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() >= 400) {
-                    LOG.log(Level.SEVERE, "[API] POST /v1/units -> {0}" + LOG_BODY_SUFFIX + "{1}",
-                            new Object[]{resp.statusCode(), resp.body()});
+                    LOG.log(Level.SEVERE, () -> MessageFormat.format(
+                            "[API] POST /v1/units -> {0}" + LOG_BODY_SUFFIX + "{1}",
+                            resp.statusCode(), resp.body()));
                     return null;
                 }
                 String id = extractString(resp.body(), JSON_ID_FIELD, 0);
                 if (id == null) {
                     return null;
                 }
-                return new UnitInfo(id, callSign, homeBase, unitTypeCode, "available", lat, lon);
+                return new UnitInfo(id, callSign, homeBase, unitTypeCode, UNIT_STATUS_AVAILABLE, lat, lon);
             } catch (Exception e) {
                 if (wasInterrupted(e)) {
                     return null;
@@ -1021,18 +1029,19 @@ public class SimulationApp {
             try {
                 HttpResponse<String> resp = http.send(HttpRequest.newBuilder()
                         .uri(URI.create(baseUrl + path))
-                        .header("Content-Type", APPLICATION_JSON)
+                        .header(CONTENT_TYPE_HEADER, APPLICATION_JSON)
                         .POST(HttpRequest.BodyPublishers.ofString(body))
                         .build(), HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() >= 400) {
-                    LOG.log(Level.SEVERE, "[API] POST {0} -> {1}" + LOG_BODY_SUFFIX + "{2}",
-                            new Object[]{path, resp.statusCode(), resp.body()});
+                    LOG.log(Level.SEVERE, () -> MessageFormat.format(
+                            "[API] POST {0} -> {1}" + LOG_BODY_SUFFIX + "{2}",
+                            path, resp.statusCode(), resp.body()));
                 }
             } catch (Exception e) {
                 if (wasInterrupted(e)) {
                     return;
                 }
-                LOG.log(Level.SEVERE, "[API] POST " + path + " error", e);
+                LOG.log(Level.SEVERE, () -> "[API] POST " + path + " error", e);
             }
         }
 
@@ -1040,18 +1049,19 @@ public class SimulationApp {
             try {
                 HttpResponse<String> resp = http.send(HttpRequest.newBuilder()
                         .uri(URI.create(baseUrl + path))
-                        .header("Content-Type", APPLICATION_JSON)
+                        .header(CONTENT_TYPE_HEADER, APPLICATION_JSON)
                         .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
                         .build(), HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() >= 400) {
-                    LOG.log(Level.SEVERE, "[API] PATCH {0} -> {1}" + LOG_BODY_SUFFIX + "{2} payload={3}",
-                            new Object[]{path, resp.statusCode(), resp.body(), body});
+                    LOG.log(Level.SEVERE, () -> MessageFormat.format(
+                            "[API] PATCH {0} -> {1}" + LOG_BODY_SUFFIX + "{2} payload={3}",
+                            path, resp.statusCode(), resp.body(), body));
                 }
             } catch (Exception e) {
                 if (wasInterrupted(e)) {
                     return;
                 }
-                LOG.log(Level.SEVERE, "[API] PATCH " + path + " error", e);
+                LOG.log(Level.SEVERE, () -> "[API] PATCH " + path + " error", e);
             }
         }
 
