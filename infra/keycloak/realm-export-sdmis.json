@@ -771,10 +771,10 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "**********",
       "redirectUris": [
-        "http://localhost:3000/login/generic_oauth"
+        "__GRAFANA_URL__/login/generic_oauth"
       ],
       "webOrigins": [
-        "http://localhost:3000"
+        "__GRAFANA_URL__"
       ],
       "notBefore": 0,
       "bearerOnly": false,

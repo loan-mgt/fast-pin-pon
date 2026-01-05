@@ -1,79 +1,53 @@
+include:
+  - docker-compose.prod.yml
+
 services:
   api:
     build:
       context: api/
       dockerfile: Dockerfile
-    container_name: fast-pin-pon-api
     env_file:
       - .env.example
+      - .env
     ports:
       - "8081:8080"
-    environment:
-      - LOG_FILE=/var/log/fast-pin-pon/api.log
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - internal
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "3"
-  
+
   front:
     build:
       context: front/
       dockerfile: Dockerfile
       args:
         MAP_TILE_URL: "http://localhost:8080/maps/lyon/{z}/{x}/{y}.pbf"
-    container_name: fast-pin-pon-front
     ports:
-      - "8080:80"
-    networks:
-      - internal
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "3"
-
-  postgres:
-    image: ghcr.io/loan-mgt/fast-pin-pon/db:latest
-    container_name: fast-pin-pon-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: fastpinpon
-      POSTGRES_USER: fastpinpon
-      POSTGRES_PASSWORD: fastpinpon
-    volumes:
-      - postgres-data:/var/lib/postgresql
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fastpinpon -d fastpinpon"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - "8080:8080"
 
   maptiler-server:
-    image: maptiler/tileserver-gl:v5.5.0-pre.7
-    container_name: fast-pin-pon-map
-    restart: unless-stopped
+    build:
+      context: ./maptiler
+      dockerfile: Dockerfile
     ports:
-      - "3650:8080"     
-    volumes:
-      - ./maptiler/maps:/data  
-    networks:
-      - internal
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "3"
+      - "3650:8080"
 
-networks:
-  internal: null
+  keycloak_web:
+    build:
+      context: ./infra/keycloak
+      dockerfile: Dockerfile
+      args:
+        - GRAFANA_URL=http://localhost:3000
 
-volumes:
-  postgres-data:
+  grafana:
+    build:
+      context: ./infra/grafana
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+
+  loki:
+    build:
+      context: ./infra/loki
+      dockerfile: Dockerfile
+  
+  promtail:
+    build:
+      context: ./infra/promtail
+      dockerfile: Dockerfile
