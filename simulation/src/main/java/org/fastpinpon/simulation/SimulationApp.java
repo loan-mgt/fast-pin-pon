@@ -85,7 +85,7 @@ public class SimulationApp {
             handler.setFormatter(new SimpleFormatter());
             root.addHandler(handler);
         } catch (IOException e) {
-            System.err.println("[SIM] Failed to setup file logging: " + e.getMessage());
+            root.log(Level.WARNING, "[SIM] Failed to setup file logging", e);
         }
     }
 
