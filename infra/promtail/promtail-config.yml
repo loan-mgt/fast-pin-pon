@@ -32,3 +32,11 @@ scrape_configs:
           job: keycloak
           app: fast-pin-pon-keycloak
           __path__: /opt/logs/keycloak/*.log
+  - job_name: simulation
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: simulation
+          app: fast-pin-pon-simulation
+          __path__: /opt/logs/simulation/*.log*

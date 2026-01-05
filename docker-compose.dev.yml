@@ -3,6 +3,7 @@ include:
 
 services:
   api:
+    image: fast-pin-pon-api-dev
     build:
       context: api/
       dockerfile: Dockerfile
@@ -13,6 +14,7 @@ services:
       - "8081:8080"
 
   front:
+    image: fast-pin-pon-front-dev
     build:
       context: front/
       dockerfile: Dockerfile
@@ -21,38 +23,8 @@ services:
     ports:
       - "8080:8080"
 
-  maptiler-server:
-    build:
-      context: ./maptiler
-      dockerfile: Dockerfile
-    ports:
-      - "3650:8080"
-
-  keycloak_web:
-    build:
-      context: ./infra/keycloak
-      dockerfile: Dockerfile
-      args:
-        - GRAFANA_URL=http://localhost:3000
-
-  grafana:
-    build:
-      context: ./infra/grafana
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-
-  loki:
-    build:
-      context: ./infra/loki
-      dockerfile: Dockerfile
-  
-  promtail:
-    build:
-      context: ./infra/promtail
-      dockerfile: Dockerfile
-
   simulation:
+    image: fast-pin-pon-simulation-dev
     build:
       context: ./simulation
       dockerfile: Dockerfile
@@ -60,3 +32,43 @@ services:
       - api
     environment:
       - API_BASE_URL=http://api:8080
+
+  maptiler-server:
+    image: maptiler-server-dev
+    build:
+      context: ./maptiler
+      dockerfile: Dockerfile
+    ports:
+      - "3650:8080"
+
+  keycloak_web:
+    image: keycloak-web-dev
+    build:
+      context: ./infra/keycloak
+      dockerfile: Dockerfile
+      args:
+        - GRAFANA_URL=http://localhost:3000
+
+  grafana:
+    image: grafana-dev
+    build:
+      context: ./infra/grafana
+      dockerfile: Dockerfile
+    profiles: ["monitoring"]
+    ports:
+      - "3000:3000"
+
+  loki:
+    image: loki-dev
+    build:
+      context: ./infra/loki
+      dockerfile: Dockerfile
+    profiles: ["monitoring"]
+  
+  promtail:
+    image: promtail-dev
+    build:
+      context: ./infra/promtail
+      dockerfile: Dockerfile
+    profiles: ["monitoring"]
+
