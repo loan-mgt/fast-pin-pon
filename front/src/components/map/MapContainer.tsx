@@ -1,20 +1,141 @@
-import type { JSX } from 'react'
+import type { JSX, MutableRefObject } from 'react'
 import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { EventSummary, UnitSummary } from '../../types'
-import { STATUS_COLORS, formatTimestamp } from '../../utils/format'
+import { STATUS_COLORS } from '../../utils/format'
 
 const DEFAULT_CENTER: [number, number] = [4.8467, 45.7485]
 const DEFAULT_ZOOM = 11
 const MAP_STATE_KEY = 'mapState'
 
+type StoredMapState = {
+    center: [number, number]
+    zoom: number
+}
+
+type EventLocation = {
+    event: EventSummary
+    lng: number
+    lat: number
+}
+
+function loadStoredMapState(): StoredMapState | null {
+    const savedState = localStorage.getItem(MAP_STATE_KEY)
+    if (!savedState) return null
+
+    try {
+        const parsed = JSON.parse(savedState) as StoredMapState
+        if (Array.isArray(parsed.center) && parsed.center.length === 2 && typeof parsed.zoom === 'number') {
+            return parsed
+        }
+    } catch {
+        return null
+    }
+
+    return null
+}
+
+function clearMarkers(markersRef: MutableRefObject<maplibregl.Marker[]>): void {
+    for (const marker of markersRef.current) marker.remove()
+    markersRef.current = []
+}
+
+function getEventLocations(events: EventSummary[]): EventLocation[] {
+    return events
+        .map((event) => ({
+            event,
+            lng: event.location?.longitude,
+            lat: event.location?.latitude,
+        }))
+        .filter((item): item is EventLocation => Boolean(item.lng) && Boolean(item.lat) && item.lng !== 0 && item.lat !== 0)
+}
+
+function getInitialView(eventLocations: EventLocation[], savedState: StoredMapState | null): StoredMapState {
+    if (savedState) return savedState
+
+    const avgLng = eventLocations.reduce((sum, loc) => sum + loc.lng, 0) / eventLocations.length
+    const avgLat = eventLocations.reduce((sum, loc) => sum + loc.lat, 0) / eventLocations.length
+
+    return { center: [avgLng, avgLat], zoom: DEFAULT_ZOOM }
+}
+
+function flyToInitialLocation(
+    map: maplibregl.Map,
+    eventLocations: EventLocation[],
+    isFirstLoad: MutableRefObject<boolean>,
+): void {
+    if (!isFirstLoad.current || !eventLocations.length) return
+
+    const savedState = loadStoredMapState()
+    const { center, zoom } = getInitialView(eventLocations, savedState)
+
+    map.flyTo({ center, zoom, duration: 1200 })
+    isFirstLoad.current = false
+}
+
+function createEventMarkerElement(isSelected: boolean): HTMLDivElement {
+    const el = document.createElement('div')
+    el.className = 'event-marker'
+    el.style.cursor = 'pointer'
+    el.innerHTML = `
+        <div style="
+            position: relative;
+            width: ${isSelected ? '20px' : '16px'};
+            height: ${isSelected ? '20px' : '16px'};
+        ">
+            <div style="
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                background-color: ${isSelected ? '#22d3ee' : '#ef4444'};
+                border: ${isSelected ? '3px solid #0ea5e9' : '2px solid white'};
+                border-radius: 50%;
+                box-shadow: ${isSelected ? '0 0 14px rgba(59,130,246,0.9)' : '0 2px 8px rgba(0,0,0,0.6)'};
+            "></div>
+            <div style="
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                background-color: ${isSelected ? '#3b82f6' : '#ef4444'};
+                border-radius: 50%;
+                animation: pulse 2s ease-out infinite;
+                opacity: 0.6;
+            "></div>
+        </div>
+    `
+
+    return el
+}
+
+function addEventMarkers(
+    map: maplibregl.Map,
+    eventLocations: EventLocation[],
+    selectedEventId: string | null | undefined,
+    onEventSelect: ((eventId: string) => void) | undefined,
+    eventMarkersRef: MutableRefObject<maplibregl.Marker[]>,
+): void {
+    for (const location of eventLocations) {
+        const isSelected = selectedEventId === location.event.id
+        const el = createEventMarkerElement(isSelected)
+
+        const marker = new maplibregl.Marker({ element: el })
+            .setLngLat([location.lng, location.lat])
+            .addTo(map)
+
+        el.addEventListener('click', () => onEventSelect?.(location.event.id))
+        eventMarkersRef.current.push(marker)
+    }
+}
+
 interface MapContainerProps {
     events: EventSummary[]
     units: UnitSummary[]
+    onEventSelect?: (eventId: string) => void
+    selectedEventId?: string | null
 }
 
-export function MapContainer({ events, units }: Readonly<MapContainerProps>): JSX.Element {
+export function MapContainer({ events, units, onEventSelect, selectedEventId }: Readonly<MapContainerProps>): JSX.Element {
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const eventMarkersRef = useRef<maplibregl.Marker[]>([])
@@ -74,83 +195,14 @@ export function MapContainer({ events, units }: Readonly<MapContainerProps>): JS
         const map = mapRef.current
         if (!map) return
 
-        // Remove old event markers
-        for (const marker of eventMarkersRef.current) marker.remove()
-        eventMarkersRef.current = []
+        clearMarkers(eventMarkersRef)
 
-        // Prepare event marker locations
-        const eventLocations = events
-            .map((event) => ({
-                event,
-                lng: event.location?.longitude,
-                lat: event.location?.latitude,
-            }))
-            .filter((item) => item.lng !== 0 && item.lat !== 0)
+        const eventLocations = getEventLocations(events)
+        if (!eventLocations.length) return
 
-        // Only fly to location on first load
-        if (isFirstLoad.current && eventLocations.length) {
-            const savedState = localStorage.getItem(MAP_STATE_KEY)
-            const center = savedState
-                ? JSON.parse(savedState).center
-                : [
-                    eventLocations.reduce((sum, loc) => sum + loc.lng, 0) / eventLocations.length,
-                    eventLocations.reduce((sum, loc) => sum + loc.lat, 0) / eventLocations.length,
-                ]
-            const zoom = savedState ? JSON.parse(savedState).zoom : DEFAULT_ZOOM
-
-            map.flyTo({ center, zoom, duration: 1200 })
-            isFirstLoad.current = false
-        }
-
-        // Add event markers (pulsing red circles for incidents)
-        for (const location of eventLocations) {
-            const { event, lng, lat } = location
-
-            // Create custom pulsing element for events
-            const el = document.createElement('div')
-            el.className = 'event-marker'
-            el.innerHTML = `
-        <div style="
-          position: relative;
-          width: 16px;
-          height: 16px;
-        ">
-          <div style="
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: #ef4444;
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-          "></div>
-          <div style="
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: #ef4444;
-            border-radius: 50%;
-            animation: pulse 2s ease-out infinite;
-            opacity: 0.6;
-          "></div>
-        </div>
-      `
-
-            const marker = new maplibregl.Marker({ element: el })
-                .setLngLat([lng, lat])
-                .setPopup(
-                    new maplibregl.Popup({ offset: 16, className: 'event-popup' }).setHTML(
-                        `<div style="font-family: system-ui, sans-serif;">
-               <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${event.title}</div>
-               <div style="font-size: 12px; color: #666;">${formatTimestamp(event.reported_at)}</div>
-             </div>`,
-                    ),
-                )
-                .addTo(map)
-
-            eventMarkersRef.current.push(marker)
-        }
-    }, [events])
+        flyToInitialLocation(map, eventLocations, isFirstLoad)
+        addEventMarkers(map, eventLocations, selectedEventId, onEventSelect, eventMarkersRef)
+    }, [events, onEventSelect, selectedEventId])
 
     // Effect for unit markers
     useEffect(() => {

@@ -5,6 +5,8 @@ import { fastPinPonService } from './services/FastPinPonService'
 import { Navbar } from './components/layout/Navbar'
 import { MapContainer } from './components/map/MapContainer'
 import { EventPanel } from './components/events/EventPanel'
+import { UnitPanel } from './components/units/UnitPanel'
+import { EventDetailPanel } from './components/events/EventDetailPanel.tsx'
 import type { EventSummary, UnitSummary } from './types'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
@@ -13,6 +15,7 @@ const MIN_SPIN_DURATION = 500
 export function App() {
   const [events, setEvents] = useState<EventSummary[]>([])
   const [units, setUnits] = useState<UnitSummary[]>([])
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [isSpinning, setIsSpinning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<string>('—')
@@ -81,6 +84,28 @@ export function App() {
     })
   }, [events])
 
+  useEffect(() => {
+    if (selectedEventId) {
+      const exists = events.some((e) => e.id === selectedEventId)
+      if (!exists) {
+        setSelectedEventId(null)
+      }
+    }
+  }, [events, selectedEventId])
+
+  const selectedEvent = useMemo(
+    () => sortedEvents.find((event) => event.id === selectedEventId) ?? null,
+    [sortedEvents, selectedEventId],
+  )
+
+  const handleEventSelect = (eventId: string) => {
+    setSelectedEventId(eventId)
+  }
+
+  const handleCloseDetail = () => {
+    setSelectedEventId(null)
+  }
+
   return (
     <div className="flex flex-col bg-slate-950 min-h-screen text-slate-100">
       <Navbar
@@ -92,8 +117,20 @@ export function App() {
       />
 
       <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">
-        <MapContainer events={sortedEvents} units={units} />
-        <EventPanel events={sortedEvents} error={error} />
+        <MapContainer
+          events={sortedEvents}
+          units={units}
+          onEventSelect={handleEventSelect}
+          selectedEventId={selectedEventId}
+        />
+        <UnitPanel units={units} />
+        <EventPanel
+          events={sortedEvents}
+          error={error}
+          onEventSelect={handleEventSelect}
+          selectedEventId={selectedEventId}
+        />
+        <EventDetailPanel event={selectedEvent} onClose={handleCloseDetail} />
       </main>
     </div>
   )
