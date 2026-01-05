@@ -86,7 +86,7 @@ public final class SimulationEngine {
             new BaseLocation(BASE_CUSSET, 45.7744, 4.8957),
     };
 
-    private static final Map<String, List<String>> BASE_PRIORITY = new HashMap<String, List<String>>();
+    private static final Map<String, List<String>> BASE_PRIORITY = new HashMap<>();
 
     static {
         BASE_PRIORITY.put(BASE_CONFLUENCE, Arrays.asList(BASE_CONFLUENCE, BASE_PART_DIEU, BASE_VILLEURBANNE, BASE_CUSSET));
@@ -212,7 +212,7 @@ public final class SimulationEngine {
         }
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < activeIncidents.size(); i++) {
-            sb.append("{").append(activeIncidents.get(i).number).append("}");
+            sb.append("{").append(activeIncidents.get(i).getNumber()).append("}");
             if (i < activeIncidents.size() - 1) {
                 sb.append(",");
             }
@@ -385,7 +385,7 @@ public final class SimulationEngine {
 
     private void advanceVehicles() {
         for (Vehicle v : orderedVehiclesByIncident()) {
-            switch (v.etat) {
+            switch (v.getEtat()) {
                 case DISPONIBLE:
                     break;
                 case EN_ROUTE:
@@ -402,26 +402,26 @@ public final class SimulationEngine {
     }
 
     private void handleEnRoute(Vehicle v) {
-        if (v.getCurrentIncident() != null && v.getCurrentIncident().getEtat() == IncidentState.RESOLU) {
-            v.setEtat(VehicleState.RETOUR);
-            v.setReturnSince(Instant.now());
-            v.setLastUpdate(v.getReturnSince());
+        if (v.getCurrentIncident() == null) {
+            return;
+        }
+        moveTowards(v, v.getCurrentIncident().getLat(), v.getCurrentIncident().getLon(), 0.02);
         v.setLastUpdate(Instant.now());
         long travelSeconds = v.getEnRouteSince() == null ? Long.MAX_VALUE :
                 Instant.now().getEpochSecond() - v.getEnRouteSince().getEpochSecond();
         if (travelSeconds >= MIN_TRAVEL_SECONDS) {
             v.setEtat(VehicleState.SUR_PLACE);
-        v.setLastUpdate(Instant.now());
-        long returnSeconds = v.getReturnSince() == null ? Long.MAX_VALUE :
-                Instant.now().getEpochSecond() - v.getReturnSince().getEpochSecond();
-                api.updateAssignmentStatus(v.getAssignmentId(), ASSIGNMENT_STATUS_ARRIVED);
-            v.setEtat(VehicleState.DISPONIBLE);
-            v.setCurrentIncident(null);
-            v.setAssignmentId(null);
-            v.setEnRouteSince(null);
-            v.setReturnSince(null);
             v.setLastUpdate(Instant.now());
-            LOG.log(Level.INFO, "[SIM] {0} back available", v.getCallSign());
+            v.setEnRouteSince(null);
+            if (PATCH_ASSIGNMENT_STATUS) {
+                api.updateAssignmentStatus(v.getAssignmentId(), ASSIGNMENT_STATUS_ARRIVED);
+            }
+            printIncidentStatusLine(v.getCurrentIncident());
+            if (v.getCurrentIncident().getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
+                api.updateInterventionStatus(v.getCurrentIncident().getInterventionId(), INTERVENTION_STATUS_ON_SITE);
+            }
+        }
+    }
 
     private void handleSurPlace(Vehicle v) {
         if (v.getCurrentIncident() != null && v.getCurrentIncident().getEtat() == IncidentState.RESOLU) {
@@ -448,12 +448,12 @@ public final class SimulationEngine {
     }
 
     private void cleanupResolvedIncidents() {
-        incidents.removeIf(inc -> inc.etat == IncidentState.RESOLU && !hasAnyVehicleOnIncident(inc));
+        incidents.removeIf(inc -> inc.getEtat() == IncidentState.RESOLU && !hasAnyVehicleOnIncident(inc));
     }
 
     private boolean hasAnyVehicleOnIncident(Incident incident) {
         for (Vehicle v : vehicles) {
-            if (v.currentIncident == incident) {
+            if (v.getCurrentIncident() == incident) {
                 return true;
             }
         }
@@ -462,12 +462,12 @@ public final class SimulationEngine {
 
     private void pushTelemetry() {
         for (Vehicle v : vehicles) {
-            api.updateUnitStatus(v.unitId, mapVehicleState(v.etat));
-            api.updateUnitLocation(v.unitId, v.lat, v.lon, v.lastUpdate);
+            api.updateUnitStatus(v.getUnitId(), mapVehicleState(v.getEtat()));
+            api.updateUnitLocation(v.getUnitId(), v.getLat(), v.getLon(), v.getLastUpdate());
         }
         for (Incident inc : incidents) {
-            if (inc.eventId != null) {
-                api.logHeartbeat(inc.eventId);
+            if (inc.getEventId() != null) {
+                api.logHeartbeat(inc.getEventId());
             }
         }
     }
@@ -490,10 +490,10 @@ public final class SimulationEngine {
     private List<Vehicle> orderedVehiclesByIncident() {
         List<Vehicle> ordered = new ArrayList<>(vehicles);
         ordered.sort((a, b) -> {
-            if (a.currentIncident == null && b.currentIncident == null) return 0;
-            if (a.currentIncident == null) return 1;
-            if (b.currentIncident == null) return -1;
-            return Integer.compare(a.currentIncident.number, b.currentIncident.number);
+            if (a.getCurrentIncident() == null && b.getCurrentIncident() == null) return 0;
+            if (a.getCurrentIncident() == null) return 1;
+            if (b.getCurrentIncident() == null) return -1;
+            return Integer.compare(a.getCurrentIncident().getNumber(), b.getCurrentIncident().getNumber());
         });
         return ordered;
     }
@@ -502,20 +502,20 @@ public final class SimulationEngine {
         for (Incident incident : scope) {
             List<Vehicle> involved = new ArrayList<>();
             for (Vehicle v : vehicles) {
-                if (v.currentIncident == incident) {
+                if (v.getCurrentIncident() == incident) {
                     involved.add(v);
                 }
             }
             if (involved.isEmpty()) {
                 continue;
             }
-            involved.sort((a, b) -> a.callSign.compareToIgnoreCase(b.callSign));
-            String area = nearestBaseName(incident.lat, incident.lon);
+            involved.sort((a, b) -> a.getCallSign().compareToIgnoreCase(b.getCallSign()));
+            String area = nearestBaseName(incident.getLat(), incident.getLon());
             StringBuilder line = new StringBuilder();
-            line.append(SIM_INCIDENT_PREFIX).append(incident.number).append(" - ").append(area).append(" : ");
+            line.append(SIM_INCIDENT_PREFIX).append(incident.getNumber()).append(" - ").append(area).append(" : ");
             for (int i = 0; i < involved.size(); i++) {
                 Vehicle v = involved.get(i);
-                line.append(v.callSign).append(" [").append(readableState(v.etat)).append("]");
+                line.append(v.getCallSign()).append(" [").append(readableState(v.getEtat())).append("]");
                 if (i < involved.size() - 1) {
                     line.append(", ");
                 }
@@ -529,20 +529,20 @@ public final class SimulationEngine {
     private void printIncidentStatusLine(Incident incident) {
         List<Vehicle> involved = new ArrayList<>();
         for (Vehicle v : vehicles) {
-            if (v.currentIncident == incident) {
+            if (v.getCurrentIncident() == incident) {
                 involved.add(v);
             }
         }
         if (involved.isEmpty()) {
             return;
         }
-        involved.sort((a, b) -> a.callSign.compareToIgnoreCase(b.callSign));
-        String area = nearestBaseName(incident.lat, incident.lon);
+        involved.sort((a, b) -> a.getCallSign().compareToIgnoreCase(b.getCallSign()));
+        String area = nearestBaseName(incident.getLat(), incident.getLon());
         StringBuilder sb = new StringBuilder();
-        sb.append(SIM_INCIDENT_PREFIX).append(incident.number).append(" - ").append(area).append(" : ");
+        sb.append(SIM_INCIDENT_PREFIX).append(incident.getNumber()).append(" - ").append(area).append(" : ");
         for (int i = 0; i < involved.size(); i++) {
             Vehicle v = involved.get(i);
-            sb.append(v.callSign).append(" [").append(readableState(v.etat)).append("]");
+            sb.append(v.getCallSign()).append(" [").append(readableState(v.getEtat())).append("]");
             if (i < involved.size() - 1) {
                 sb.append(", ");
             }
@@ -568,14 +568,14 @@ public final class SimulationEngine {
     }
 
     private void moveTowards(Vehicle v, double targetLat, double targetLon, double step) {
-        double dLat = targetLat - v.lat;
-        double dLon = targetLon - v.lon;
+        double dLat = targetLat - v.getLat();
+        double dLon = targetLon - v.getLon();
         double len = Math.sqrt(dLat * dLat + dLon * dLon);
         if (len < 1e-6) {
             return;
         }
-        v.lat += (dLat / len) * step;
-        v.lon += (dLon / len) * step;
+        v.setLat(v.getLat() + (dLat / len) * step);
+        v.setLon(v.getLon() + (dLon / len) * step);
     }
 
     private int priorityIndex(String incidentArea, String baseName) {
