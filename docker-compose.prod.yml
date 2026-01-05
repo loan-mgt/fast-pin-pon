@@ -30,6 +30,14 @@ services:
       options:
         max-size: 100m
         max-file: "3"
+
+  simulation:
+    image: ghcr.io/loan-mgt/fast-pin-pon/simulation:main
+    depends_on:
+      - api
+    environment:
+      - API_BASE_URL=http://api:8080
+
   postgres:
     image: ghcr.io/loan-mgt/fast-pin-pon/db:main
     container_name: fast-pin-pon-postgres
