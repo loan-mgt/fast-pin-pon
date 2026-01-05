@@ -1,7 +1,8 @@
 package org.fastpinpon.simulation.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.OkHttpClient;
 import org.fastpinpon.simulation.model.Incident;
 import retrofit2.Call;
@@ -15,7 +16,6 @@ import retrofit2.http.POST;
 import retrofit2.http.Path;
 
 import java.io.IOException;
-import java.text.MessageFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -26,9 +26,9 @@ import java.util.logging.Logger;
 
 public final class ApiClient {
     private static final Logger LOG = Logger.getLogger(ApiClient.class.getName());
-    private final OkHttpClient http = new OkHttpClient();
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final DateTimeFormatter iso = DateTimeFormatter.ISO_INSTANT;
+    private static final OkHttpClient HTTP = new OkHttpClient();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_INSTANT;
     private final Random random = new Random();
     private final List<String> eventTypeCodes = new ArrayList<>();
     public final List<String> unitTypeCodes = new ArrayList<>();
@@ -39,8 +39,8 @@ public final class ApiClient {
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(normalized)
-                .addConverterFactory(JacksonConverterFactory.create(objectMapper))
-                .client(http)
+            .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+            .client(HTTP)
                 .build();
         this.api = retrofit.create(ApiService.class);
 
@@ -79,17 +79,23 @@ public final class ApiClient {
             return res;
         }
         for (UnitDto dto : dtos) {
-            if (dto.id == null) {
+            if (dto.getId() == null) {
                 continue;
             }
-            Double lat = dto.latitude != null ? dto.latitude : (dto.location != null ? dto.location.latitude : null);
-            Double lon = dto.longitude != null ? dto.longitude : (dto.location != null ? dto.location.longitude : null);
+            Double lat = dto.getLatitude();
+            if (lat == null && dto.getLocation() != null) {
+                lat = dto.getLocation().getLatitude();
+            }
+            Double lon = dto.getLongitude();
+            if (lon == null && dto.getLocation() != null) {
+                lon = dto.getLocation().getLongitude();
+            }
             res.add(new UnitInfo(
-                    dto.id,
-                    nvl(dto.call_sign, dto.id),
-                    nvl(dto.home_base, ""),
-                    nvl(dto.unit_type_code, ""),
-                    nvl(dto.status, ""),
+                    dto.getId(),
+                    nvl(dto.getCallSign(), dto.getId()),
+                    nvl(dto.getHomeBase(), ""),
+                    nvl(dto.getUnitTypeCode(), ""),
+                    nvl(dto.getStatus(), ""),
                     lat,
                     lon
             ));
@@ -108,12 +114,12 @@ public final class ApiClient {
             LOG.warning("[API] No event type code available; cannot create event.");
             return null;
         }
-        String title = "SIM-" + inc.type + "-" + inc.id.toString().substring(0, 8);
-        CreateEventRequest payload = new CreateEventRequest(title, typeCode, inc.lat, inc.lon, inc.gravite, "simulation");
+        String title = "SIM-" + inc.getType() + "-" + inc.getId().toString().substring(0, 8);
+        CreateEventRequest payload = new CreateEventRequest(title, typeCode, inc.getLat(), inc.getLon(), inc.getGravite(), "simulation");
         IdDto created = execute(api.createEvent(payload), "POST /v1/events");
-        if (created != null && created.id != null) {
-            LOG.log(Level.INFO, "[API] Event created (id={0})", created.id);
-            return created.id;
+        if (created != null && created.getId() != null) {
+            LOG.log(Level.INFO, "[API] Event created (id={0})", created.getId());
+            return created.getId();
         }
         return null;
     }
@@ -126,7 +132,7 @@ public final class ApiClient {
      */
     public String createIntervention(String eventId, int priority) {
         IdDto created = execute(api.createIntervention(new CreateInterventionRequest(eventId, priority, "auto_suggested")), "POST /v1/interventions");
-        return created == null ? null : created.id;
+        return created == null ? null : created.getId();
     }
 
     /**
@@ -138,7 +144,7 @@ public final class ApiClient {
      */
     public String assignUnit(String interventionId, String unitId, String role) {
         IdDto created = execute(api.assignUnit(interventionId, new AssignUnitRequest(unitId, role)), "POST /v1/interventions/{id}/assignments");
-        return created == null ? null : created.id;
+        return created == null ? null : created.getId();
     }
 
     /**
@@ -212,7 +218,7 @@ public final class ApiClient {
         if (unitId == null || unitId.trim().isEmpty()) {
             return;
         }
-        LocationRequest payload = new LocationRequest(lat, lon, iso.format(recordedAt));
+        LocationRequest payload = new LocationRequest(lat, lon, ISO.format(recordedAt));
         executeVoid(api.updateUnitLocation(unitId, payload), "PATCH /v1/units/{id}/location");
     }
 
@@ -247,8 +253,8 @@ public final class ApiClient {
         List<CodeDto> codes = execute(api.getEventTypes(), "GET /v1/event-types");
         if (codes != null) {
             for (CodeDto c : codes) {
-                if (c.code != null) {
-                    eventTypeCodes.add(c.code);
+                if (c.getCode() != null) {
+                    eventTypeCodes.add(c.getCode());
                 }
             }
         }
@@ -266,8 +272,8 @@ public final class ApiClient {
         List<CodeDto> codes = execute(api.getUnitTypes(), "GET /v1/unit-types");
         if (codes != null) {
             for (CodeDto c : codes) {
-                if (c.code != null && !unitTypeCodes.contains(c.code)) {
-                    unitTypeCodes.add(c.code);
+                if (c.getCode() != null && !unitTypeCodes.contains(c.getCode())) {
+                    unitTypeCodes.add(c.getCode());
                 }
             }
         }
@@ -278,7 +284,7 @@ public final class ApiClient {
         try {
             Response<T> resp = call.execute();
             if (!resp.isSuccessful()) {
-                LOG.log(Level.SEVERE, MessageFormat.format("[API] {0} -> {1} body={2}", action, resp.code(), errorBody(resp)));
+                LOG.log(Level.SEVERE, "[API] {0} -> {1} body={2}", new Object[]{action, resp.code(), errorBody(resp)});
                 return null;
             }
             return resp.body();
@@ -286,7 +292,7 @@ public final class ApiClient {
             if (wasInterrupted(e)) {
                 return null;
             }
-            LOG.log(Level.SEVERE, "[API] " + action + " error", e);
+            LOG.log(Level.SEVERE, e, () -> "[API] " + action + " error");
             return null;
         }
     }
@@ -295,13 +301,13 @@ public final class ApiClient {
         try {
             Response<Void> resp = call.execute();
             if (!resp.isSuccessful()) {
-                LOG.log(Level.SEVERE, MessageFormat.format("[API] {0} -> {1} body={2}", action, resp.code(), errorBody(resp)));
+                LOG.log(Level.SEVERE, "[API] {0} -> {1} body={2}", new Object[]{action, resp.code(), errorBody(resp)});
             }
         } catch (Exception e) {
             if (wasInterrupted(e)) {
                 return;
             }
-            LOG.log(Level.SEVERE, "[API] " + action + " error", e);
+            LOG.log(Level.SEVERE, e, () -> "[API] " + action + " error");
         }
     }
 
@@ -364,69 +370,136 @@ public final class ApiClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static final class UnitDto {
-        public String id;
-        public String call_sign;
-        public String home_base;
-        public String unit_type_code;
-        public String status;
-        public Double latitude;
-        public Double longitude;
-        public LocationDto location;
+        @JsonProperty("id")
+        private String id;
+        @JsonProperty("call_sign")
+        private String callSign;
+        @JsonProperty("home_base")
+        private String homeBase;
+        @JsonProperty("unit_type_code")
+        private String unitTypeCode;
+        @JsonProperty("status")
+        private String status;
+        @JsonProperty("latitude")
+        private Double latitude;
+        @JsonProperty("longitude")
+        private Double longitude;
+        @JsonProperty("location")
+        private LocationDto location;
+
+        public String getId() {
+            return id;
+        }
+
+        public String getCallSign() {
+            return callSign;
+        }
+
+        public String getHomeBase() {
+            return homeBase;
+        }
+
+        public String getUnitTypeCode() {
+            return unitTypeCode;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public Double getLatitude() {
+            return latitude;
+        }
+
+        public Double getLongitude() {
+            return longitude;
+        }
+
+        public LocationDto getLocation() {
+            return location;
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static final class CodeDto {
-        public String code;
-        public String name;
+        @JsonProperty("code")
+        private String code;
+        @JsonProperty("name")
+        private String name;
+
+        public String getCode() {
+            return code;
+        }
+
+        public String getName() {
+            return name;
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static final class IdDto {
-        public String id;
+        @JsonProperty("id")
+        private String id;
+
+        public String getId() {
+            return id;
+        }
     }
 
     private static final class CreateEventRequest {
-        public final String title;
-        public final String event_type_code;
-        public final double latitude;
-        public final double longitude;
-        public final int severity;
-        public final String report_source;
+        @JsonProperty("title")
+        private final String title;
+        @JsonProperty("event_type_code")
+        private final String eventTypeCode;
+        @JsonProperty("latitude")
+        private final double latitude;
+        @JsonProperty("longitude")
+        private final double longitude;
+        @JsonProperty("severity")
+        private final int severity;
+        @JsonProperty("report_source")
+        private final String reportSource;
 
         CreateEventRequest(String title, String eventTypeCode, double latitude, double longitude, int severity, String reportSource) {
             this.title = title;
-            this.event_type_code = eventTypeCode;
+            this.eventTypeCode = eventTypeCode;
             this.latitude = latitude;
             this.longitude = longitude;
             this.severity = severity;
-            this.report_source = reportSource;
+            this.reportSource = reportSource;
         }
     }
 
     private static final class CreateInterventionRequest {
-        public final String event_id;
-        public final int priority;
-        public final String decision_mode;
+        @JsonProperty("event_id")
+        private final String eventId;
+        @JsonProperty("priority")
+        private final int priority;
+        @JsonProperty("decision_mode")
+        private final String decisionMode;
 
         CreateInterventionRequest(String eventId, int priority, String decisionMode) {
-            this.event_id = eventId;
+            this.eventId = eventId;
             this.priority = priority;
-            this.decision_mode = decisionMode;
+            this.decisionMode = decisionMode;
         }
     }
 
     private static final class AssignUnitRequest {
-        public final String unit_id;
-        public final String role;
+        @JsonProperty("unit_id")
+        private final String unitId;
+        @JsonProperty("role")
+        private final String role;
 
         AssignUnitRequest(String unitId, String role) {
-            this.unit_id = unitId;
+            this.unitId = unitId;
             this.role = role;
         }
     }
 
     private static final class StatusRequest {
-        public final String status;
+        @JsonProperty("status")
+        private final String status;
 
         StatusRequest(String status) {
             this.status = status;
@@ -434,17 +507,23 @@ public final class ApiClient {
     }
 
     private static final class CreateUnitRequest {
-        public final String call_sign;
-        public final String unit_type_code;
-        public final String home_base;
-        public final String status;
-        public final double latitude;
-        public final double longitude;
+        @JsonProperty("call_sign")
+        private final String callSign;
+        @JsonProperty("unit_type_code")
+        private final String unitTypeCode;
+        @JsonProperty("home_base")
+        private final String homeBase;
+        @JsonProperty("status")
+        private final String status;
+        @JsonProperty("latitude")
+        private final double latitude;
+        @JsonProperty("longitude")
+        private final double longitude;
 
         CreateUnitRequest(String callSign, String unitTypeCode, String homeBase, String status, double latitude, double longitude) {
-            this.call_sign = callSign;
-            this.unit_type_code = unitTypeCode;
-            this.home_base = homeBase;
+            this.callSign = callSign;
+            this.unitTypeCode = unitTypeCode;
+            this.homeBase = homeBase;
             this.status = status;
             this.latitude = latitude;
             this.longitude = longitude;
@@ -452,21 +531,34 @@ public final class ApiClient {
     }
 
     private static final class LocationRequest {
-        public final double latitude;
-        public final double longitude;
-        public final String recorded_at;
+        @JsonProperty("latitude")
+        private final double latitude;
+        @JsonProperty("longitude")
+        private final double longitude;
+        @JsonProperty("recorded_at")
+        private final String recordedAt;
 
         LocationRequest(double latitude, double longitude, String recordedAt) {
             this.latitude = latitude;
             this.longitude = longitude;
-            this.recorded_at = recordedAt;
+            this.recordedAt = recordedAt;
         }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static final class LocationDto {
-        public Double latitude;
-        public Double longitude;
+        @JsonProperty("latitude")
+        private Double latitude;
+        @JsonProperty("longitude")
+        private Double longitude;
+
+        public Double getLatitude() {
+            return latitude;
+        }
+
+        public Double getLongitude() {
+            return longitude;
+        }
     }
 
     private static final class HeartbeatRequest {

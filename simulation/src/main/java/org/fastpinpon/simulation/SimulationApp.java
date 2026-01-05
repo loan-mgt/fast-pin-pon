@@ -9,6 +9,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class SimulationApp {
+    private static final String API_BASE_URL_KEY = "API_BASE_URL";
+
     public static void main(String[] args) {
         String apiBaseUrl = resolveApiBaseUrl();
         ApiClient api = new ApiClient(apiBaseUrl);
@@ -27,7 +29,7 @@ public class SimulationApp {
     }
 
     private static String resolveApiBaseUrl() {
-        String fromEnv = System.getenv("API_BASE_URL");
+        String fromEnv = System.getenv(API_BASE_URL_KEY);
         if (fromEnv != null && !fromEnv.trim().isEmpty()) {
             return fromEnv.trim();
         }
@@ -35,7 +37,7 @@ public class SimulationApp {
         Dotenv dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
-        String fromDotEnv = dotenv.get("API_BASE_URL");
+        String fromDotEnv = dotenv.get(API_BASE_URL_KEY);
         if (fromDotEnv != null && !fromDotEnv.trim().isEmpty()) {
             return fromDotEnv.trim();
         }
@@ -44,7 +46,7 @@ public class SimulationApp {
                 .directory("../")
                 .ignoreIfMissing()
                 .load();
-        String fromParent = parentDotenv.get("API_BASE_URL");
+        String fromParent = parentDotenv.get(API_BASE_URL_KEY);
         if (fromParent != null && !fromParent.trim().isEmpty()) {
             return fromParent.trim();
         }
