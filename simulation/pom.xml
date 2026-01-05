@@ -19,7 +19,7 @@
     <jackson.version>2.17.1</jackson.version>
     <commons-lang3.version>3.14.0</commons-lang3.version>
     <dotenv.version>2.3.2</dotenv.version>
-      <retrofit.version>2.11.0</retrofit.version>
+    <retrofit.version>2.11.0</retrofit.version>
     <exec.mainClass>org.fastpinpon.simulation.SimulationApp</exec.mainClass>
   </properties>
 
@@ -47,6 +47,18 @@
       <artifactId>dotenv-java</artifactId>
       <version>${dotenv.version}</version>
     </dependency>
+
+    <dependency>
+      <groupId>com.squareup.retrofit2</groupId>
+      <artifactId>retrofit</artifactId>
+      <version>${retrofit.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.squareup.retrofit2</groupId>
+      <artifactId>converter-jackson</artifactId>
+      <version>${retrofit.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -64,17 +76,6 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-
-        <dependency>
-          <groupId>com.squareup.retrofit2</groupId>
-          <artifactId>retrofit</artifactId>
-          <version>${retrofit.version}</version>
-        </dependency>
-        <dependency>
-          <groupId>com.squareup.retrofit2</groupId>
-          <artifactId>converter-jackson</artifactId>
-          <version>${retrofit.version}</version>
-        </dependency>
         <version>3.3.0</version>
         <configuration>
           <mainClass>${exec.mainClass}</mainClass>

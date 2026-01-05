@@ -12,7 +12,7 @@ RUN mvn -q -B package -DskipTests
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
-COPY --from=build /workspace/target/*-SNAPSHOT.jar /app/app.jar
+COPY --from=build /workspace/target/simulation-*-SNAPSHOT.jar /app/app.jar
 ENV API_BASE_URL=http://api:8080
 
 ENTRYPOINT ["java","-jar","/app/app.jar"]

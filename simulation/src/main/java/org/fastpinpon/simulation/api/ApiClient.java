@@ -1,6 +1,7 @@
 package org.fastpinpon.simulation.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import okhttp3.OkHttpClient;
 import org.fastpinpon.simulation.model.Incident;
 import retrofit2.Call;
@@ -81,14 +82,16 @@ public final class ApiClient {
             if (dto.id == null) {
                 continue;
             }
+            Double lat = dto.latitude != null ? dto.latitude : (dto.location != null ? dto.location.latitude : null);
+            Double lon = dto.longitude != null ? dto.longitude : (dto.location != null ? dto.location.longitude : null);
             res.add(new UnitInfo(
                     dto.id,
                     nvl(dto.call_sign, dto.id),
                     nvl(dto.home_base, ""),
                     nvl(dto.unit_type_code, ""),
                     nvl(dto.status, ""),
-                    dto.latitude,
-                    dto.longitude
+                    lat,
+                    lon
             ));
         }
         return res;
@@ -334,6 +337,9 @@ public final class ApiClient {
         @POST("/v1/interventions")
         Call<IdDto> createIntervention(@Body CreateInterventionRequest body);
 
+        @POST("/v1/units")
+        Call<IdDto> createUnit(@Body CreateUnitRequest body);
+
         @POST("/v1/interventions/{interventionId}/assignments")
         Call<IdDto> assignUnit(@Path("interventionId") String interventionId, @Body AssignUnitRequest body);
 
@@ -356,6 +362,7 @@ public final class ApiClient {
         Call<Void> logEvent(@Path("eventId") String eventId, @Body HeartbeatRequest body);
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private static final class UnitDto {
         public String id;
         public String call_sign;
@@ -364,12 +371,16 @@ public final class ApiClient {
         public String status;
         public Double latitude;
         public Double longitude;
+        public LocationDto location;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private static final class CodeDto {
         public String code;
+        public String name;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private static final class IdDto {
         public String id;
     }
@@ -422,6 +433,24 @@ public final class ApiClient {
         }
     }
 
+    private static final class CreateUnitRequest {
+        public final String call_sign;
+        public final String unit_type_code;
+        public final String home_base;
+        public final String status;
+        public final double latitude;
+        public final double longitude;
+
+        CreateUnitRequest(String callSign, String unitTypeCode, String homeBase, String status, double latitude, double longitude) {
+            this.call_sign = callSign;
+            this.unit_type_code = unitTypeCode;
+            this.home_base = homeBase;
+            this.status = status;
+            this.latitude = latitude;
+            this.longitude = longitude;
+        }
+    }
+
     private static final class LocationRequest {
         public final double latitude;
         public final double longitude;
@@ -432,6 +461,12 @@ public final class ApiClient {
             this.longitude = longitude;
             this.recorded_at = recordedAt;
         }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static final class LocationDto {
+        public Double latitude;
+        public Double longitude;
     }
 
     private static final class HeartbeatRequest {
