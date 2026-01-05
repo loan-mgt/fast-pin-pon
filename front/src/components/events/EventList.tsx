@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { JSX } from 'react'
 import type { EventSummary } from '../../types'
 import { formatTimestamp, severityLabel } from '../../utils/format'
@@ -5,9 +6,18 @@ import { formatTimestamp, severityLabel } from '../../utils/format'
 interface EventListProps {
     events: EventSummary[]
     error: string | null
+    onSelect?: (eventId: string) => void
+    selectedEventId?: string | null
 }
 
-export function EventList({ events, error }: Readonly<EventListProps>): JSX.Element {
+export function EventList({ events, error, onSelect, selectedEventId }: Readonly<EventListProps>): JSX.Element {
+    const selectedRef = useRef<HTMLButtonElement | null>(null)
+
+    useEffect(() => {
+        if (selectedRef.current) {
+            selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+    }, [selectedEventId])
     if (error) {
         return <p className="text-rose-300 text-sm">{error}</p>
     }
@@ -19,9 +29,16 @@ export function EventList({ events, error }: Readonly<EventListProps>): JSX.Elem
     return (
         <div className="space-y-3">
             {events.map((event) => (
-                <article
+                <button
                     key={event.id}
-                    className="space-y-2 bg-slate-800/50 backdrop-blur-sm p-3 border border-blue-500/10 rounded-xl hover:border-blue-500/30 transition-colors"
+                    type="button"
+                    ref={selectedEventId === event.id ? selectedRef : null}
+                    onClick={() => onSelect?.(event.id)}
+                    className={`w-full text-left space-y-2 backdrop-blur-sm p-3 border rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
+                        selectedEventId === event.id
+                            ? 'bg-blue-900/60 border-blue-400/60'
+                            : 'bg-slate-800/50 border-blue-500/10 hover:border-blue-500/30'
+                    }`}
                 >
                     <div className="flex justify-between items-center gap-2">
                         <h3 className="font-semibold text-white text-sm">{event.title}</h3>
@@ -38,7 +55,7 @@ export function EventList({ events, error }: Readonly<EventListProps>): JSX.Elem
                             </span>
                         )}
                     </div>
-                </article>
+                </button>
             ))}
         </div>
     )
