@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { EventSummary, UnitSummary } from '../../types'
-import { STATUS_COLORS, formatTimestamp } from '../../utils/format'
+import { STATUS_COLORS } from '../../utils/format'
 
 const DEFAULT_CENTER: [number, number] = [4.8467, 45.7485]
 const DEFAULT_ZOOM = 11
@@ -12,9 +12,11 @@ const MAP_STATE_KEY = 'mapState'
 interface MapContainerProps {
     events: EventSummary[]
     units: UnitSummary[]
+    onEventSelect?: (eventId: string) => void
+    selectedEventId?: string | null
 }
 
-export function MapContainer({ events, units }: Readonly<MapContainerProps>): JSX.Element {
+export function MapContainer({ events, units, onEventSelect, selectedEventId }: Readonly<MapContainerProps>): JSX.Element {
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const eventMarkersRef = useRef<maplibregl.Marker[]>([])
@@ -107,50 +109,49 @@ export function MapContainer({ events, units }: Readonly<MapContainerProps>): JS
             const { event, lng, lat } = location
 
             // Create custom pulsing element for events
-            const el = document.createElement('div')
-            el.className = 'event-marker'
-            el.innerHTML = `
-        <div style="
-          position: relative;
-          width: 16px;
-          height: 16px;
-        ">
-          <div style="
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: #ef4444;
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-          "></div>
-          <div style="
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: #ef4444;
-            border-radius: 50%;
-            animation: pulse 2s ease-out infinite;
-            opacity: 0.6;
-          "></div>
-        </div>
-      `
+                        const isSelected = selectedEventId === event.id
+
+                        const el = document.createElement('div')
+                        el.className = 'event-marker'
+                        el.style.cursor = 'pointer'
+                        el.innerHTML = `
+                <div style="
+                    position: relative;
+                    width: ${isSelected ? '20px' : '16px'};
+                    height: ${isSelected ? '20px' : '16px'};
+                ">
+                    <div style="
+                        position: absolute;
+                        width: 100%;
+                        height: 100%;
+                        background-color: ${isSelected ? '#22d3ee' : '#ef4444'};
+                        border: ${isSelected ? '3px solid #0ea5e9' : '2px solid white'};
+                        border-radius: 50%;
+                        box-shadow: ${isSelected ? '0 0 14px rgba(59,130,246,0.9)' : '0 2px 8px rgba(0,0,0,0.6)'};
+                    "></div>
+                    <div style="
+                        position: absolute;
+                        width: 100%;
+                        height: 100%;
+                        background-color: ${isSelected ? '#3b82f6' : '#ef4444'};
+                        border-radius: 50%;
+                        animation: pulse 2s ease-out infinite;
+                        opacity: 0.6;
+                    "></div>
+                </div>
+            `
 
             const marker = new maplibregl.Marker({ element: el })
                 .setLngLat([lng, lat])
-                .setPopup(
-                    new maplibregl.Popup({ offset: 16, className: 'event-popup' }).setHTML(
-                        `<div style="font-family: system-ui, sans-serif;">
-               <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${event.title}</div>
-               <div style="font-size: 12px; color: #666;">${formatTimestamp(event.reported_at)}</div>
-             </div>`,
-                    ),
-                )
                 .addTo(map)
+
+            el.addEventListener('click', () => {
+                onEventSelect?.(event.id)
+            })
 
             eventMarkersRef.current.push(marker)
         }
-    }, [events])
+    }, [events, onEventSelect, selectedEventId])
 
     // Effect for unit markers
     useEffect(() => {
