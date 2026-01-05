@@ -13,7 +13,7 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # Create non-root user for runtime safety
-RUN useradd -m appuser && chown -R appuser /app
+RUN useradd -m appuser && mkdir -p /app/logs/fast-pin-pon && chown -R appuser /app
 
 COPY --from=build /workspace/target/simulation-*-SNAPSHOT.jar /app/app.jar
 ENV API_BASE_URL=http://api:8080
