@@ -111,6 +111,25 @@ Please follow this file structure:
   - Validate end-to-end system functionality (capture, processing/decision, restitution)
 
 
+### Keycloak Integration
+The system uses **Keycloak** as the central authentication and authorization server. All applications (Grafana, SonarQube, API) are integrated with Keycloak using OpenID Connect (OIDC) protocol.
+
+**Keycloak Configuration:**
+- **Realm:** `sdmis-realm`
+- **Port:** `8080`
+- **Protocol:** OpenID Connect (OIDC)
+
+### Role-Based Access Control (RBAC)
+The system implements a **three-tier role hierarchy** to control access to different resources and dashboards:
+
+| Role | Access Level | Permissions |
+|------|-------------|-------------|
+| **classic** | Basic | Access to **Map** view only |
+| **superieur** | Intermediate | Access to **Map** + **Dashboard** |
+| **it** | Administrator | Full access: **Map** + **Dashboard** + **Log** |
+
+
+
 ## Database
 
 ```mermaid
