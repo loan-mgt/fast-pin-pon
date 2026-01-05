@@ -30,14 +30,12 @@ services:
       options:
         max-size: 100m
         max-file: "3"
-
   simulation:
     image: ghcr.io/loan-mgt/fast-pin-pon/simulation:main
     depends_on:
       - api
     environment:
       - API_BASE_URL=http://api:8080
-
   postgres:
     image: ghcr.io/loan-mgt/fast-pin-pon/db:main
     container_name: fast-pin-pon-postgres
@@ -151,19 +149,17 @@ services:
       - default
       - internal-grafana
       - internal-keycloak
-  
   loki:
     image: ghcr.io/loan-mgt/fast-pin-pon/infra/loki:latest
     container_name: fast-pin-pon-loki
     restart: unless-stopped
     ports:
-      - "3100:3100"
+      - 3100:3100
     volumes:
       - loki-data:/loki
     command: -config.file=/etc/loki/local-config.yml
     networks:
       - internal-grafana
-    
   promtail:
     image: ghcr.io/loan-mgt/fast-pin-pon/infra/promtail:latest
     container_name: fast-pin-pon-promtail
@@ -178,7 +174,7 @@ networks:
   internal-grafana: null
   default: null
 volumes:
-  postgres-data:
-  kc-db-data:
-  loki-data:
-  logs:
+  postgres-data: null
+  kc-db-data: null
+  loki-data: null
+  logs: null
