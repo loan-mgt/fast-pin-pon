@@ -51,3 +51,12 @@ services:
     build:
       context: ./infra/promtail
       dockerfile: Dockerfile
+
+  simulation:
+    build:
+      context: ./simulation
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    environment:
+      - API_BASE_URL=http://api:8080
