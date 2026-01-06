@@ -69,6 +69,7 @@ services:
     networks:
       - grafana
       - keycloak
+      - internal
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest

@@ -1,9 +1,10 @@
-include:
-  - docker-compose.prod.yml
-
 services:
   api:
+    extends:
+      file: docker-compose.prod.yml
+      service: api
     image: fast-pin-pon-api-dev
+    container_name: fast-pin-pon-api-dev
     build:
       context: api/
       dockerfile: Dockerfile
@@ -13,8 +14,18 @@ services:
     ports:
       - "8081:8080"
 
+  postgres:
+    extends:
+      file: docker-compose.prod.yml
+      service: postgres
+    container_name: fast-pin-pon-postgres-dev
+
   front:
+    extends:
+      file: docker-compose.prod.yml
+      service: front
     image: fast-pin-pon-front-dev
+    container_name: fast-pin-pon-front-dev
     build:
       context: front/
       dockerfile: Dockerfile
@@ -25,7 +36,11 @@ services:
       - "8080:8080"
 
   simulation:
+    extends:
+      file: docker-compose.prod.yml
+      service: simulation
     image: fast-pin-pon-simulation-dev
+    container_name: fast-pin-pon-simulation-dev
     build:
       context: ./simulation
       dockerfile: Dockerfile
@@ -35,7 +50,11 @@ services:
       - API_BASE_URL=http://api:8080
 
   maptiler-server:
+    extends:
+      file: docker-compose.prod.yml
+      service: maptiler-server
     image: maptiler-server-dev
+    container_name: fast-pin-pon-map-dev
     build:
       context: ./maptiler
       dockerfile: Dockerfile
@@ -43,33 +62,84 @@ services:
       - "3650:8080"
 
   keycloak_web:
+    extends:
+      file: docker-compose.prod.yml
+      service: keycloak_web
     image: keycloak-web-dev
+    container_name: fast-pin-pon-keycloak-dev
     build:
       context: ./infra/keycloak
       dockerfile: Dockerfile
       args:
         - GRAFANA_URL=http://localhost:3000
+    environment:
+      - KC_HOSTNAME=localhost
+      - KC_HOSTNAME_PORT=8082
+
+  keycloakdb:
+    extends:
+      file: docker-compose.prod.yml
+      service: keycloakdb
+    container_name: fast-pin-pon-keycloak-db-dev
 
   grafana:
+    extends:
+      file: docker-compose.prod.yml
+      service: grafana
     image: grafana-dev
+    container_name: fast-pin-pon-grafana-dev
     build:
       context: ./infra/grafana
       dockerfile: Dockerfile
     profiles: ["monitoring"]
+    environment:
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: http://localhost:8082/realms/sdmis-realm/protocol/openid-connect/auth
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: http://fast-pin-pon-keycloak-dev:8080/realms/sdmis-realm/protocol/openid-connect/token
+      GF_AUTH_GENERIC_OAUTH_API_URL: http://fast-pin-pon-keycloak-dev:8080/realms/sdmis-realm/protocol/openid-connect/userinfo
     ports:
       - "3000:3000"
 
   loki:
+    extends:
+      file: docker-compose.prod.yml
+      service: loki
     image: loki-dev
+    container_name: fast-pin-pon-loki-dev
     build:
       context: ./infra/loki
       dockerfile: Dockerfile
     profiles: ["monitoring"]
-  
+
   promtail:
+    extends:
+      file: docker-compose.prod.yml
+      service: promtail
     image: promtail-dev
+    container_name: fast-pin-pon-promtail-dev
     build:
       context: ./infra/promtail
       dockerfile: Dockerfile
     profiles: ["monitoring"]
+
+  prometheus:
+    image: prometheus-dev
+    container_name: fast-pin-pon-prometheus-dev
+    build:
+      context: ./infra/prometheus
+      dockerfile: Dockerfile
+    profiles: ["monitoring"]
+
+networks:
+  internal: {}
+  internal-keycloak: {}
+  internal-grafana: {}
+  default: {}
+
+volumes:
+  postgres-data: {}
+  kc-db-data: {}
+  loki-data: {}
+  logs: {}
+
 
