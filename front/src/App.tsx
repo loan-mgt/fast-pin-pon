@@ -49,7 +49,7 @@ export function App() {
 
     try {
       const [eventsData, unitsData] = await Promise.all([
-        fastPinPonService.getEvents(25, token ?? undefined),
+        fastPinPonService.getEvents(25, token ?? undefined, ['completed']),
         fastPinPonService.getUnits(token ?? undefined),
       ])
 

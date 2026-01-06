@@ -89,19 +89,41 @@ func (s *Server) handleListUnitTypes(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param limit query int false "Maximum results" default(25)
 // @Param offset query int false "Results offset" default(0)
+// @Param deny_status query string false "Comma-separated intervention statuses to exclude (e.g., completed,cancelled)"
 // @Success 200 {array} EventSummaryResponse
 // @Failure 500 {object} APIError
 // @Route /v1/events [get]
 func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	limit, offset := s.paginate(r, 25)
+	denyParam := r.URL.Query().Get("deny_status")
 	rows, err := s.queries.ListEvents(ctx, db.ListEventsParams{Limit: limit, Offset: offset})
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to list events", err.Error())
 		return
 	}
+	// Optional denylist filtering by intervention status
+	denyParam = r.URL.Query().Get("deny_status")
+	var denySet map[db.InterventionStatus]struct{}
+	if denyParam != "" {
+		parts := splitCSV(denyParam)
+		denySet = make(map[db.InterventionStatus]struct{}, len(parts))
+		for _, p := range parts {
+			s := db.InterventionStatus(p)
+			switch s {
+			case db.InterventionStatusCreated, db.InterventionStatusOnSite, db.InterventionStatusCompleted, db.InterventionStatusCancelled:
+				denySet[s] = struct{}{}
+			}
+		}
+	}
+
 	resp := make([]EventSummaryResponse, 0, len(rows))
 	for _, row := range rows {
+		if denySet != nil && row.InterventionStatus.Valid {
+			if _, denied := denySet[row.InterventionStatus.InterventionStatus]; denied {
+				continue
+			}
+		}
 		assigned, assignErr := s.queries.ListUnitsAssignedToEvent(ctx, row.ID)
 		if assignErr != nil {
 			s.writeError(w, http.StatusInternalServerError, "failed to list assigned units", assignErr.Error())
@@ -119,7 +141,7 @@ func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 				MicrobitID:   u.MicrobitID,
 				Longitude:    u.Longitude,
 				Latitude:     u.Latitude,
-				LastContact:  u.LastContact,
+				LastContact:  u.LastContactAt,
 				CreatedAt:    u.CreatedAt,
 				UpdatedAt:    u.UpdatedAt,
 			}))
@@ -128,6 +150,29 @@ func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, mapEventSummary(row, assignedUnits))
 	}
 	s.writeJSON(w, http.StatusOK, resp)
+}
+
+// splitCSV trims and splits a comma-separated list.
+func splitCSV(s string) []string {
+	out := make([]string, 0)
+	start := 0
+	for i := 0; i <= len(s); i++ {
+		if i == len(s) || s[i] == ',' {
+			token := s[start:i]
+			// trim spaces
+			for len(token) > 0 && (token[0] == ' ' || token[0] == '\t') {
+				token = token[1:]
+			}
+			for len(token) > 0 && (token[len(token)-1] == ' ' || token[len(token)-1] == '\t') {
+				token = token[:len(token)-1]
+			}
+			if token != "" {
+				out = append(out, token)
+			}
+			start = i + 1
+		}
+	}
+	return out
 }
 
 // handleCreateEvent godoc
@@ -220,7 +265,7 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 			MicrobitID:   u.MicrobitID,
 			Longitude:    u.Longitude,
 			Latitude:     u.Latitude,
-			LastContact:  u.LastContact,
+			LastContact:  u.LastContactAt,
 			CreatedAt:    u.CreatedAt,
 			UpdatedAt:    u.UpdatedAt,
 		}))

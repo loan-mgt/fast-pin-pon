@@ -1,8 +1,11 @@
+import { useCallback, useState } from 'react'
 import type { JSX } from 'react'
 import { Card } from '../ui/card'
 import type { EventSummary } from '../../types'
 import type { Permissions } from '../../auth/AuthProvider'
 import { formatTimestamp, severityLabel } from '../../utils/format'
+import { fastPinPonService } from '../../services/FastPinPonService'
+import { useAuth } from '../../auth/AuthProvider'
 
 interface EventDetailPanelProps {
   readonly event: EventSummary | null
@@ -16,6 +19,28 @@ export function EventDetailPanel({ event, onClose, permissions }: EventDetailPan
   const canAssign = permissions?.canAssignUnits ?? false
   const canDelete = permissions?.canDeleteIncident ?? false
   const assignedUnits = event.assigned_units ?? []
+  const { token } = useAuth()
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDeleteIncident = useCallback(async () => {
+    if (!canDelete || isDeleting) return
+    if (!event.intervention_id) return
+
+    const confirmed = globalThis.confirm('Confirmer la fermeture de l\'incident ?')
+    if (!confirmed) return
+
+    setIsDeleting(true)
+    try {
+      await fastPinPonService.updateInterventionStatus(event.intervention_id, 'completed', token ?? undefined)
+
+      onClose()
+    } catch (err) {
+      console.error('Failed to complete incident', err)
+      globalThis.alert('Impossible de clore l\'incident. Veuillez réessayer.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [assignedUnits, canDelete, event.intervention_id, isDeleting, onClose, token])
 
   return (
     <Card
@@ -37,7 +62,8 @@ export function EventDetailPanel({ event, onClose, permissions }: EventDetailPan
             }`}
             aria-label="Supprimer l'incident"
             title="Supprimer l'incident"
-            disabled={!canDelete}
+            disabled={!canDelete || isDeleting}
+            onClick={handleDeleteIncident}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

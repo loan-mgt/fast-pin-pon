@@ -167,16 +167,16 @@ SELECT
     ia.dispatched_at,
     ia.arrived_at,
     ia.released_at,
-	u.call_sign,
-	u.unit_type_code,
-	u.status AS unit_status,
-	u.home_base,
-	u.microbit_id,
-	(COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS longitude,
-	(COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS latitude,
-	u.last_contact_at,
-	u.created_at,
-	u.updated_at
+    u.call_sign,
+    u.unit_type_code,
+    u.status AS unit_status,
+    u.home_base,
+    u.microbit_id,
+    (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    u.last_contact_at,
+    u.created_at,
+    u.updated_at
 FROM intervention_assignments ia
 JOIN units u ON u.id = ia.unit_id
 WHERE ia.intervention_id = $1
@@ -243,72 +243,6 @@ func (q *Queries) ListAssignmentsByIntervention(ctx context.Context, interventio
 	return items, nil
 }
 
-const listUnitsAssignedToEvent = `-- name: ListUnitsAssignedToEvent :many
-SELECT
-	u.id,
-	u.call_sign,
-	u.unit_type_code,
-	u.home_base,
-	u.status,
-	u.microbit_id,
-	(COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS longitude,
-	(COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS latitude,
-	u.last_contact_at,
-	u.created_at,
-	u.updated_at
-FROM intervention_assignments ia
-JOIN interventions i ON ia.intervention_id = i.id
-JOIN units u ON ia.unit_id = u.id
-WHERE i.event_id = $1 AND ia.released_at IS NULL
-ORDER BY ia.dispatched_at DESC
-`
-
-type ListUnitsAssignedToEventRow struct {
-	ID           pgtype.UUID        `json:"id"`
-	CallSign     string             `json:"call_sign"`
-	UnitTypeCode string             `json:"unit_type_code"`
-	HomeBase     *string            `json:"home_base"`
-	Status       UnitStatus         `json:"status"`
-	MicrobitID   *string            `json:"microbit_id"`
-	Longitude    float64            `json:"longitude"`
-	Latitude     float64            `json:"latitude"`
-	LastContact  pgtype.Timestamptz `json:"last_contact_at"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-}
-
-func (q *Queries) ListUnitsAssignedToEvent(ctx context.Context, eventID pgtype.UUID) ([]ListUnitsAssignedToEventRow, error) {
-	rows, err := q.db.Query(ctx, listUnitsAssignedToEvent, eventID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListUnitsAssignedToEventRow
-	for rows.Next() {
-		var i ListUnitsAssignedToEventRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.CallSign,
-			&i.UnitTypeCode,
-			&i.HomeBase,
-			&i.Status,
-			&i.MicrobitID,
-			&i.Longitude,
-			&i.Latitude,
-			&i.LastContact,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listInterventionsByEvent = `-- name: ListInterventionsByEvent :many
 SELECT
     id,
@@ -346,6 +280,72 @@ func (q *Queries) ListInterventionsByEvent(ctx context.Context, eventID pgtype.U
 			&i.CreatedAt,
 			&i.StartedAt,
 			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnitsAssignedToEvent = `-- name: ListUnitsAssignedToEvent :many
+SELECT
+    u.id,
+    u.call_sign,
+    u.unit_type_code,
+    u.home_base,
+    u.status,
+    u.microbit_id,
+    (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    u.last_contact_at,
+    u.created_at,
+    u.updated_at
+FROM intervention_assignments ia
+JOIN interventions i ON ia.intervention_id = i.id
+JOIN units u ON ia.unit_id = u.id
+WHERE i.event_id = $1 AND ia.released_at IS NULL
+ORDER BY ia.dispatched_at DESC
+`
+
+type ListUnitsAssignedToEventRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CallSign      string             `json:"call_sign"`
+	UnitTypeCode  string             `json:"unit_type_code"`
+	HomeBase      *string            `json:"home_base"`
+	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) ListUnitsAssignedToEvent(ctx context.Context, eventID pgtype.UUID) ([]ListUnitsAssignedToEventRow, error) {
+	rows, err := q.db.Query(ctx, listUnitsAssignedToEvent, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUnitsAssignedToEventRow
+	for rows.Next() {
+		var i ListUnitsAssignedToEventRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CallSign,
+			&i.UnitTypeCode,
+			&i.HomeBase,
+			&i.Status,
+			&i.MicrobitID,
+			&i.Longitude,
+			&i.Latitude,
+			&i.LastContactAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
