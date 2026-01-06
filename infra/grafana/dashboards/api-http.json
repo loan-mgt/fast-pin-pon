@@ -31,7 +31,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P1809F7CD0C75ACF3"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -85,7 +85,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
+            "uid": "prometheus"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.50, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[$__rate_interval])))",
@@ -96,7 +96,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
+            "uid": "prometheus"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.95, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[$__rate_interval])))",
@@ -107,7 +107,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
+            "uid": "prometheus"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.99, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[$__rate_interval])))",
@@ -122,7 +122,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P1809F7CD0C75ACF3"
+            "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -180,7 +180,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
+            "uid": "prometheus"
           },
           "editorMode": "code",
           "expr": "sum by (route, method, status) (rate(api_http_requests_total{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[$__rate_interval]))",
