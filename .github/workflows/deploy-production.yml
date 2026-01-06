@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+
 jobs:
   build-api:
     uses: ./.github/workflows/build-and-push.base.yml
