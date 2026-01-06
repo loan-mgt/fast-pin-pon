@@ -229,9 +229,11 @@ export function MapContainer({
         // Build a lookup of unit -> event from assigned units on events
         const unitToEvent = new Map<string, string>()
         for (const event of events) {
-            event.assigned_units?.forEach((unit) => {
-                unitToEvent.set(unit.id, event.id)
-            })
+            if (event.assigned_units) {
+                for (const unit of event.assigned_units) {
+                    unitToEvent.set(unit.id, event.id)
+                }
+            }
         }
         const engagedStatuses = new Set(['on_site', 'under_way'])
 

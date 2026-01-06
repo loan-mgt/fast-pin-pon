@@ -16,25 +16,24 @@ interface EventDetailPanelProps {
 }
 
 export function EventDetailPanel({ event, onClose, permissions, onRefresh }: EventDetailPanelProps): JSX.Element | null {
-  if (!event) return null
-
-  const canAssign = permissions?.canAssignUnits ?? false
-  const canDelete = permissions?.canDeleteIncident ?? false
-  const assignedUnits = event.assigned_units ?? []
   const { token } = useAuth()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
+  const canAssign = permissions?.canAssignUnits ?? false
+  const canDelete = permissions?.canDeleteIncident ?? false
+  const assignedUnits = event?.assigned_units ?? []
+
   const handleDeleteIncident = useCallback(async () => {
-    if (!canDelete || isDeleting) return
+    if (!event || !canDelete || isDeleting) return
     if (!event.intervention_id) return
 
     setShowConfirm(true)
-  }, [canDelete, event.intervention_id, isDeleting])
+  }, [canDelete, event, isDeleting])
 
   const confirmDelete = useCallback(async () => {
-    if (!event.intervention_id) return
+    if (!event?.intervention_id) return
 
     setShowConfirm(false)
     setIsDeleting(true)
@@ -51,7 +50,9 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh }: Eve
     } finally {
       setIsDeleting(false)
     }
-  }, [event.intervention_id, onClose, token])
+  }, [event, onClose, token, onRefresh])
+
+  if (!event) return null
 
   return (
     <>
