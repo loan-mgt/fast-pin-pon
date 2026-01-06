@@ -9,7 +9,12 @@ scrape_configs:
   - job_name: 'keycloak'
     metrics_path: /metrics
     static_configs:
-      - targets: ['keycloak_web_1:9000']
+      - targets: ['fast-pin-pon-keycloak:9000', 'keycloak_web:9000']
+
+  - job_name: 'api'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['fast-pin-pon-api:8080', 'api:8080']
 
   - job_name: 'cadvisor'
     static_configs:

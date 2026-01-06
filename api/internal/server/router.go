@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func (s *Server) routes() http.Handler {
@@ -14,6 +15,7 @@ func (s *Server) routes() http.Handler {
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
+	r.Use(s.metricsMiddleware)
 	r.Use(s.loggingMiddleware)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
@@ -54,6 +56,8 @@ func (s *Server) routes() http.Handler {
 		v1.Get("/units/by-microbit/{microbitID}", s.handleGetUnitByMicrobit)
 
 	})
+
+	r.Handle("/metrics", promhttp.Handler())
 
 	return r
 }
