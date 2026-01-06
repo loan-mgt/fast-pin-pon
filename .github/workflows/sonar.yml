@@ -27,6 +27,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Clear Maven Cache
+        run: rm -rf ~/.m2/repository
+
       - name: Build simulation (classes for Sonar)
         run: mvn -B -DskipTests package
         working-directory: simulation
