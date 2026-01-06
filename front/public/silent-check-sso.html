@@ -7,8 +7,7 @@
   <body>
     <script>
       // Used by Keycloak to perform silent SSO checks without user interaction
-      const root = globalThis;
-      root.parent?.postMessage(root.location.href, root.location.origin);
+      window.parent.postMessage(window.location.href, window.location.origin);
     </script>
   </body>
 </html>
