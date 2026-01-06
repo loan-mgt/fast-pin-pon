@@ -9,6 +9,8 @@ interface NavbarProps {
     onRefresh: () => void
     isSpinning: boolean
     lastUpdated: string
+    currentView: 'live' | 'dashboard'
+    onNavigate: (view: 'live' | 'dashboard') => void
     onLogout?: () => void
     userLabel?: string
 }
@@ -19,6 +21,8 @@ export function Navbar({
     onRefresh,
     isSpinning,
     lastUpdated,
+    currentView,
+    onNavigate,
     onLogout,
     userLabel,
 }: Readonly<NavbarProps>): JSX.Element {
@@ -27,9 +31,35 @@ export function Navbar({
             <div className="flex justify-between items-center gap-4 mx-auto mr-2 px-6 py-4 max-w-6xl">
                 <div>
                     <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Fast Pin Pon</p>
-                    <p className="font-semibold text-white text-lg">Live events</p>
+                    <p className="font-semibold text-white text-lg">{currentView === 'live' ? 'Live events' : 'Dashboard'}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 bg-slate-900/70 border border-slate-800 rounded-full px-1 py-1">
+                        <button
+                            type="button"
+                            onClick={() => onNavigate('live')}
+                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${
+                                currentView === 'live'
+                                    ? 'bg-slate-100 text-slate-950 shadow'
+                                    : 'text-slate-300 hover:text-white'
+                            }`}
+                            aria-pressed={currentView === 'live'}
+                        >
+                            Live
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onNavigate('dashboard')}
+                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${
+                                currentView === 'dashboard'
+                                    ? 'bg-slate-100 text-slate-950 shadow'
+                                    : 'text-slate-300 hover:text-white'
+                            }`}
+                            aria-pressed={currentView === 'dashboard'}
+                        >
+                            Dashboard
+                        </button>
+                    </div>
                     <div className="flex items-center gap-2 text-slate-400 text-xs">
                         <div className="hidden sm:block text-slate-400 text-xs">
                             <span className="opacity-70">Updated </span>

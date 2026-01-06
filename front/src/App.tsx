@@ -8,12 +8,14 @@ import { EventPanel } from './components/events/EventPanel'
 import { UnitPanel } from './components/units/UnitPanel'
 import { EventDetailPanel } from './components/events/EventDetailPanel'
 import { CreateEventModal } from './components/events/CreateEventModal'
+import { DashboardPage } from './components/dashboard/DashboardPage'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
 import type { EventSummary, UnitSummary } from './types'
 import { useAuth } from './auth/AuthProvider'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
 const MIN_SPIN_DURATION = 500
+type ViewMode = 'live' | 'dashboard'
 
 export function App() {
   const [events, setEvents] = useState<EventSummary[]>([])
@@ -26,6 +28,7 @@ export function App() {
     const saved = localStorage.getItem(REFRESH_INTERVAL_KEY)
     return saved ? Number.parseInt(saved, 10) : 10
   })
+  const [view, setView] = useState<ViewMode>('live')
   const {
     isAuthenticated,
     initializing: isAuthLoading,
@@ -170,35 +173,43 @@ export function App() {
         onRefresh={refreshData}
         isSpinning={isSpinning}
         lastUpdated={lastUpdated}
+        currentView={view}
+        onNavigate={setView}
         onLogout={logout}
         userLabel={userLabel}
       />
 
-      <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">
-        <MapContainer
-          events={sortedEvents}
-          units={units}
-          onEventSelect={handleEventSelect}
-          selectedEventId={selectedEventId}
-          onCreateAtLocation={(coords) => {
-            setPendingLocation(coords)
-            setIsCreateOpen(true)
-          }}
-        />
-        <UnitPanel units={units} />
-        <EventPanel
-          events={sortedEvents}
-          error={error}
-          onEventSelect={handleEventSelect}
-          selectedEventId={selectedEventId}
-        />
-        <EventDetailPanel
+      {view === 'dashboard' ? (
+        <main className="flex flex-1 min-h-[calc(100vh-72px)]">
+          <DashboardPage units={units} lastUpdated={lastUpdated} onRefresh={refreshData} />
+        </main>
+      ) : (
+        <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">
+          <MapContainer
+            events={sortedEvents}
+            units={units}
+            onEventSelect={handleEventSelect}
+            selectedEventId={selectedEventId}
+            onCreateAtLocation={(coords) => {
+              setPendingLocation(coords)
+              setIsCreateOpen(true)
+            }}
+          />
+          <UnitPanel units={units} />
+          <EventPanel
+            events={sortedEvents}
+            error={error}
+            onEventSelect={handleEventSelect}
+            selectedEventId={selectedEventId}
+          />
+          <EventDetailPanel
           event={selectedEvent}
           onClose={handleCloseDetail}
           permissions={permissions}
           onRefresh={refreshData}
         />
-      </main>
+        </main>
+      )}
 
       <CreateEventModal
         isOpen={isCreateOpen}
