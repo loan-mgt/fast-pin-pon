@@ -38,9 +38,7 @@ export function DashboardPage({ units, lastUpdated, onRefresh }: Readonly<Dashbo
   const [selectedUnitCallSign, setSelectedUnitCallSign] = useState<string | undefined>(undefined)
   const [selectedUnitMicrobitId, setSelectedUnitMicrobitId] = useState<string | undefined>(undefined)
   const microbitPool = ['MB001', 'MB002', 'MB003', 'MB004', 'MB005', 'MB006', 'MB007', 'MB008', 'MB009', 'MB010']
-  const usedMicrobits = new Set(
-    units.map((unit) => unit.microbit_id).filter((id): id is string => Boolean(id)),
-  )
+  const usedMicrobits = new Set(units.map((unit) => unit.microbit_id).filter(Boolean))
   const availableMicrobits = microbitPool.filter(
     (id) => !usedMicrobits.has(id) || selectedUnitMicrobitId === id,
   )
