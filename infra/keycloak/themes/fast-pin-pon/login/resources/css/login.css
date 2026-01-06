@@ -1,31 +1,45 @@
+html, body {
+  height: 100%;
+}
+
 body {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: radial-gradient(circle at 20% 20%, rgba(14,165,233,0.08), transparent 35%),
               radial-gradient(circle at 80% 30%, rgba(236,72,153,0.12), transparent 40%),
-              #0f172a;
+              #0b1220;
   color: #ffffff;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
+  padding: 32px 16px;
 }
 
 #kc-container-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 48px 16px;
+  width: 100%;
+}
+
+#kc-container {
+  width: 100%;
 }
 
 #kc-form-wrapper,
 #kc-info-wrapper,
 #kc-reset-password-form,
 #kc-register-form {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.02);
+  border-radius: 22px;
   padding: 32px;
-  backdrop-filter: blur(6px);
-  max-width: 460px;
-  width: 100%;
+  backdrop-filter: blur(10px);
+  max-width: 500px;
+  width: min(520px, 100%);
+  margin: 0 auto;
 }
 
 #kc-header {
@@ -38,14 +52,14 @@ body {
 }
 
 #kc-header-wrapper {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   color: #f8fafc;
   letter-spacing: 0.02em;
 }
 
 #kc-page-title {
-  color: #cbd5e1;
+  color: #e2e8f0;
 }
 
 .kcFormGroup label,
@@ -57,12 +71,12 @@ body {
 input[type="text"],
 input[type="password"],
 input[type="email"] {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  border-radius: 10px;
+  background: rgba(9, 12, 26, 0.75);
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  border-radius: 12px;
   color: #e2e8f0;
-  padding: 12px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  padding: 14px 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 input[type="text"]:focus,
@@ -71,6 +85,15 @@ input[type="email"]:focus {
   border-color: rgba(59, 130, 246, 0.8);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
   outline: none;
+  background: rgba(9, 12, 26, 0.9);
+}
+
+input[type="text"].error, input[type="password"].error, input[type="email"].error,
+input[type="text"].input-error, input[type="password"].input-error, input[type="email"].input-error,
+.pf-c-form-control[aria-invalid="true"] {
+  background: rgba(127, 29, 29, 0.25);
+  border-color: #f43f5e;
+  box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.25);
 }
 
 #kc-login, .btn-primary {
@@ -103,10 +126,12 @@ input[type="email"]:focus {
 }
 
 .alert-error {
-  background: #4a0d0d;
-  border: 1px solid #fca5a5;
-  color: #ffffff;
-  border-radius: 10px;
+  background: rgba(127, 29, 29, 0.8);
+  border: 1px solid rgba(244, 63, 94, 0.8);
+  color: #ffe4e6;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 10px;
 }
 
 .login-pf-page {
@@ -119,4 +144,9 @@ input[type="email"]:focus {
 
 #kc-form-buttons {
   margin-top: 16px;
+}
+
+.login-pf-page .card-pf {
+  background: transparent;
+  box-shadow: none;
 }
