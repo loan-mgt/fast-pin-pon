@@ -97,50 +97,6 @@ func (ns NullDecisionMode) Value() (driver.Value, error) {
 	return string(ns.DecisionMode), nil
 }
 
-type EventStatus string
-
-const (
-	EventStatusOpen         EventStatus = "open"
-	EventStatusAcknowledged EventStatus = "acknowledged"
-	EventStatusContained    EventStatus = "contained"
-	EventStatusClosed       EventStatus = "closed"
-)
-
-func (e *EventStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = EventStatus(s)
-	case string:
-		*e = EventStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for EventStatus: %T", src)
-	}
-	return nil
-}
-
-type NullEventStatus struct {
-	EventStatus EventStatus `json:"event_status"`
-	Valid       bool        `json:"valid"` // Valid is true if EventStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullEventStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.EventStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.EventStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullEventStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.EventStatus), nil
-}
-
 type InterventionStatus string
 
 const (
@@ -238,7 +194,6 @@ type Event struct {
 	Address       *string            `json:"address"`
 	Location      interface{}        `json:"location"`
 	Severity      int32              `json:"severity"`
-	Status        EventStatus        `json:"status"`
 	EventTypeCode string             `json:"event_type_code"`
 	ReportedAt    pgtype.Timestamptz `json:"reported_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`

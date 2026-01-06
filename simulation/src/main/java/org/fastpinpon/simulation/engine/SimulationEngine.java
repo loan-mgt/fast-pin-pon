@@ -56,8 +56,6 @@ public final class SimulationEngine {
     private static final String BASE_CUSSET = "Cusset";
 
     // Backend status constants to avoid enum mismatches
-    private static final String EVENT_STATUS_ACK = "acknowledged";
-    private static final String EVENT_STATUS_CLOSED = "closed";
     private static final String ASSIGNMENT_STATUS_ARRIVED = "arrived";
     private static final String ASSIGNMENT_STATUS_RELEASED = "released";
     // API intervention statuses (align with backend enum)
@@ -72,7 +70,6 @@ public final class SimulationEngine {
 
     private static final boolean PATCH_ASSIGNMENT_STATUS = true;
     private static final boolean PATCH_INTERVENTION_STATUS = true;
-    private static final boolean PATCH_EVENT_STATUS = true;
 
     private static final DateTimeFormatter INTERVENTION_TS =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
@@ -346,9 +343,6 @@ public final class SimulationEngine {
             if (inc.getEtat() == IncidentState.NOUVEAU && hasArrivedUnit(inc)) {
                 inc.setEtat(IncidentState.EN_COURS);
                 inc.setLastUpdate(now);
-                if (PATCH_EVENT_STATUS) {
-                    api.updateEventStatus(inc.getEventId(), EVENT_STATUS_ACK);
-                }
                 if (inc.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
                     api.updateInterventionStatus(inc.getInterventionId(), INTERVENTION_STATUS_ON_SITE);
                 }
@@ -376,9 +370,6 @@ public final class SimulationEngine {
         inc.setLastUpdate(Instant.now());
         if (LOG.isLoggable(Level.INFO)) {
             LOG.log(Level.INFO, "{0}{1} resolved ({2})", new Object[]{SIM_INCIDENT_PREFIX, inc.getNumber(), reason});
-        }
-        if (PATCH_EVENT_STATUS) {
-            api.updateEventStatus(inc.getEventId(), EVENT_STATUS_CLOSED);
         }
         if (inc.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
             api.updateInterventionStatus(inc.getInterventionId(), INTERVENTION_STATUS_COMPLETED);

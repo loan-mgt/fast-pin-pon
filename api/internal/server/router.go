@@ -33,7 +33,6 @@ func (s *Server) routes() http.Handler {
 		v1.Get("/events", s.handleListEvents)
 		v1.Post("/events", s.handleCreateEvent)
 		v1.Get("/events/{eventID}", s.handleGetEvent)
-		v1.Patch("/events/{eventID}/status", s.handleUpdateEventStatus)
 		v1.Get("/events/{eventID}/logs", s.handleListEventLogs)
 		v1.Post("/events/{eventID}/logs", s.handleCreateEventLog)
 		v1.Get("/events/{eventID}/interventions", s.handleListInterventionsForEvent)

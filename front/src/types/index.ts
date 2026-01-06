@@ -11,7 +11,8 @@ export type EventSummary = {
     address?: string
     location: GeoPoint
     severity: number
-    status: string
+    intervention_id?: string
+    intervention_status?: string
     event_type_code: string
     event_type_name: string
     reported_at: string
