@@ -72,6 +72,25 @@ class FastPinPonService {
     }
   }
 
+  async assignMicrobit(unitId: string, microbitId: string, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/units/${unitId}/microbit`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.buildHeaders(token),
+      },
+      body: JSON.stringify({ microbit_id: microbitId }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      if (response.status === 409) {
+        throw new Error('Ce microbit est déjà assigné à une autre unité.')
+      }
+      throw new Error(`Failed to assign microbit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
   async updateInterventionStatus(interventionId: string, status: InterventionStatus, token?: string): Promise<void> {
     const response = await fetch(`${this.API_BASE_URL}/interventions/${interventionId}/status`, {
       method: 'PATCH',
