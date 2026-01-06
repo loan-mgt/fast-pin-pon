@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public final class Incident {
 
-    private final UUID id = UUID.randomUUID();
+    private UUID id = UUID.randomUUID();
     private final int number;
     private final Instant createdAt = Instant.now();
 
@@ -19,6 +19,11 @@ public final class Incident {
     private String interventionId;
 
     public Incident(int number, IncidentType type, double lat, double lon, int gravite) {
+        this(UUID.randomUUID(), number, type, lat, lon, gravite);
+    }
+
+    public Incident(UUID id, int number, IncidentType type, double lat, double lon, int gravite) {
+        this.id = id;
         this.number = number;
         this.type = type;
         this.lat = lat;
@@ -28,6 +33,10 @@ public final class Incident {
 
     public UUID getId() {
         return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
     }
 
     public int getNumber() {

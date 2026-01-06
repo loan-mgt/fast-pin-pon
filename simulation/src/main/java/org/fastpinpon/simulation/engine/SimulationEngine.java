@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -59,13 +60,14 @@ public final class SimulationEngine {
     private static final String EVENT_STATUS_CLOSED = "closed";
     private static final String ASSIGNMENT_STATUS_ARRIVED = "arrived";
     private static final String ASSIGNMENT_STATUS_RELEASED = "released";
-    private static final String INTERVENTION_STATUS_EN_ROUTE = "en_route";
+    // API intervention statuses (align with backend enum)
+    private static final String INTERVENTION_STATUS_EN_ROUTE = "created"; // initial state accepted by API
     private static final String INTERVENTION_STATUS_ON_SITE = "on_site";
     private static final String INTERVENTION_STATUS_COMPLETED = "completed";
 
     // Using the API's current accepted unit statuses (avoid 400 from validator)
     private static final String UNIT_STATUS_AVAILABLE = "available";
-    private static final String UNIT_STATUS_EN_ROUTE = "en_route";
+    private static final String UNIT_STATUS_EN_ROUTE = "under_way";
     private static final String UNIT_STATUS_ON_SITE = "on_site";
 
     private static final boolean PATCH_ASSIGNMENT_STATUS = true;
@@ -244,8 +246,25 @@ public final class SimulationEngine {
     }
 
     private void createIncident(IncidentType type, double lat, double lon, int gravite) {
-        Incident incident = new Incident(++incidentSequence, type, lat, lon, gravite);
+        int number = ++incidentSequence;
+
+        String eventId = api.createEvent(type, number, lat, lon, gravite);
+        if (eventId == null) {
+            return;
+        }
+
+        UUID uuid;
+        try {
+            uuid = java.util.UUID.fromString(eventId);
+        } catch (Exception e) {
+            LOG.warning("Failed to parse eventId as UUID: " + eventId);
+            return;
+        }
+
+        Incident incident = new Incident(uuid, number, type, lat, lon, gravite);
+        incident.setEventId(eventId);
         incidents.add(incident);
+
         if (LOG.isLoggable(Level.INFO)) {
             LOG.log(Level.INFO, "\n{0}{1}: {2} | Type: {3} | G: {4} | Area: {5} | Loc: ({6})",
                     new Object[]{
@@ -258,12 +277,6 @@ public final class SimulationEngine {
                             String.format(Locale.US, "%.5f, %.5f", lat, lon)
                     });
         }
-
-        String eventId = api.createEvent(incident);
-        if (eventId == null) {
-            return;
-        }
-        incident.setEventId(eventId);
 
         String interventionId = api.createIntervention(eventId, gravite);
         if (interventionId != null) {

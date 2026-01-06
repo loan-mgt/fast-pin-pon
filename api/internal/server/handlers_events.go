@@ -220,8 +220,8 @@ func (s *Server) handleUpdateEventStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	row, err := s.queries.UpdateEventStatus(r.Context(), db.UpdateEventStatusParams{
-		ID:     eventID,
-		Status: db.EventStatus(req.Status),
+		ID:      eventID,
+		Column2: db.EventStatus(req.Status),
 	})
 	if err != nil {
 		if isNotFound(err) {
