@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Silent Check SSO</title>
+  </head>
+  <body>
+    <script>
+      // Used by Keycloak to perform silent SSO checks without user interaction
+      const root = globalThis;
+      root.parent?.postMessage(root.location.href, root.location.origin);
+    </script>
+  </body>
+</html>

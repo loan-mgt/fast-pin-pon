@@ -1,15 +1,21 @@
 import type { JSX } from 'react'
 import { Card } from '../ui/card'
 import type { EventSummary } from '../../types'
+import type { Permissions } from '../../auth/AuthProvider'
 import { formatTimestamp, severityLabel } from '../../utils/format'
 
 interface EventDetailPanelProps {
   readonly event: EventSummary | null
   readonly onClose: () => void
+  readonly permissions?: Permissions
 }
 
-export function EventDetailPanel({ event, onClose }: EventDetailPanelProps): JSX.Element | null {
+export function EventDetailPanel({ event, onClose, permissions }: EventDetailPanelProps): JSX.Element | null {
   if (!event) return null
+
+  const canAssign = permissions?.canAssignUnits ?? false
+  const canUpdateStatus = permissions?.canUpdateIncidentStatus ?? false
+  const canDelete = permissions?.canDeleteIncident ?? false
 
   return (
     <Card
@@ -53,6 +59,45 @@ export function EventDetailPanel({ event, onClose }: EventDetailPanelProps): JSX
             {event.location.latitude.toFixed(5)}, {event.location.longitude.toFixed(5)}
           </p>
         ) : null}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2 text-sm">
+        <button
+          type="button"
+          className={`px-3 py-1.5 rounded-md border transition-colors ${
+            canAssign
+              ? 'bg-blue-600/80 hover:bg-blue-500 text-white border-blue-500'
+              : 'bg-slate-800/60 text-slate-500 border-slate-700 cursor-not-allowed'
+          }`}
+          disabled={!canAssign}
+          aria-disabled={!canAssign}
+        >
+          Assigner une unité
+        </button>
+        <button
+          type="button"
+          className={`px-3 py-1.5 rounded-md border transition-colors ${
+            canUpdateStatus
+              ? 'bg-emerald-600/80 hover:bg-emerald-500 text-white border-emerald-500'
+              : 'bg-slate-800/60 text-slate-500 border-slate-700 cursor-not-allowed'
+          }`}
+          disabled={!canUpdateStatus}
+          aria-disabled={!canUpdateStatus}
+        >
+          Changer le statut
+        </button>
+        <button
+          type="button"
+          className={`px-3 py-1.5 rounded-md border transition-colors ${
+            canDelete
+              ? 'bg-rose-600/80 hover:bg-rose-500 text-white border-rose-500'
+              : 'bg-slate-800/60 text-slate-500 border-slate-700 cursor-not-allowed'
+          }`}
+          disabled={!canDelete}
+          aria-disabled={!canDelete}
+        >
+          Supprimer l'incident
+        </button>
       </div>
     </Card>
   )

@@ -50,6 +50,42 @@
   "roles": {
     "realm": [
       {
+        "id": "001ec310-e38a-430b-a706-38a9fb4e9ad2",
+        "name": "view-identity-providers",
+        "description": "",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
+        "attributes": {}
+      },
+      {
+        "id": "2f329ea2-c076-4131-8b7d-dca3b7eeeecf",
+        "name": "admin",
+        "description": "",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
+        "attributes": {}
+      },
+      {
+        "id": "5fdc03f9-df60-4d18-a6b4-69a039b19b2a",
+        "name": "access-map",
+        "description": "",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
+        "attributes": {}
+      },
+      {
+        "id": "9190ed12-bb6a-4c23-8a98-553769b36b98",
+        "name": "view-users",
+        "description": "",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
+        "attributes": {}
+      },
+      {
         "id": "75aba897-c5f3-4ed1-aac0-4f71af0e10c0",
         "name": "manage-users",
         "description": "",
@@ -77,15 +113,6 @@
         "attributes": {}
       },
       {
-        "id": "001ec310-e38a-430b-a706-38a9fb4e9ad2",
-        "name": "view-identity-providers",
-        "description": "",
-        "composite": false,
-        "clientRole": false,
-        "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
-        "attributes": {}
-      },
-      {
         "id": "523157a4-18bc-4783-9016-df58efd1e40e",
         "name": "manage-events",
         "description": "",
@@ -95,9 +122,33 @@
         "attributes": {}
       },
       {
+        "id": "17de930e-5ac7-47eb-afc0-a45171513e84",
+        "name": "it",
+        "description": "map, dashbaord, log",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "classic",
+            "superieur"
+          ]
+        },
+        "clientRole": false,
+        "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
+        "attributes": {}
+      },
+      {
         "id": "5275dcd2-c3ac-4d50-8a89-14572bc06061",
         "name": "manage-realm",
         "description": "",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
+        "attributes": {}
+      },
+      {
+        "id": "ba2b85cf-7989-449f-ae5c-7eab63c2bccf",
+        "name": "classic",
+        "description": "Map",
         "composite": false,
         "clientRole": false,
         "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
@@ -134,18 +185,23 @@
         "attributes": {}
       },
       {
-        "id": "7524bd26-a2f8-4453-a98e-1de657297d07",
-        "name": "offline_access",
-        "description": "${role_offline-access}",
-        "composite": false,
+        "id": "0a1ac5c9-e08e-4e48-afee-67c4d892edb8",
+        "name": "superieur",
+        "description": "Map, dashboard",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "classic"
+          ]
+        },
         "clientRole": false,
         "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
         "attributes": {}
       },
       {
-        "id": "9190ed12-bb6a-4c23-8a98-553769b36b98",
-        "name": "view-users",
-        "description": "",
+        "id": "7524bd26-a2f8-4453-a98e-1de657297d07",
+        "name": "offline_access",
+        "description": "${role_offline-access}",
         "composite": false,
         "clientRole": false,
         "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
@@ -217,11 +273,11 @@
                 "query-users",
                 "manage-events",
                 "query-clients",
-                "view-clients",
                 "manage-identity-providers",
-                "view-events",
-                "manage-authorization",
+                "view-clients",
                 "impersonation",
+                "manage-authorization",
+                "view-events",
                 "query-realms",
                 "manage-realm",
                 "manage-clients",
@@ -771,10 +827,10 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "**********",
       "redirectUris": [
-        "__GRAFANA_URL__/login/generic_oauth"
+        "https://dash.fast-pin-pon.4loop.org/login/generic_oauth"
       ],
       "webOrigins": [
-        "__GRAFANA_URL__"
+        "https://dash.fast-pin-pon.4loop.org"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -792,6 +848,7 @@
         "client.secret.creation.time": "1765373468",
         "backchannel.logout.session.required": "true",
         "standard.token.exchange.enabled": "false",
+        "post.logout.redirect.uris": "+",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false"
       },
@@ -948,10 +1005,12 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
+        "http://localhost:8080/*",
         "https://fast-pin-pon.4loop.org/*"
       ],
       "webOrigins": [
-        "https://fast-pin-pon.4loop.org"
+        "https://fast-pin-pon.4loop.org",
+        "http://localhost:8080"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -964,13 +1023,31 @@
       "frontchannelLogout": true,
       "protocol": "openid-connect",
       "attributes": {
+        "request.object.signature.alg": "any",
+        "post.logout.redirect.uris": "+",
+        "frontchannel.logout.session.required": "true",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "use.refresh.tokens": "true",
         "realm_client": "false",
         "oidc.ciba.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
+        "client_credentials.use_refresh_token": "false",
+        "require.pushed.authorization.requests": "false",
+        "request.object.encryption.enc": "any",
+        "dpop.bound.access.tokens": "false",
+        "id.token.as.detached.signature": "false",
+        "client.secret.creation.time": "1767686317",
+        "request.object.encryption.alg": "any",
+        "client.introspection.response.allow.jwt.claim.enabled": "false",
         "standard.token.exchange.enabled": "false",
-        "post.logout.redirect.uris": "+",
-        "oauth2.device.authorization.grant.enabled": "false",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "client.use.lightweight.access.token.enabled": "false",
+        "request.object.required": "not required",
+        "access.token.header.type.rfc9068": "false",
+        "tls.client.certificate.bound.access.tokens": "false",
+        "acr.loa.map": "{}",
+        "display.on.consent.screen": "false",
+        "token.response.type.bearer.lower-case": "false"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
@@ -1794,14 +1871,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-address-mapper",
-            "saml-user-property-mapper",
-            "oidc-sha256-pairwise-sub-mapper",
-            "oidc-full-name-mapper",
-            "saml-role-list-mapper",
-            "oidc-usermodel-property-mapper",
             "saml-user-attribute-mapper",
-            "oidc-usermodel-attribute-mapper"
+            "oidc-usermodel-attribute-mapper",
+            "oidc-full-name-mapper",
+            "oidc-usermodel-property-mapper",
+            "saml-user-property-mapper",
+            "oidc-address-mapper",
+            "oidc-sha256-pairwise-sub-mapper",
+            "saml-role-list-mapper"
           ]
         }
       },
@@ -1848,14 +1925,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-usermodel-property-mapper",
-            "oidc-sha256-pairwise-sub-mapper",
-            "oidc-address-mapper",
-            "oidc-full-name-mapper",
-            "saml-user-attribute-mapper",
             "saml-user-property-mapper",
             "oidc-usermodel-attribute-mapper",
-            "saml-role-list-mapper"
+            "oidc-address-mapper",
+            "oidc-usermodel-property-mapper",
+            "saml-role-list-mapper",
+            "oidc-full-name-mapper",
+            "saml-user-attribute-mapper",
+            "oidc-sha256-pairwise-sub-mapper"
           ]
         }
       },
@@ -2743,7 +2820,7 @@
     "frontendUrl": "",
     "acr.loa.map": "{}"
   },
-  "keycloakVersion": "26.3.4",
+  "keycloakVersion": "26.4.7",
   "userManagedAccessAllowed": false,
   "organizationsEnabled": false,
   "verifiableCredentialsEnabled": false,

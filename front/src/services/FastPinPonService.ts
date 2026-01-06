@@ -7,12 +7,18 @@ import type { CreateEventRequest, EventType } from '../types/eventTypes'
 class FastPinPonService {
   private readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.fast-pin-pon.4loop.org/v1'
 
+  private buildHeaders(token?: string): HeadersInit {
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
   /**
    * Fetches the latest events.
    * @param limit - Number of events to fetch (default 25)
    */
-  async getEvents(limit = 25): Promise<EventSummary[]> {
-    const response = await fetch(`${this.API_BASE_URL}/events?limit=${limit}`)
+  async getEvents(limit = 25, token?: string): Promise<EventSummary[]> {
+    const response = await fetch(`${this.API_BASE_URL}/events?limit=${limit}`, {
+      headers: this.buildHeaders(token),
+    })
     if (!response.ok) {
       throw new Error(`Failed to fetch events: ${response.status} ${response.statusText}`)
     }
@@ -22,8 +28,10 @@ class FastPinPonService {
   /**
    * Fetches the latest units.
    */
-  async getUnits(): Promise<UnitSummary[]> {
-    const response = await fetch(`${this.API_BASE_URL}/units`)
+  async getUnits(token?: string): Promise<UnitSummary[]> {
+    const response = await fetch(`${this.API_BASE_URL}/units`, {
+      headers: this.buildHeaders(token),
+    })
     if (!response.ok) {
       throw new Error(`Failed to fetch units: ${response.status} ${response.statusText}`)
     }

@@ -10,6 +10,8 @@ import { EventDetailPanel } from './components/events/EventDetailPanel'
 import { CreateEventModal } from './components/events/CreateEventModal'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
 import type { EventSummary, UnitSummary } from './types'
+import { useAuth } from './auth/AuthProvider'
+import { Button } from './components/ui/button'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
 const MIN_SPIN_DURATION = 500
@@ -25,12 +27,24 @@ export function App() {
     const saved = localStorage.getItem(REFRESH_INTERVAL_KEY)
     return saved ? Number.parseInt(saved, 10) : 10
   })
+  const {
+    isAuthenticated,
+    initializing: isAuthLoading,
+    token,
+    profile,
+    permissions,
+    error: authError,
+    login,
+    logout,
+  } = useAuth()
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
   const [pendingLocation, setPendingLocation] = useState<{ latitude: number; longitude: number } | null>(null)
 
   const refreshData = useCallback(async () => {
+    if (!isAuthenticated) return
+
     setIsSpinning(true)
     setError(null)
 
@@ -38,8 +52,8 @@ export function App() {
 
     try {
       const [eventsData, unitsData] = await Promise.all([
-        fastPinPonService.getEvents(),
-        fastPinPonService.getUnits(),
+        fastPinPonService.getEvents(25, token ?? undefined),
+        fastPinPonService.getUnits(token ?? undefined),
       ])
 
       setEvents(eventsData)
@@ -61,11 +75,13 @@ export function App() {
         setIsSpinning(false)
       }
     }
-  }, [])
+  }, [isAuthenticated, token])
 
   useEffect(() => {
-    refreshData()
-  }, [refreshData])
+    if (isAuthenticated) {
+      refreshData()
+    }
+  }, [isAuthenticated, refreshData])
 
   useEffect(() => {
     ;(async () => {
@@ -80,11 +96,11 @@ export function App() {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      refreshData()
+      if (isAuthenticated) refreshData()
     }, refreshInterval * 1000)
 
     return () => clearInterval(intervalId)
-  }, [refreshData, refreshInterval])
+  }, [isAuthenticated, refreshData, refreshInterval])
 
   const handleIntervalChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = Number.parseInt(event.target.value, 10)
@@ -108,6 +124,14 @@ export function App() {
     }
   }, [events, selectedEventId])
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setEvents([])
+      setUnits([])
+      setSelectedEventId(null)
+    }
+  }, [isAuthenticated])
+
   const selectedEvent = useMemo(
     () => sortedEvents.find((event) => event.id === selectedEventId) ?? null,
     [sortedEvents, selectedEventId],
@@ -129,6 +153,34 @@ export function App() {
   const handleCloseDetail = () => {
     setSelectedEventId(null)
   }
+
+  if (isAuthLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100">
+        <p className="text-sm text-slate-400">Initialisation de la session…</p>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 px-6">
+        <div className="max-w-md w-full space-y-4 text-center">
+          <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Fast Pin Pon</p>
+          <h1 className="text-2xl font-semibold text-white">Connexion requise</h1>
+          <p className="text-slate-400 text-sm">Authentifiez-vous via Keycloak pour accéder au tableau de bord.</p>
+          {authError && <p className="text-red-400 text-sm">{authError}</p>}
+          <div className="flex justify-center">
+            <Button onClick={login} className="px-6">Se connecter</Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const userLabel = profile?.firstName
+    ? `${profile.firstName} ${profile.lastName ?? ''}`.trim()
+    : profile?.username ?? profile?.email ?? 'Utilisateur'
   return (
     <div className="flex flex-col bg-slate-950 min-h-screen text-slate-100">
       <Navbar
@@ -137,6 +189,8 @@ export function App() {
         onRefresh={refreshData}
         isSpinning={isSpinning}
         lastUpdated={lastUpdated}
+        onLogout={logout}
+        userLabel={userLabel}
       />
 
       <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">
@@ -151,8 +205,13 @@ export function App() {
           }}
         />
         <UnitPanel units={units} />
-        <EventPanel events={sortedEvents} error={error} />
-        <EventDetailPanel event={selectedEvent} onClose={handleCloseDetail} />
+        <EventPanel
+          events={sortedEvents}
+          error={error}
+          onEventSelect={handleEventSelect}
+          selectedEventId={selectedEventId}
+        />
+        <EventDetailPanel event={selectedEvent} onClose={handleCloseDetail} permissions={permissions} />
       </main>
 
       <CreateEventModal
