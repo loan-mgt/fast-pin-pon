@@ -133,9 +133,16 @@ interface MapContainerProps {
     units: UnitSummary[]
     onEventSelect?: (eventId: string) => void
     selectedEventId?: string | null
+    onCreateAtLocation?: (coords: { latitude: number; longitude: number }) => void
 }
 
-export function MapContainer({ events, units, onEventSelect, selectedEventId }: Readonly<MapContainerProps>): JSX.Element {
+export function MapContainer({
+    events,
+    units,
+    onEventSelect,
+    selectedEventId,
+    onCreateAtLocation,
+}: Readonly<MapContainerProps>): JSX.Element {
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const eventMarkersRef = useRef<maplibregl.Marker[]>([])
@@ -166,6 +173,12 @@ export function MapContainer({ events, units, onEventSelect, selectedEventId }: 
 
         mapRef.current = map
         map.on('load', () => map.resize())
+
+        if (onCreateAtLocation) {
+            map.on('contextmenu', (e) => {
+                onCreateAtLocation({ latitude: e.lngLat.lat, longitude: e.lngLat.lng })
+            })
+        }
 
         // Persist map center & zoom when moved
         map.on('moveend', () => {
