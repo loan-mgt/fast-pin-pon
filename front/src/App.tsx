@@ -192,7 +192,12 @@ export function App() {
           onEventSelect={handleEventSelect}
           selectedEventId={selectedEventId}
         />
-        <EventDetailPanel event={selectedEvent} onClose={handleCloseDetail} permissions={permissions} />
+        <EventDetailPanel
+          event={selectedEvent}
+          onClose={handleCloseDetail}
+          permissions={permissions}
+          onRefresh={refreshData}
+        />
       </main>
 
       <CreateEventModal
