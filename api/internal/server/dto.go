@@ -25,26 +25,27 @@ type GeoPoint struct {
 }
 
 type EventSummaryResponse struct {
-	ID            string     `json:"id"`
-	Title         string     `json:"title"`
-	Description   string     `json:"description,omitempty"`
-	ReportSource  string     `json:"report_source,omitempty"`
-	Address       string     `json:"address,omitempty"`
-	Location      GeoPoint   `json:"location"`
-	Severity      int32      `json:"severity"`
-	Status        string     `json:"status"`
-	EventTypeCode string     `json:"event_type_code"`
-	EventTypeName string     `json:"event_type_name"`
-	ReportedAt    time.Time  `json:"reported_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
-	ClosedAt      *time.Time `json:"closed_at,omitempty"`
+	ID                 string     `json:"id"`
+	Title              string     `json:"title"`
+	Description        string     `json:"description,omitempty"`
+	ReportSource       string     `json:"report_source,omitempty"`
+	Address            string     `json:"address,omitempty"`
+	Location           GeoPoint   `json:"location"`
+	Severity           int32      `json:"severity"`
+	InterventionID     *string    `json:"intervention_id,omitempty"`
+	InterventionStatus *string    `json:"intervention_status,omitempty"`
+	EventTypeCode      string     `json:"event_type_code"`
+	EventTypeName      string     `json:"event_type_name"`
+	ReportedAt         time.Time  `json:"reported_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+	ClosedAt           *time.Time `json:"closed_at,omitempty"`
 }
 
 type EventDetailResponse struct {
 	EventSummaryResponse
-	RecommendedUnitTypes []string               `json:"recommended_unit_types"`
-	Interventions        []InterventionResponse `json:"interventions,omitempty"`
-	Logs                 []EventLogResponse     `json:"logs,omitempty"`
+	RecommendedUnitTypes []string              `json:"recommended_unit_types"`
+	Intervention         *InterventionResponse `json:"intervention,omitempty"`
+	Logs                 []EventLogResponse    `json:"logs,omitempty"`
 }
 
 type EventLogResponse struct {

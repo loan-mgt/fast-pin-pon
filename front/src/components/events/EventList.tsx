@@ -46,7 +46,7 @@ export function EventList({ events, error, onSelect, selectedEventId }: Readonly
                             {severityLabel(event.severity)}
                         </span>
                     </div>
-                    <p className="text-slate-400 text-xs">{event.status ?? 'Status unknown'}</p>
+                    <p className="text-slate-400 text-xs">{event.intervention_status ?? 'Status unknown'}</p>
                     <div className="flex flex-wrap items-center gap-2 text-[0.65rem] text-slate-400">
                         <span>{formatTimestamp(event.reported_at)}</span>
                         {event.location?.latitude != null && event.location?.longitude != null && (

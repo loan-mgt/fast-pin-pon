@@ -17,10 +17,6 @@ type CreateEventRequest struct {
 	EventTypeCode string  `json:"event_type_code" validate:"required"`
 }
 
-type UpdateEventStatusRequest struct {
-	Status string `json:"status" validate:"required,oneof=open acknowledged contained closed"`
-}
-
 type CreateEventLogRequest struct {
 	Code    string  `json:"code" validate:"required"`
 	Actor   *string `json:"actor"`
@@ -193,48 +189,6 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, resp)
 }
 
-// handleUpdateEventStatus godoc
-// @Title Update event status
-// @Description Sets the workflow status of an incident.
-// @Resource Events
-// @Accept json
-// @Produce json
-// @Param eventID path string true "Event ID"
-// @Param request body UpdateEventStatusRequest true "Status payload"
-// @Success 200 {object} EventSummaryResponse
-// @Failure 400 {object} APIError
-// @Failure 404 {object} APIError
-// @Failure 500 {object} APIError
-// @Route /v1/events/{eventID}/status [patch]
-func (s *Server) handleUpdateEventStatus(w http.ResponseWriter, r *http.Request) {
-	eventID, err := s.parseUUIDParam(r, "eventID")
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, errInvalidEventID, err.Error())
-		return
-	}
-
-	var req UpdateEventStatusRequest
-	if err := s.decodeAndValidate(r, &req); err != nil {
-		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
-		return
-	}
-
-	row, err := s.queries.UpdateEventStatus(r.Context(), db.UpdateEventStatusParams{
-		ID:      eventID,
-		Column2: db.EventStatus(req.Status),
-	})
-	if err != nil {
-		if isNotFound(err) {
-			s.writeError(w, http.StatusNotFound, "event not found", nil)
-			return
-		}
-		s.writeError(w, http.StatusInternalServerError, "failed to update status", err.Error())
-		return
-	}
-
-	s.writeJSON(w, http.StatusOK, mapUpdateEventRow(row))
-}
-
 // handleCreateEventLog godoc
 // @Title Append event log entry
 // @Description Adds an entry to an incident timeline.
@@ -311,20 +265,32 @@ func (s *Server) handleListEventLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func mapEventSummary(row db.ListEventsRow) EventSummaryResponse {
+	var intID *string
+	if row.InterventionID.Valid {
+		s := uuidString(row.InterventionID)
+		intID = &s
+	}
+	var intStatus *string
+	if row.InterventionStatus.Valid {
+		s := string(row.InterventionStatus.InterventionStatus)
+		intStatus = &s
+	}
+
 	return EventSummaryResponse{
-		ID:            uuidString(row.ID),
-		Title:         row.Title,
-		Description:   optionalString(row.Description),
-		ReportSource:  optionalString(row.ReportSource),
-		Address:       optionalString(row.Address),
-		Location:      GeoPoint{Latitude: row.Latitude, Longitude: row.Longitude},
-		Severity:      row.Severity,
-		Status:        string(row.Status),
-		EventTypeCode: row.EventTypeCode,
-		EventTypeName: row.EventTypeName,
-		ReportedAt:    row.ReportedAt.Time,
-		UpdatedAt:     row.UpdatedAt.Time,
-		ClosedAt:      timestamptzPtr(row.ClosedAt),
+		ID:                 uuidString(row.ID),
+		Title:              row.Title,
+		Description:        optionalString(row.Description),
+		ReportSource:       optionalString(row.ReportSource),
+		Address:            optionalString(row.Address),
+		Location:           GeoPoint{Latitude: row.Latitude, Longitude: row.Longitude},
+		Severity:           row.Severity,
+		InterventionID:     intID,
+		InterventionStatus: intStatus,
+		EventTypeCode:      row.EventTypeCode,
+		EventTypeName:      row.EventTypeName,
+		ReportedAt:         row.ReportedAt.Time,
+		UpdatedAt:          row.UpdatedAt.Time,
+		ClosedAt:           timestamptzPtr(row.ClosedAt),
 	}
 }
 
@@ -340,24 +306,6 @@ func mapCreateEventRow(row db.CreateEventRow) EventSummaryResponse {
 			Longitude: row.Longitude,
 		},
 		Severity:      row.Severity,
-		Status:        string(row.Status),
-		EventTypeCode: row.EventTypeCode,
-		ReportedAt:    row.ReportedAt.Time,
-		UpdatedAt:     row.UpdatedAt.Time,
-		ClosedAt:      timestamptzPtr(row.ClosedAt),
-	}
-}
-
-func mapUpdateEventRow(row db.UpdateEventStatusRow) EventSummaryResponse {
-	return EventSummaryResponse{
-		ID:            uuidString(row.ID),
-		Title:         row.Title,
-		Description:   optionalString(row.Description),
-		ReportSource:  optionalString(row.ReportSource),
-		Address:       optionalString(row.Address),
-		Location:      GeoPoint{Latitude: row.Latitude, Longitude: row.Longitude},
-		Severity:      row.Severity,
-		Status:        string(row.Status),
 		EventTypeCode: row.EventTypeCode,
 		ReportedAt:    row.ReportedAt.Time,
 		UpdatedAt:     row.UpdatedAt.Time,
@@ -366,29 +314,44 @@ func mapUpdateEventRow(row db.UpdateEventStatusRow) EventSummaryResponse {
 }
 
 func mapEventDetail(event db.GetEventRow, interventions []db.Intervention, logs []db.EventLog) EventDetailResponse {
+	var intID *string
+	if event.InterventionID.Valid {
+		s := uuidString(event.InterventionID)
+		intID = &s
+	}
+	var intStatus *string
+	if event.InterventionStatus.Valid {
+		s := string(event.InterventionStatus.InterventionStatus)
+		intStatus = &s
+	}
+
 	summary := EventSummaryResponse{
-		ID:            uuidString(event.ID),
-		Title:         event.Title,
-		Description:   optionalString(event.Description),
-		ReportSource:  optionalString(event.ReportSource),
-		Address:       optionalString(event.Address),
-		Location:      GeoPoint{Latitude: event.Latitude, Longitude: event.Longitude},
-		Severity:      event.Severity,
-		Status:        string(event.Status),
-		EventTypeCode: event.EventTypeCode,
-		EventTypeName: event.EventTypeName,
-		ReportedAt:    event.ReportedAt.Time,
-		UpdatedAt:     event.UpdatedAt.Time,
-		ClosedAt:      timestamptzPtr(event.ClosedAt),
+		ID:                 uuidString(event.ID),
+		Title:              event.Title,
+		Description:        optionalString(event.Description),
+		ReportSource:       optionalString(event.ReportSource),
+		Address:            optionalString(event.Address),
+		Location:           GeoPoint{Latitude: event.Latitude, Longitude: event.Longitude},
+		Severity:           event.Severity,
+		InterventionID:     intID,
+		InterventionStatus: intStatus,
+		EventTypeCode:      event.EventTypeCode,
+		EventTypeName:      event.EventTypeName,
+		ReportedAt:         event.ReportedAt.Time,
+		UpdatedAt:          event.UpdatedAt.Time,
+		ClosedAt:           timestamptzPtr(event.ClosedAt),
+	}
+
+	var associatedIntervention *InterventionResponse
+	if len(interventions) > 0 {
+		i := mapIntervention(interventions[0])
+		associatedIntervention = &i
 	}
 
 	resp := EventDetailResponse{
 		EventSummaryResponse: summary,
 		RecommendedUnitTypes: event.RecommendedUnitTypes,
-	}
-
-	for _, intervention := range interventions {
-		resp.Interventions = append(resp.Interventions, mapIntervention(intervention))
+		Intervention:         associatedIntervention,
 	}
 
 	for _, logRow := range logs {

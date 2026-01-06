@@ -179,19 +179,6 @@ public final class ApiClient {
     }
 
     /**
-     * Update an event status.
-     * @param eventId event identifier
-     * @param status new status value
-     */
-    public void updateEventStatus(String eventId, String status) {
-        if (eventId == null || eventId.trim().isEmpty()) {
-            return;
-        }
-        StatusRequest payload = new StatusRequest(status);
-        executeVoid(api.updateEventStatus(eventId, payload), "PATCH /v1/events/{id}/status", payload);
-    }
-
-    /**
      * Send a heartbeat log for an event.
      * @param eventId event identifier
      */
@@ -379,9 +366,6 @@ public final class ApiClient {
 
         @PATCH("/v1/interventions/{interventionId}/status")
         Call<Void> updateInterventionStatus(@Path("interventionId") String interventionId, @Body StatusRequest body);
-
-        @PATCH("/v1/events/{eventId}/status")
-        Call<Void> updateEventStatus(@Path("eventId") String eventId, @Body StatusRequest body);
 
         @PATCH("/v1/units/{unitId}/status")
         Call<Void> updateUnitStatus(@Path("unitId") String unitId, @Body StatusRequest body);
