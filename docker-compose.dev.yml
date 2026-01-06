@@ -4,7 +4,7 @@ services:
       file: docker-compose.prod.yml
       service: api
     image: fast-pin-pon-api-dev
-    container_name: fast-pin-pon-api-dev
+    container_name: fast-pin-pon-api
     build:
       context: api/
       dockerfile: Dockerfile
@@ -18,14 +18,14 @@ services:
     extends:
       file: docker-compose.prod.yml
       service: postgres
-    container_name: fast-pin-pon-postgres-dev
+    container_name: fast-pin-pon-postgres
 
   front:
     extends:
       file: docker-compose.prod.yml
       service: front
     image: fast-pin-pon-front-dev
-    container_name: fast-pin-pon-front-dev
+    container_name: fast-pin-pon-front
     build:
       context: front/
       dockerfile: Dockerfile
@@ -40,7 +40,7 @@ services:
       file: docker-compose.prod.yml
       service: simulation
     image: fast-pin-pon-simulation-dev
-    container_name: fast-pin-pon-simulation-dev
+    container_name: fast-pin-pon-simulation
     build:
       context: ./simulation
       dockerfile: Dockerfile
@@ -54,7 +54,7 @@ services:
       file: docker-compose.prod.yml
       service: maptiler-server
     image: maptiler-server-dev
-    container_name: fast-pin-pon-map-dev
+    container_name: fast-pin-pon-map
     build:
       context: ./maptiler
       dockerfile: Dockerfile
@@ -66,7 +66,7 @@ services:
       file: docker-compose.prod.yml
       service: keycloak_web
     image: keycloak-web-dev
-    container_name: fast-pin-pon-keycloak-dev
+    container_name: fast-pin-pon-keycloak
     build:
       context: ./infra/keycloak
       dockerfile: Dockerfile
@@ -80,14 +80,14 @@ services:
     extends:
       file: docker-compose.prod.yml
       service: keycloakdb
-    container_name: fast-pin-pon-keycloak-db-dev
+    container_name: fast-pin-pon-keycloak-db
 
   grafana:
     extends:
       file: docker-compose.prod.yml
       service: grafana
     image: grafana-dev
-    container_name: fast-pin-pon-grafana-dev
+    container_name: fast-pin-pon-grafana
     build:
       context: ./infra/grafana
       dockerfile: Dockerfile
@@ -95,8 +95,8 @@ services:
     environment:
       GF_SERVER_ROOT_URL: http://localhost:3000
       GF_AUTH_GENERIC_OAUTH_AUTH_URL: http://localhost:8082/realms/sdmis-realm/protocol/openid-connect/auth
-      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: http://fast-pin-pon-keycloak-dev:8080/realms/sdmis-realm/protocol/openid-connect/token
-      GF_AUTH_GENERIC_OAUTH_API_URL: http://fast-pin-pon-keycloak-dev:8080/realms/sdmis-realm/protocol/openid-connect/userinfo
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: http://fast-pin-pon-keycloak:8080/realms/sdmis-realm/protocol/openid-connect/token
+      GF_AUTH_GENERIC_OAUTH_API_URL: http://fast-pin-pon-keycloak:8080/realms/sdmis-realm/protocol/openid-connect/userinfo
     ports:
       - "3000:3000"
 
@@ -105,7 +105,7 @@ services:
       file: docker-compose.prod.yml
       service: loki
     image: loki-dev
-    container_name: fast-pin-pon-loki-dev
+    container_name: fast-pin-pon-loki
     build:
       context: ./infra/loki
       dockerfile: Dockerfile
@@ -116,7 +116,7 @@ services:
       file: docker-compose.prod.yml
       service: promtail
     image: promtail-dev
-    container_name: fast-pin-pon-promtail-dev
+    container_name: fast-pin-pon-promtail
     build:
       context: ./infra/promtail
       dockerfile: Dockerfile
@@ -124,7 +124,7 @@ services:
 
   prometheus:
     image: prometheus-dev
-    container_name: fast-pin-pon-prometheus-dev
+    container_name: fast-pin-pon-prometheus
     build:
       context: ./infra/prometheus
       dockerfile: Dockerfile
