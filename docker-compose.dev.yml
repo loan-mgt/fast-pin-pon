@@ -32,6 +32,7 @@ services:
       args:
         MAP_TILE_URL: "http://localhost:8080/maps/lyon/{z}/{x}/{y}.pbf"
         API_BASE_URL: "http://localhost:8081/v1"
+        KEYCLOAK_URL: "http://localhost:8082"
     ports:
       - "8080:8080"
 
@@ -97,6 +98,7 @@ services:
       GF_AUTH_GENERIC_OAUTH_AUTH_URL: http://localhost:8082/realms/sdmis-realm/protocol/openid-connect/auth
       GF_AUTH_GENERIC_OAUTH_TOKEN_URL: http://fast-pin-pon-keycloak:8080/realms/sdmis-realm/protocol/openid-connect/token
       GF_AUTH_GENERIC_OAUTH_API_URL: http://fast-pin-pon-keycloak:8080/realms/sdmis-realm/protocol/openid-connect/userinfo
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/api-http.json
     ports:
       - "3000:3000"
 
@@ -129,6 +131,8 @@ services:
       context: ./infra/prometheus
       dockerfile: Dockerfile
     profiles: ["monitoring"]
+    ports:
+      - "9090:9090"
 
 networks:
   internal: {}
