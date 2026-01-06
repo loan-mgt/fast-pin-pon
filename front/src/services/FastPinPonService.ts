@@ -1,6 +1,9 @@
 import type { EventSummary, UnitSummary } from '../types'
 import type { CreateEventRequest, EventType } from '../types/eventTypes'
 
+type InterventionStatus = 'created' | 'on_site' | 'completed' | 'cancelled'
+type UnitStatus = 'available' | 'under_way' | 'on_site' | 'unavailable' | 'offline'
+
 /**
  * Service to handle data fetching from the Fast Pin Pon API.
  */
@@ -15,8 +18,12 @@ class FastPinPonService {
    * Fetches the latest events.
    * @param limit - Number of events to fetch (default 25)
    */
-  async getEvents(limit = 25, token?: string): Promise<EventSummary[]> {
-    const response = await fetch(`${this.API_BASE_URL}/events?limit=${limit}`, {
+  async getEvents(limit = 25, token?: string, denyStatuses?: string[]): Promise<EventSummary[]> {
+    const params = new URLSearchParams({ limit: String(limit) })
+    if (denyStatuses && denyStatuses.length > 0) {
+      params.set('deny_status', denyStatuses.join(','))
+    }
+    const response = await fetch(`${this.API_BASE_URL}/events?${params.toString()}`, {
       headers: this.buildHeaders(token),
     })
     if (!response.ok) {
@@ -62,6 +69,38 @@ class FastPinPonService {
     if (!response.ok) {
       const text = await response.text().catch(() => '')
       throw new Error(`Failed to create event: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
+  async updateInterventionStatus(interventionId: string, status: InterventionStatus, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/interventions/${interventionId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.buildHeaders(token),
+      },
+      body: JSON.stringify({ status }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to update intervention: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
+  async updateUnitStatus(unitId: string, status: UnitStatus, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/units/${unitId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.buildHeaders(token),
+      },
+      body: JSON.stringify({ status }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to update unit: ${response.status} ${response.statusText} ${text}`)
     }
   }
 }

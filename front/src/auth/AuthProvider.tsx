@@ -77,7 +77,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>): J
     const init = async () => {
       try {
         const authenticated = await keycloak.init({
-          onLoad: 'check-sso',
+          onLoad: 'login-required',
           pkceMethod: 'S256',
           checkLoginIframe: false,
           silentCheckSsoRedirectUri: `${globalThis.location.origin}/silent-check-sso.html`,

@@ -124,8 +124,35 @@ SELECT
     ia.arrived_at,
     ia.released_at,
     u.call_sign,
-    u.unit_type_code
+    u.unit_type_code,
+    u.status AS unit_status,
+    u.home_base,
+    u.microbit_id,
+    (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    u.last_contact_at,
+    u.created_at,
+    u.updated_at
 FROM intervention_assignments ia
 JOIN units u ON u.id = ia.unit_id
 WHERE ia.intervention_id = $1
+ORDER BY ia.dispatched_at DESC;
+
+-- name: ListUnitsAssignedToEvent :many
+SELECT
+    u.id,
+    u.call_sign,
+    u.unit_type_code,
+    u.home_base,
+    u.status,
+    u.microbit_id,
+    (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    u.last_contact_at,
+    u.created_at,
+    u.updated_at
+FROM intervention_assignments ia
+JOIN interventions i ON ia.intervention_id = i.id
+JOIN units u ON ia.unit_id = u.id
+WHERE i.event_id = $1 AND ia.released_at IS NULL
 ORDER BY ia.dispatched_at DESC;
