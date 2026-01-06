@@ -19,7 +19,7 @@ export function EventDetailPanel({ event, onClose, permissions }: EventDetailPan
 
   return (
     <Card
-      className="z-20 fixed top-[72px] left-0 shadow-2xl shadow-slate-950/60 p-3 rounded-none w-[360px] max-w-[90vw] max-h-[calc(100vh-96px)] overflow-y-auto"
+      className="top-[72px] left-0 z-20 fixed shadow-2xl shadow-slate-950/60 p-3 rounded-none w-[360px] max-w-[90vw] max-h-[calc(100vh-96px)] overflow-y-auto"
     >
       <div className="flex justify-between items-start gap-2">
         <div className="space-y-1">
@@ -27,14 +27,45 @@ export function EventDetailPanel({ event, onClose, permissions }: EventDetailPan
           <h2 className="font-bold text-white text-lg leading-tight">{event.title}</h2>
           <p className="text-slate-300/80 text-xs leading-snug">{event.description ?? 'No description'}</p>
         </div>
-        <button
-          type="button"
-          className="px-2 py-1 text-slate-300 hover:text-white transition-colors"
-          aria-label="Close incident details"
-          onClick={onClose}
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={`p-2 rounded-md border transition-colors ${
+              canDelete
+                ? 'border-rose-500/40 text-rose-200 hover:bg-rose-500/10'
+                : 'border-slate-700 text-slate-500 cursor-not-allowed'
+            }`}
+            aria-label="Supprimer l'incident"
+            title="Supprimer l'incident"
+            disabled={!canDelete}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            aria-label="Close incident details"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       <div className="gap-2 grid grid-cols-2 mt-3 text-slate-200/90 text-xs">
@@ -54,64 +85,60 @@ export function EventDetailPanel({ event, onClose, permissions }: EventDetailPan
 
       <div className="space-y-1 mt-3 text-slate-200/90 text-sm">
         {event.address ? <p className="font-semibold">{event.address}</p> : null}
-        {event.location ? (
-          <p className="text-slate-400 text-xs">
-            {event.location.latitude.toFixed(5)}, {event.location.longitude.toFixed(5)}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2 text-sm">
-        <button
-          type="button"
-          className={`px-3 py-1.5 rounded-md border transition-colors ${
-            canAssign
-              ? 'bg-blue-600/80 hover:bg-blue-500 text-white border-blue-500'
-              : 'bg-slate-800/60 text-slate-500 border-slate-700 cursor-not-allowed'
-          }`}
-          disabled={!canAssign}
-          aria-disabled={!canAssign}
-        >
-          Assigner une unité
-        </button>
-        <button
-          type="button"
-          className={`px-3 py-1.5 rounded-md border transition-colors ${
-            canDelete
-              ? 'bg-rose-600/80 hover:bg-rose-500 text-white border-rose-500'
-              : 'bg-slate-800/60 text-slate-500 border-slate-700 cursor-not-allowed'
-          }`}
-          disabled={!canDelete}
-          aria-disabled={!canDelete}
-        >
-          Supprimer l'incident
-        </button>
       </div>
 
       <div className="mt-5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-white">Unités assignées</p>
-          <span className="text-[0.7rem] text-slate-300 bg-slate-800/70 border border-slate-700 rounded-full px-2 py-0.5">
-            {assignedUnits.length}
-          </span>
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-white text-sm">Unités assignées</p>
+            <span className="bg-slate-800/70 px-2 py-0.5 border border-slate-700 rounded-full text-[0.7rem] text-slate-300">
+              {assignedUnits.length}
+            </span>
+          </div>
+          <button
+            type="button"
+            className={`p-2 rounded-md border transition-colors ${
+              canAssign
+                ? 'border-blue-500/40 text-blue-200 hover:bg-blue-500/10 cursor-pointer'
+                : 'border-slate-700 text-slate-500 cursor-not-allowed'
+            }`}
+            aria-label="Assigner une unité"
+            title="Assigner une unité"
+            disabled={!canAssign}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
         </div>
-        <div className="mt-2 max-h-60 overflow-y-auto space-y-2">
+        <div className="space-y-2 mt-2 max-h-60 overflow-y-auto">
           {assignedUnits.length === 0 ? (
-            <p className="text-xs text-slate-400">Aucune unité assignée pour le moment.</p>
+            <p className="text-slate-400 text-xs">Aucune unité assignée pour le moment.</p>
           ) : (
             assignedUnits.map((unit) => (
               <article
                 key={unit.id}
-                className="bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 flex items-start justify-between gap-2"
+                className="flex justify-between items-start gap-2 bg-slate-800/60 px-3 py-2 border border-slate-700 rounded-lg"
               >
                 <div className="space-y-1 min-w-0">
-                  <p className="text-sm font-semibold text-white leading-tight truncate">{unit.call_sign}</p>
-                  <p className="text-[0.75rem] text-slate-300 leading-tight truncate">
+                  <p className="font-semibold text-white text-sm truncate leading-tight">{unit.call_sign}</p>
+                  <p className="text-[0.75rem] text-slate-300 truncate leading-tight">
                     {unit.unit_type_code} • {unit.home_base}
                   </p>
-                  <p className="text-[0.7rem] text-slate-400 leading-tight truncate">{unit.status}</p>
+                  <p className="text-[0.7rem] text-slate-400 truncate leading-tight">{unit.status}</p>
                 </div>
-                <span className="text-[0.65rem] text-cyan-200 bg-cyan-500/15 border border-cyan-500/30 rounded-full px-2 py-1 self-center">
+                <span className="self-center bg-cyan-500/15 px-2 py-1 border border-cyan-500/30 rounded-full text-[0.65rem] text-cyan-200">
                   {unit.microbit_id ?? '—'}
                 </span>
               </article>

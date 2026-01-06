@@ -11,7 +11,6 @@ import { CreateEventModal } from './components/events/CreateEventModal'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
 import type { EventSummary, UnitSummary } from './types'
 import { useAuth } from './auth/AuthProvider'
-import { Button } from './components/ui/button'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
 const MIN_SPIN_DURATION = 500
@@ -33,8 +32,6 @@ export function App() {
     token,
     profile,
     permissions,
-    error: authError,
-    login,
     logout,
   } = useAuth()
 
@@ -156,24 +153,8 @@ export function App() {
 
   if (isAuthLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100">
-        <p className="text-sm text-slate-400">Initialisation de la session…</p>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 px-6">
-        <div className="max-w-md w-full space-y-4 text-center">
-          <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Fast Pin Pon</p>
-          <h1 className="text-2xl font-semibold text-white">Connexion requise</h1>
-          <p className="text-slate-400 text-sm">Authentifiez-vous via Keycloak pour accéder au tableau de bord.</p>
-          {authError && <p className="text-red-400 text-sm">{authError}</p>}
-          <div className="flex justify-center">
-            <Button onClick={login} className="px-6">Se connecter</Button>
-          </div>
-        </div>
+      <div className="flex flex-col justify-center items-center bg-slate-950 min-h-screen text-slate-100">
+        <p className="text-slate-400 text-sm">Initialisation de la session…</p>
       </div>
     )
   }

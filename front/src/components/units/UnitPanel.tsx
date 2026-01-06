@@ -27,20 +27,20 @@ export function UnitPanel({ units }: Readonly<UnitPanelProps>): JSX.Element {
     >
       <button
         type="button"
-        className="flex justify-between items-center select-none flex-shrink-0 w-full text-left bg-transparent border-none whitespace-nowrap gap-2 px-2 py-1"
+        className="flex flex-shrink-0 justify-between items-center gap-2 bg-transparent px-2 py-1 border-none w-full text-left whitespace-nowrap cursor-pointer select-none"
         aria-label={isPanelCollapsed ? 'Open available vehicles panel' : 'Close available vehicles panel'}
         onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
       >
         <div className="flex items-center gap-2 whitespace-nowrap">
           <p className="font-semibold text-white text-lg leading-none">Available vehicles</p>
-          <span className="bg-blue-500/20 text-blue-400 text-xs font-medium px-2 py-0.5 rounded-full leading-none">
+          <span className="bg-blue-500/20 px-2 py-0.5 rounded-full font-medium text-blue-400 text-xs leading-none">
             {availableUnits.length}
           </span>
         </div>
       </button>
 
       {!isPanelCollapsed && (
-        <div className="mt-1 flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 mt-1 min-h-0 overflow-y-auto">
           {availableUnits.length === 0 ? (
             <p className="text-slate-300 text-sm">No available vehicles.</p>
           ) : (
