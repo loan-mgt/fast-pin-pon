@@ -599,6 +599,78 @@
       ],
       "notBefore": 0,
       "groups": []
+    },
+    {
+      "id": "7f1a36c4-4b22-4c7f-b7ad-b3c1c3d4c111",
+      "username": "classic",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "classic",
+      "lastName": "classic",
+      "email": "classic@classic.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${PASSWORD_USER}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-sdmis-realm",
+        "classic"
+      ],
+      "requiredActions": [],
+      "groups": [],
+      "disableableCredentialTypes": []
+    },
+    {
+      "id": "8c2f6c2d-0c35-4c6c-912b-6b9cbe2d5e22",
+      "username": "superieur",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "superieur",
+      "lastName": "user",
+      "email": "superieur@test.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${PASSWORD_USER}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-sdmis-realm",
+        "classic",
+        "superieur"
+      ],
+      "requiredActions": [],
+      "groups": [],
+      "disableableCredentialTypes": []
+    },
+    {
+      "id": "1d0e3a2c-b5aa-4c72-8a25-3c0f9f3c5a33",
+      "username": "it",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "it",
+      "lastName": "user",
+      "email": "it@test.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${PASSWORD_USER}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-sdmis-realm",
+        "classic",
+        "superieur",
+        "it"
+      ],
+      "requiredActions": [],
+      "groups": [],
+      "disableableCredentialTypes": []
     }
   ],
   "scopeMappings": [
@@ -827,10 +899,12 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "**********",
       "redirectUris": [
-        "https://dash.fast-pin-pon.4loop.org/login/generic_oauth"
+        "https://dash.fast-pin-pon.4loop.org/login/generic_oauth",
+        "http://localhost:3000/login/generic_oauth"
       ],
       "webOrigins": [
-        "https://dash.fast-pin-pon.4loop.org"
+        "https://dash.fast-pin-pon.4loop.org",
+        "http://localhost:8080"
       ],
       "notBefore": 0,
       "bearerOnly": false,
