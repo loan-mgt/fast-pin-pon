@@ -97,6 +97,7 @@ services:
       GF_AUTH_GENERIC_OAUTH_AUTH_URL: http://localhost:8082/realms/sdmis-realm/protocol/openid-connect/auth
       GF_AUTH_GENERIC_OAUTH_TOKEN_URL: http://fast-pin-pon-keycloak:8080/realms/sdmis-realm/protocol/openid-connect/token
       GF_AUTH_GENERIC_OAUTH_API_URL: http://fast-pin-pon-keycloak:8080/realms/sdmis-realm/protocol/openid-connect/userinfo
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/api-http.json
     ports:
       - "3000:3000"
 

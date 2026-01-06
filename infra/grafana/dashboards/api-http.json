@@ -110,7 +110,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-            "expr": "histogram_quantile(0.95, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[5m])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "C"
