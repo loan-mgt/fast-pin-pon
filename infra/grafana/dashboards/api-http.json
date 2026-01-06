@@ -88,7 +88,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[5m])))",
           "legendFormat": "p50",
           "range": true,
           "refId": "A"
@@ -99,7 +99,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[5m])))",
           "legendFormat": "p95",
           "range": true,
           "refId": "B"
@@ -110,7 +110,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[5m])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "C"
