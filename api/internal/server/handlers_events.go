@@ -93,15 +93,39 @@ func (s *Server) handleListUnitTypes(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} APIError
 // @Route /v1/events [get]
 func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	limit, offset := s.paginate(r, 25)
-	rows, err := s.queries.ListEvents(r.Context(), db.ListEventsParams{Limit: limit, Offset: offset})
+	rows, err := s.queries.ListEvents(ctx, db.ListEventsParams{Limit: limit, Offset: offset})
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to list events", err.Error())
 		return
 	}
 	resp := make([]EventSummaryResponse, 0, len(rows))
 	for _, row := range rows {
-		resp = append(resp, mapEventSummary(row))
+		assigned, assignErr := s.queries.ListUnitsAssignedToEvent(ctx, row.ID)
+		if assignErr != nil {
+			s.writeError(w, http.StatusInternalServerError, "failed to list assigned units", assignErr.Error())
+			return
+		}
+
+		assignedUnits := make([]UnitResponse, 0, len(assigned))
+		for _, u := range assigned {
+			assignedUnits = append(assignedUnits, mapUnitRow(unitRowData{
+				ID:           u.ID,
+				CallSign:     u.CallSign,
+				UnitTypeCode: u.UnitTypeCode,
+				HomeBase:     u.HomeBase,
+				Status:       u.Status,
+				MicrobitID:   u.MicrobitID,
+				Longitude:    u.Longitude,
+				Latitude:     u.Latitude,
+				LastContact:  u.LastContact,
+				CreatedAt:    u.CreatedAt,
+				UpdatedAt:    u.UpdatedAt,
+			}))
+		}
+
+		resp = append(resp, mapEventSummary(row, assignedUnits))
 	}
 	s.writeJSON(w, http.StatusOK, resp)
 }
@@ -179,6 +203,29 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	assigned, err := s.queries.ListUnitsAssignedToEvent(r.Context(), eventID)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to list assigned units", err.Error())
+		return
+	}
+
+	assignedUnits := make([]UnitResponse, 0, len(assigned))
+	for _, u := range assigned {
+		assignedUnits = append(assignedUnits, mapUnitRow(unitRowData{
+			ID:           u.ID,
+			CallSign:     u.CallSign,
+			UnitTypeCode: u.UnitTypeCode,
+			HomeBase:     u.HomeBase,
+			Status:       u.Status,
+			MicrobitID:   u.MicrobitID,
+			Longitude:    u.Longitude,
+			Latitude:     u.Latitude,
+			LastContact:  u.LastContact,
+			CreatedAt:    u.CreatedAt,
+			UpdatedAt:    u.UpdatedAt,
+		}))
+	}
+
 	logs, err := s.queries.ListEventLogs(r.Context(), db.ListEventLogsParams{EventID: eventID, Limit: 50, Offset: 0})
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to fetch event logs", err.Error())
@@ -186,6 +233,7 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := mapEventDetail(eventRow, interventions, logs)
+	resp.AssignedUnits = assignedUnits
 	s.writeJSON(w, http.StatusOK, resp)
 }
 
@@ -264,7 +312,7 @@ func (s *Server) handleListEventLogs(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, resp)
 }
 
-func mapEventSummary(row db.ListEventsRow) EventSummaryResponse {
+func mapEventSummary(row db.ListEventsRow, assignedUnits []UnitResponse) EventSummaryResponse {
 	var intID *string
 	if row.InterventionID.Valid {
 		s := uuidString(row.InterventionID)
@@ -291,6 +339,7 @@ func mapEventSummary(row db.ListEventsRow) EventSummaryResponse {
 		ReportedAt:         row.ReportedAt.Time,
 		UpdatedAt:          row.UpdatedAt.Time,
 		ClosedAt:           timestamptzPtr(row.ClosedAt),
+		AssignedUnits:      assignedUnits,
 	}
 }
 

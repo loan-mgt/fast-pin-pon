@@ -226,6 +226,15 @@ export function MapContainer({
         for (const marker of unitMarkersRef.current) marker.remove()
         unitMarkersRef.current = []
 
+        // Build a lookup of unit -> event from assigned units on events
+        const unitToEvent = new Map<string, string>()
+        for (const event of events) {
+            event.assigned_units?.forEach((unit) => {
+                unitToEvent.set(unit.id, event.id)
+            })
+        }
+        const engagedStatuses = new Set(['on_site', 'under_way'])
+
         // Prepare unit marker locations
         const unitLocations = units
             .filter((unit) => unit.location?.longitude && unit.location?.latitude)
@@ -234,6 +243,9 @@ export function MapContainer({
         // Add unit markers with custom HTML elements (squares instead of circles)
         for (const unit of unitLocations) {
             const color = STATUS_COLORS[unit.status] ?? STATUS_COLORS.offline
+            const normalizedStatus = unit.status.toLowerCase()
+            const eventIdForUnit = unitToEvent.get(unit.id)
+            const canOpenEvent = eventIdForUnit && engagedStatuses.has(normalizedStatus)
 
             // Create wrapper for proper positioning
             const wrapper = document.createElement('div')
@@ -259,6 +271,9 @@ export function MapContainer({
             wrapper.addEventListener('mouseleave', () => {
                 el.style.transform = 'rotate(45deg)'
             })
+            wrapper.addEventListener('click', () => {
+                if (canOpenEvent && eventIdForUnit) onEventSelect?.(eventIdForUnit)
+            })
 
             const marker = new maplibregl.Marker({ element: wrapper, anchor: 'center' })
                 .setLngLat([unit.location.longitude, unit.location.latitude])
@@ -275,7 +290,7 @@ export function MapContainer({
 
             unitMarkersRef.current.push(marker)
         }
-    }, [units])
+    }, [events, onEventSelect, units])
 
     return (
         <div

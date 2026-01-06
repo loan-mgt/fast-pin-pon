@@ -17,10 +17,8 @@ export function EventPanel({ events, error, onEventSelect, selectedEventId }: Re
     return (
         <Card
             className={
-                `z-10 fixed bottom-0 right-0 shadow-2xl shadow-slate-950/60 p-0 flex flex-col overflow-hidden rounded-none ` +
-                (isPanelCollapsed
-                    ? 'w-auto max-w-[90vw]'
-                    : 'w-[320px] min-w-[260px] max-w-[90vw] max-h-[60vh]')
+                `z-10 fixed bottom-0 right-0 shadow-2xl shadow-slate-950/60 p-0 flex flex-col overflow-hidden rounded-none w-[320px] min-w-[260px] max-w-[90vw] ` +
+                (isPanelCollapsed ? '' : 'max-h-[60vh]')
             }
         >
             <button

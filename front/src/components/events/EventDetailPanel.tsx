@@ -14,12 +14,12 @@ export function EventDetailPanel({ event, onClose, permissions }: EventDetailPan
   if (!event) return null
 
   const canAssign = permissions?.canAssignUnits ?? false
-  const canUpdateStatus = permissions?.canUpdateIncidentStatus ?? false
   const canDelete = permissions?.canDeleteIncident ?? false
+  const assignedUnits = event.assigned_units ?? []
 
   return (
     <Card
-      className="top-[72px] left-0 z-20 fixed shadow-2xl shadow-slate-950/60 p-3 rounded-none w-[360px] max-w-[90vw]"
+      className="z-20 fixed top-[72px] left-0 shadow-2xl shadow-slate-950/60 p-3 rounded-none w-[360px] max-w-[90vw] max-h-[calc(100vh-96px)] overflow-y-auto"
     >
       <div className="flex justify-between items-start gap-2">
         <div className="space-y-1">
@@ -77,18 +77,6 @@ export function EventDetailPanel({ event, onClose, permissions }: EventDetailPan
         <button
           type="button"
           className={`px-3 py-1.5 rounded-md border transition-colors ${
-            canUpdateStatus
-              ? 'bg-emerald-600/80 hover:bg-emerald-500 text-white border-emerald-500'
-              : 'bg-slate-800/60 text-slate-500 border-slate-700 cursor-not-allowed'
-          }`}
-          disabled={!canUpdateStatus}
-          aria-disabled={!canUpdateStatus}
-        >
-          Changer le statut
-        </button>
-        <button
-          type="button"
-          className={`px-3 py-1.5 rounded-md border transition-colors ${
             canDelete
               ? 'bg-rose-600/80 hover:bg-rose-500 text-white border-rose-500'
               : 'bg-slate-800/60 text-slate-500 border-slate-700 cursor-not-allowed'
@@ -98,6 +86,38 @@ export function EventDetailPanel({ event, onClose, permissions }: EventDetailPan
         >
           Supprimer l'incident
         </button>
+      </div>
+
+      <div className="mt-5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-white">Unités assignées</p>
+          <span className="text-[0.7rem] text-slate-300 bg-slate-800/70 border border-slate-700 rounded-full px-2 py-0.5">
+            {assignedUnits.length}
+          </span>
+        </div>
+        <div className="mt-2 max-h-60 overflow-y-auto space-y-2">
+          {assignedUnits.length === 0 ? (
+            <p className="text-xs text-slate-400">Aucune unité assignée pour le moment.</p>
+          ) : (
+            assignedUnits.map((unit) => (
+              <article
+                key={unit.id}
+                className="bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 flex items-start justify-between gap-2"
+              >
+                <div className="space-y-1 min-w-0">
+                  <p className="text-sm font-semibold text-white leading-tight truncate">{unit.call_sign}</p>
+                  <p className="text-[0.75rem] text-slate-300 leading-tight truncate">
+                    {unit.unit_type_code} • {unit.home_base}
+                  </p>
+                  <p className="text-[0.7rem] text-slate-400 leading-tight truncate">{unit.status}</p>
+                </div>
+                <span className="text-[0.65rem] text-cyan-200 bg-cyan-500/15 border border-cyan-500/30 rounded-full px-2 py-1 self-center">
+                  {unit.microbit_id ?? '—'}
+                </span>
+              </article>
+            ))
+          )}
+        </div>
       </div>
     </Card>
   )
