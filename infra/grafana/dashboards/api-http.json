@@ -110,7 +110,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[5m])))",
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(api_http_request_duration_seconds_bucket{route=~\"$route\", method=~\"$method\", status=~\"$status\"}[5m])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "C"
@@ -211,8 +211,9 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "P1809F7CD0C75ACF3"
+          "uid": "prometheus"
         },
+        "allValue": ".*",
         "definition": "label_values(api_http_requests_total, route)",
         "hide": 0,
         "includeAll": true,
@@ -234,8 +235,9 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "P1809F7CD0C75ACF3"
+          "uid": "prometheus"
         },
+        "allValue": ".*",
         "definition": "label_values(api_http_requests_total, method)",
         "hide": 0,
         "includeAll": true,
@@ -257,8 +259,9 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "P1809F7CD0C75ACF3"
+          "uid": "prometheus"
         },
+        "allValue": ".*",
         "definition": "label_values(api_http_requests_total, status)",
         "hide": 0,
         "includeAll": true,
