@@ -32,6 +32,7 @@ services:
       args:
         MAP_TILE_URL: "http://localhost:8080/maps/lyon/{z}/{x}/{y}.pbf"
         API_BASE_URL: "http://localhost:8081/v1"
+        KEYCLOAK_URL: "http://localhost:8082"
     ports:
       - "8080:8080"
 
