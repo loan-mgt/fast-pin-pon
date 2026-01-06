@@ -5,7 +5,8 @@ COPY --chown=keycloak:keycloak realm-export-sdmis.json /opt/keycloak/data/import
 COPY --chown=keycloak:keycloak themes /opt/keycloak/themes
 
 ARG GRAFANA_URL="https://dash.fast-pin-pon.4loop.org"
-RUN sed -i "s@__GRAFANA_URL__@${GRAFANA_URL}@g" /opt/keycloak/data/import/sdmis-realm-realm.json
+RUN sed -i "s@__GRAFANA_URL__@${GRAFANA_URL}@g" /opt/keycloak/data/import/sdmis-realm-realm.json \
+    && chmod -R a-w /opt/keycloak/data/import /opt/keycloak/themes
 
 USER root
 RUN mkdir -p /opt/keycloak/data/logs/keycloak \
