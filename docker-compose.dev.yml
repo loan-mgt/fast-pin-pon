@@ -129,6 +129,8 @@ services:
       context: ./infra/prometheus
       dockerfile: Dockerfile
     profiles: ["monitoring"]
+    ports:
+      - "9090:9090"
 
 networks:
   internal: {}
