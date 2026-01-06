@@ -36,9 +36,9 @@ function extractRoles(kc: Keycloak): string[] {
 }
 
 function derivePermissions(roles: string[]): Permissions {
-  const normalized = roles.map((r) => r.toLowerCase())
-  const isIt = normalized.includes('it')
-  const isSuperieur = normalized.includes('superieur')
+  const normalized = new Set(roles.map((r) => r.toLowerCase()))
+  const isIt = normalized.has('it')
+  const isSuperieur = normalized.has('superieur')
 
   return {
     canCreateIncident: true, // Tous les profils peuvent créer
@@ -49,7 +49,7 @@ function derivePermissions(roles: string[]): Permissions {
   }
 }
 
-export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>): JSX.Element {
   const [keycloak] = useState(() => new Keycloak({
     url: KEYCLOAK_URL,
     realm: KEYCLOAK_REALM,
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
           onLoad: 'check-sso',
           pkceMethod: 'S256',
           checkLoginIframe: false,
-          silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
+          silentCheckSsoRedirectUri: `${globalThis.location.origin}/silent-check-sso.html`,
         })
 
         if (!isMounted) return
@@ -137,8 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       error,
       roles,
       permissions: derivePermissions(roles),
-      login: () => keycloak.login({ redirectUri: window.location.href }),
-      logout: () => keycloak.logout({ redirectUri: window.location.origin }),
+      login: () => keycloak.login({ redirectUri: globalThis.location.href }),
+      logout: () => keycloak.logout({ redirectUri: globalThis.location.origin }),
     }),
     [error, initializing, isAuthenticated, keycloak, profile, roles, token],
   )
