@@ -6,7 +6,71 @@ on:
       - 'v*'
 
 jobs:
+  build-api:
+    uses: ./.github/workflows/build-and-push.base.yml
+    with:
+      folder: api
+    secrets: inherit
+
+  build-database:
+    uses: ./.github/workflows/build-and-push.base.yml
+    with:
+      folder: database
+    secrets: inherit
+
+  build-front:
+    uses: ./.github/workflows/build-and-push.base.yml
+    with:
+      folder: front
+    secrets: inherit
+
+  build-grafana:
+    uses: ./.github/workflows/build-and-push.base.yml
+    with:
+      folder: infra/grafana
+    secrets: inherit
+
+  build-keycloak:
+    uses: ./.github/workflows/build-and-push.base.yml
+    with:
+      folder: infra/keycloak
+    secrets: inherit
+
+  build-loki:
+    uses: ./.github/workflows/build-and-push.base.yml
+    with:
+      folder: infra/loki
+    secrets: inherit
+
+  build-maptiler:
+    uses: ./.github/workflows/build-and-push.base.yml
+    with:
+      folder: maptiler
+    secrets: inherit
+
+  build-promtail:
+    uses: ./.github/workflows/build-and-push.base.yml
+    with:
+      folder: infra/promtail
+    secrets: inherit
+
+  build-simulation:
+    uses: ./.github/workflows/build-and-push.base.yml
+    with:
+      folder: simulation
+    secrets: inherit
+
   deploy:
+    needs: 
+      - build-api
+      - build-database
+      - build-front
+      - build-grafana
+      - build-keycloak
+      - build-loki
+      - build-maptiler
+      - build-promtail
+      - build-simulation
     runs-on: ubuntu-latest
     permissions:
       contents: read

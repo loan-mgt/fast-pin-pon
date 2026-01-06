@@ -3,8 +3,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
     paths:
       - 'infra/grafana/**'
       - '.github/workflows/bp-grafana.yml'

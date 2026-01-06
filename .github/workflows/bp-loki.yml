@@ -3,8 +3,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
     paths:
       - 'infra/loki/**'
       - '.github/workflows/bp-loki.yml'
