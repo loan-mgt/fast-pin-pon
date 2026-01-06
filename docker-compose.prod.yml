@@ -14,6 +14,12 @@ services:
       - LOG_FILE=/var/log/fast-pin-pon/api.log
     volumes:
       - logs:/var/log:rw
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     logging:
       driver: json-file
       options:
@@ -33,7 +39,8 @@ services:
   simulation:
     image: ghcr.io/loan-mgt/fast-pin-pon/simulation:main
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
     volumes:

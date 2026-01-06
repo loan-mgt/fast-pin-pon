@@ -1,4 +1,4 @@
-name: Build Api Docker Image
+name: Build Simulation Docker Image
 on:
   push:
     branches:

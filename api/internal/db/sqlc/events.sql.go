@@ -369,8 +369,8 @@ RETURNING
 `
 
 type UpdateEventStatusParams struct {
-	ID     pgtype.UUID `json:"id"`
-	Status EventStatus `json:"status"`
+	ID      pgtype.UUID `json:"id"`
+	Column2 EventStatus `json:"column_2"`
 }
 
 type UpdateEventStatusRow struct {
@@ -390,7 +390,7 @@ type UpdateEventStatusRow struct {
 }
 
 func (q *Queries) UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) (UpdateEventStatusRow, error) {
-	row := q.db.QueryRow(ctx, updateEventStatus, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updateEventStatus, arg.ID, arg.Column2)
 	var i UpdateEventStatusRow
 	err := row.Scan(
 		&i.ID,

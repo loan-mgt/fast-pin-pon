@@ -8,7 +8,7 @@ INSERT INTO interventions (
     notes
 ) VALUES (
     sqlc.arg(event_id),
-    COALESCE(sqlc.arg(status)::intervention_status, 'planned'),
+    COALESCE(sqlc.arg(status)::intervention_status, 'created'),
     COALESCE(sqlc.arg(priority)::int, 3),
     COALESCE(sqlc.arg(decision_mode)::decision_mode, 'manual'),
     sqlc.arg(created_by),
@@ -60,7 +60,7 @@ WHERE id = $1;
 UPDATE interventions
 SET
     status = $2::intervention_status,
-    started_at = CASE WHEN $2::intervention_status = 'en_route' AND started_at IS NULL THEN NOW() ELSE started_at END,
+    started_at = CASE WHEN $2::intervention_status = 'on_site' AND started_at IS NULL THEN NOW() ELSE started_at END,
     completed_at = CASE WHEN $2::intervention_status = 'completed' THEN NOW() ELSE completed_at END
 WHERE id = $1
 RETURNING

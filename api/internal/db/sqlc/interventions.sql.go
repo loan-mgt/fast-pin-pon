@@ -71,7 +71,7 @@ INSERT INTO interventions (
     notes
 ) VALUES (
     $1,
-    COALESCE($2::intervention_status, 'planned'),
+    COALESCE($2::intervention_status, 'created'),
     COALESCE($3::int, 3),
     COALESCE($4::decision_mode, 'manual'),
     $5,
@@ -286,12 +286,12 @@ RETURNING
 `
 
 type UpdateAssignmentStatusParams struct {
-	ID     pgtype.UUID      `json:"id"`
-	Status AssignmentStatus `json:"status"`
+	ID      pgtype.UUID      `json:"id"`
+	Column2 AssignmentStatus `json:"column_2"`
 }
 
 func (q *Queries) UpdateAssignmentStatus(ctx context.Context, arg UpdateAssignmentStatusParams) (InterventionAssignment, error) {
-	row := q.db.QueryRow(ctx, updateAssignmentStatus, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updateAssignmentStatus, arg.ID, arg.Column2)
 	var i InterventionAssignment
 	err := row.Scan(
 		&i.ID,
@@ -310,7 +310,7 @@ const updateInterventionStatus = `-- name: UpdateInterventionStatus :one
 UPDATE interventions
 SET
     status = $2::intervention_status,
-    started_at = CASE WHEN $2::intervention_status = 'en_route' AND started_at IS NULL THEN NOW() ELSE started_at END,
+    started_at = CASE WHEN $2::intervention_status = 'on_site' AND started_at IS NULL THEN NOW() ELSE started_at END,
     completed_at = CASE WHEN $2::intervention_status = 'completed' THEN NOW() ELSE completed_at END
 WHERE id = $1
 RETURNING
@@ -327,12 +327,12 @@ RETURNING
 `
 
 type UpdateInterventionStatusParams struct {
-	ID     pgtype.UUID        `json:"id"`
-	Status InterventionStatus `json:"status"`
+	ID      pgtype.UUID        `json:"id"`
+	Column2 InterventionStatus `json:"column_2"`
 }
 
 func (q *Queries) UpdateInterventionStatus(ctx context.Context, arg UpdateInterventionStatusParams) (Intervention, error) {
-	row := q.db.QueryRow(ctx, updateInterventionStatus, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updateInterventionStatus, arg.ID, arg.Column2)
 	var i Intervention
 	err := row.Scan(
 		&i.ID,

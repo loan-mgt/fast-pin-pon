@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.OkHttpClient;
 import org.fastpinpon.simulation.model.Incident;
+import org.fastpinpon.simulation.model.IncidentType;
 import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.Retrofit;
@@ -104,18 +105,22 @@ public final class ApiClient {
     }
 
     /**
-     * Create an event from an incident.
-     * @param inc incident to transform into an event
+     * Create an event from raw parameters.
+     * @param type incident type
+     * @param number incident sequence number
+     * @param lat latitude
+     * @param lon longitude
+     * @param severity gravity/severity level
      * @return created event id or null on failure
      */
-    public String createEvent(Incident inc) {
+    public String createEvent(IncidentType type, int number, double lat, double lon, int severity) {
         String typeCode = pickEventType();
         if (typeCode == null) {
             LOG.warning("[API] No event type code available; cannot create event.");
             return null;
         }
-        String title = "SIM-" + inc.getType() + "-" + inc.getId().toString().substring(0, 8);
-        CreateEventRequest payload = new CreateEventRequest(title, typeCode, inc.getLat(), inc.getLon(), inc.getGravite(), "simulation");
+        String title = "SIM-" + type + "-" + number;
+        CreateEventRequest payload = new CreateEventRequest(title, typeCode, lat, lon, severity, "simulation");
         IdDto created = execute(api.createEvent(payload), "POST /v1/events");
         if (created != null && created.getId() != null) {
             LOG.log(Level.INFO, "[API] Event created (id={0})", created.getId());
@@ -156,7 +161,8 @@ public final class ApiClient {
         if (assignmentId == null || assignmentId.trim().isEmpty()) {
             return;
         }
-        executeVoid(api.updateAssignmentStatus(assignmentId, new StatusRequest(status)), "PATCH /v1/assignments/{id}/status");
+        StatusRequest payload = new StatusRequest(status);
+        executeVoid(api.updateAssignmentStatus(assignmentId, payload), "PATCH /v1/assignments/{id}/status", payload);
     }
 
     /**
@@ -168,7 +174,8 @@ public final class ApiClient {
         if (interventionId == null || interventionId.trim().isEmpty()) {
             return;
         }
-        executeVoid(api.updateInterventionStatus(interventionId, new StatusRequest(status)), "PATCH /v1/interventions/{id}/status");
+        StatusRequest payload = new StatusRequest(status);
+        executeVoid(api.updateInterventionStatus(interventionId, payload), "PATCH /v1/interventions/{id}/status", payload);
     }
 
     /**
@@ -180,7 +187,8 @@ public final class ApiClient {
         if (eventId == null || eventId.trim().isEmpty()) {
             return;
         }
-        executeVoid(api.updateEventStatus(eventId, new StatusRequest(status)), "PATCH /v1/events/{id}/status");
+        StatusRequest payload = new StatusRequest(status);
+        executeVoid(api.updateEventStatus(eventId, payload), "PATCH /v1/events/{id}/status", payload);
     }
 
     /**
@@ -192,7 +200,7 @@ public final class ApiClient {
             return;
         }
         HeartbeatRequest payload = new HeartbeatRequest("simulator", "heartbeat");
-        executeVoid(api.logEvent(eventId, payload), "POST /v1/events/{id}/logs");
+        executeVoid(api.logEvent(eventId, payload), "POST /v1/events/{id}/logs", payload);
     }
 
     /**
@@ -204,7 +212,8 @@ public final class ApiClient {
         if (unitId == null || unitId.trim().isEmpty()) {
             return;
         }
-        executeVoid(api.updateUnitStatus(unitId, new StatusRequest(status)), "PATCH /v1/units/{id}/status");
+        StatusRequest payload = new StatusRequest(status);
+        executeVoid(api.updateUnitStatus(unitId, payload), "PATCH /v1/units/{id}/status", payload);
     }
 
     /**
@@ -219,7 +228,7 @@ public final class ApiClient {
             return;
         }
         LocationRequest payload = new LocationRequest(lat, lon, ISO.format(recordedAt));
-        executeVoid(api.updateUnitLocation(unitId, payload), "PATCH /v1/units/{id}/location");
+        executeVoid(api.updateUnitLocation(unitId, payload), "PATCH /v1/units/{id}/location", payload);
     }
 
     public String pickUnitType() {
@@ -298,16 +307,32 @@ public final class ApiClient {
     }
 
     private void executeVoid(Call<Void> call, String action) {
+        executeVoid(call, action, null);
+    }
+
+    private void executeVoid(Call<Void> call, String action, Object payload) {
         try {
             Response<Void> resp = call.execute();
             if (!resp.isSuccessful()) {
-                LOG.log(Level.SEVERE, "[API] {0} -> {1} body={2}", new Object[]{action, resp.code(), errorBody(resp)});
+                LOG.log(Level.SEVERE, "[API] {0} -> {1} body={2} payload={3}",
+                        new Object[]{action, resp.code(), errorBody(resp), serializePayload(payload)});
             }
         } catch (Exception e) {
             if (wasInterrupted(e)) {
                 return;
             }
-            LOG.log(Level.SEVERE, e, () -> "[API] " + action + " error");
+            LOG.log(Level.SEVERE, e, () -> "[API] " + action + " error payload=" + serializePayload(payload));
+        }
+    }
+
+    private String serializePayload(Object payload) {
+        if (payload == null) {
+            return "";
+        }
+        try {
+            return OBJECT_MAPPER.writeValueAsString(payload);
+        } catch (Exception ignored) {
+            return payload.toString();
         }
     }
 

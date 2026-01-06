@@ -8,7 +8,7 @@ import (
 
 type CreateInterventionRequest struct {
 	EventID      string  `json:"event_id" validate:"required,uuid4"`
-	Status       string  `json:"status" validate:"omitempty,oneof=created completed cancelled"`
+	Status       string  `json:"status" validate:"omitempty,oneof=created on_site completed cancelled"`
 	Priority     int32   `json:"priority" validate:"omitempty,min=1,max=5"`
 	DecisionMode string  `json:"decision_mode" validate:"omitempty,oneof=auto_suggested manual"`
 	CreatedBy    *string `json:"created_by"`
@@ -16,7 +16,7 @@ type CreateInterventionRequest struct {
 }
 
 type UpdateInterventionStatusRequest struct {
-	Status string `json:"status" validate:"required,oneof=created completed cancelled"`
+	Status string `json:"status" validate:"required,oneof=created on_site completed cancelled"`
 }
 
 type CreateAssignmentRequest struct {
@@ -151,8 +151,8 @@ func (s *Server) handleUpdateInterventionStatus(w http.ResponseWriter, r *http.R
 	}
 
 	row, err := s.queries.UpdateInterventionStatus(r.Context(), db.UpdateInterventionStatusParams{
-		ID:     interventionID,
-		Status: db.InterventionStatus(req.Status),
+		ID:      interventionID,
+		Column2: db.InterventionStatus(req.Status),
 	})
 	if err != nil {
 		if isNotFound(err) {
@@ -307,8 +307,8 @@ func (s *Server) handleUpdateAssignmentStatus(w http.ResponseWriter, r *http.Req
 	}
 
 	row, err := s.queries.UpdateAssignmentStatus(r.Context(), db.UpdateAssignmentStatusParams{
-		ID:     assignmentID,
-		Status: db.AssignmentStatus(req.Status),
+		ID:      assignmentID,
+		Column2: db.AssignmentStatus(req.Status),
 	})
 	if err != nil {
 		if isNotFound(err) {
