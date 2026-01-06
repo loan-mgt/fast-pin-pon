@@ -29,8 +29,10 @@ jobs:
           cache: 'maven'
 
       - name: Build simulation (classes for Sonar)
-        run: mvn -B -DskipTests package
+        run: mvn -B -DskipTests package -s ${{ github.workspace }}/.m2/settings.xml
         working-directory: simulation
+        env:
+          MAVEN_OPTS: -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
       - uses: SonarSource/sonarqube-scan-action@v6
         env:
