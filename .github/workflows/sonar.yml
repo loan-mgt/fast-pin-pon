@@ -28,6 +28,9 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Clear Maven Cache
+        run: rm -rf ~/.m2/repository
+
       - name: Build simulation (classes for Sonar)
         run: mvn -B -DskipTests package -s ${{ github.workspace }}/simulation/settings.xml
         working-directory: simulation
