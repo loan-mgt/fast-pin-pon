@@ -10,6 +10,8 @@ interface NavbarProps {
     onRefresh: () => void
     isSpinning: boolean
     lastUpdated: string
+    onLogout?: () => void
+    userLabel?: string
 }
 
 export function Navbar({
@@ -18,6 +20,8 @@ export function Navbar({
     onRefresh,
     isSpinning,
     lastUpdated,
+    onLogout,
+    userLabel,
 }: Readonly<NavbarProps>): JSX.Element {
     return (
         <nav className="bg-slate-950/90 border-slate-900/70 border-b">
@@ -68,6 +72,17 @@ export function Navbar({
                     </div>
                     <Button variant="ghost">Docs</Button>
                     <Button variant="ghost">Status</Button>
+                    {userLabel && (
+                        <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-800/60 px-3 py-1 rounded-lg">
+                            <span className="inline-flex w-2 h-2 bg-emerald-400 rounded-full" aria-hidden="true" />
+                            <span className="truncate max-w-[140px]" title={userLabel}>{userLabel}</span>
+                        </div>
+                    )}
+                    {onLogout && (
+                        <Button variant="ghost" onClick={onLogout} aria-label="Se déconnecter">
+                            Déconnexion
+                        </Button>
+                    )}
                     <div className="text-slate-400 text-xs hidden sm:block">
                         <span className="opacity-70">Updated </span>
                         {lastUpdated}
