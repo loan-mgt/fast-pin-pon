@@ -45,6 +45,7 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
   const [selectedUnitCallSign, setSelectedUnitCallSign] = useState<string | undefined>(undefined)
   const [selectedUnitMicrobitId, setSelectedUnitMicrobitId] = useState<string | undefined>(undefined)
   const [sortRules, setSortRules] = useState<SortRule[]>([])
+  const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null)
   const microbitPool = ['MB001', 'MB002', 'MB003', 'MB004', 'MB005', 'MB006', 'MB007', 'MB008', 'MB009', 'MB010']
   const usedMicrobits = new Set(units.map((unit) => unit.microbit_id).filter(Boolean))
   const availableMicrobits = microbitPool.filter(
@@ -69,6 +70,18 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
     if (!selectedUnitId) return
     await fastPinPonService.unassignMicrobit(selectedUnitId, token ?? undefined)
     if (onRefresh) onRefresh()
+  }
+
+  const handleDeleteUnit = async (unitId: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (deletingUnitId) return
+    setDeletingUnitId(unitId)
+    try {
+      await fastPinPonService.deleteUnit(unitId, token ?? undefined)
+      if (onRefresh) onRefresh()
+    } finally {
+      setDeletingUnitId(null)
+    }
   }
 
   const toggleSort = (key: SortKey) => {
@@ -133,7 +146,6 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
 
   return (
     <div className="flex flex-col gap-4 flex-1 pt-0 px-6 py-6 bg-slate-950 text-slate-100">
-
       <Card className="w-full">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left text-slate-200">
@@ -159,16 +171,19 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
                   Microbit
                   {renderSortIndicator('microbit_id')}
                 </th>
-                <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('last_contact_at')}>
+                <th className="px-3 py-2 cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('last_contact_at')}>
                   Dernier contact
                   {renderSortIndicator('last_contact_at')}
+                </th>
+                <th className="px-2 py-2 text-center whitespace-nowrap">
+                  Suppr.
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-900/60">
               {sortedUnits.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-slate-400">
+                  <td colSpan={7} className="px-3 py-6 text-center text-slate-400">
                     Aucune unité disponible.
                   </td>
                 </tr>
@@ -198,6 +213,28 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
                       </td>
                       <td className="px-3 py-2 text-slate-300">{unit.microbit_id ?? '—'}</td>
                       <td className="px-3 py-2 text-slate-300 whitespace-nowrap">{formatDate(unit.last_contact_at)}</td>
+                      <td className="px-1 py-2 text-center w-16">
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteUnit(unit.id, e)}
+                          disabled={deletingUnitId === unit.id}
+                          className="p-1.5 rounded-md text-red-400/70 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 hover:scale-110 active:scale-95"
+                          aria-label={`Supprimer ${unit.call_sign}`}
+                          title="Supprimer"
+                        >
+                          {deletingUnitId === unit.id ? (
+                            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                              <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          )}
+                        </button>
+                      </td>
                     </tr>
                   )
                 })

@@ -122,6 +122,44 @@ func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusCreated, summary)
 }
 
+// handleDeleteUnit godoc
+// @Title Delete unit
+// @Description Deletes a responder unit by ID, including all related telemetry and assignments.
+// @Resource Units
+// @Produce json
+// @Param unitID path string true "Unit UUID"
+// @Success 204
+// @Failure 400 {object} APIError
+// @Failure 500 {object} APIError
+// @Route /v1/units/{unitID} [delete]
+func (s *Server) handleDeleteUnit(w http.ResponseWriter, r *http.Request) {
+	unitID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid unit id", err.Error())
+		return
+	}
+
+	ctx := r.Context()
+
+	// Delete related data first (foreign key constraints)
+	if err := s.queries.DeleteUnitAssignments(ctx, unitID); err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to delete unit assignments", err.Error())
+		return
+	}
+
+	if err := s.queries.DeleteUnitTelemetry(ctx, unitID); err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to delete unit telemetry", err.Error())
+		return
+	}
+
+	if err := s.queries.DeleteUnit(ctx, unitID); err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to delete unit", err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // handleUpdateUnitStatus godoc
 // @Title Update unit status
 // @Description Updates the dispatch readiness of a unit.
