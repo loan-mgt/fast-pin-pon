@@ -91,6 +91,20 @@ class FastPinPonService {
     }
   }
 
+  async unassignMicrobit(unitId: string, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/units/${unitId}/microbit`, {
+      method: 'DELETE',
+      headers: {
+        ...this.buildHeaders(token),
+      },
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to unassign microbit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
   async updateInterventionStatus(interventionId: string, status: InterventionStatus, token?: string): Promise<void> {
     const response = await fetch(`${this.API_BASE_URL}/interventions/${interventionId}/status`, {
       method: 'PATCH',

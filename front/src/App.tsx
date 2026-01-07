@@ -181,7 +181,7 @@ export function App() {
 
       {view === 'dashboard' ? (
         <main className="flex flex-1 min-h-[calc(100vh-72px)]">
-          <DashboardPage units={units} lastUpdated={lastUpdated} onRefresh={refreshData} />
+          <DashboardPage units={units} onRefresh={refreshData} />
         </main>
       ) : (
         <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">

@@ -9,7 +9,6 @@ import { useAuth } from '../../auth/AuthProvider'
 
 interface DashboardPageProps {
   units: UnitSummary[]
-  lastUpdated?: string
   onRefresh?: () => void
 }
 
@@ -32,7 +31,7 @@ const formatDate = (iso: string) => {
   })}`
 }
 
-export function DashboardPage({ units, lastUpdated, onRefresh }: Readonly<DashboardPageProps>): JSX.Element {
+export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>): JSX.Element {
   const { token } = useAuth()
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
   const [selectedUnitCallSign, setSelectedUnitCallSign] = useState<string | undefined>(undefined)
@@ -57,21 +56,14 @@ export function DashboardPage({ units, lastUpdated, onRefresh }: Readonly<Dashbo
     if (onRefresh) onRefresh()
   }
 
+  const handleUnassign = async () => {
+    if (!selectedUnitId) return
+    await fastPinPonService.unassignMicrobit(selectedUnitId, token ?? undefined)
+    if (onRefresh) onRefresh()
+  }
+
   return (
-    <div className="flex flex-col gap-4 flex-1 px-6 py-6 bg-slate-950 text-slate-100">
-      <header className="flex items-baseline justify-between flex-wrap gap-2">
-        <div>
-          <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Fast Pin Pon</p>
-          <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
-          <p className="text-sm text-slate-400">Liste des unités (tous statuts)</p>
-        </div>
-        {lastUpdated && (
-          <p className="text-xs text-slate-400">
-            <span className="opacity-70">Dernière mise à jour </span>
-            {lastUpdated}
-          </p>
-        )}
-      </header>
+    <div className="flex flex-col gap-4 flex-1 pt-0 px-6 py-6 bg-slate-950 text-slate-100">
 
       <Card className="w-full">
         <div className="overflow-x-auto">
@@ -136,6 +128,7 @@ export function DashboardPage({ units, lastUpdated, onRefresh }: Readonly<Dashbo
           setSelectedUnitMicrobitId(undefined)
         }}
         onSubmit={handleAssign}
+        onUnassign={selectedUnitMicrobitId ? handleUnassign : undefined}
         microbitOptions={availableMicrobits}
         unitCallSign={selectedUnitCallSign}
         initialSelection={selectedUnitMicrobitId}

@@ -21,7 +21,7 @@ export function UnitPanel({ units }: Readonly<UnitPanelProps>): JSX.Element {
   return (
     <Card
       className={
-        `z-10 fixed bottom-0 right-[320px] shadow-2xl shadow-slate-950/60 p-0 flex flex-col overflow-hidden rounded-none w-[320px] min-w-[260px] max-w-[90vw] ` +
+        `z-10 fixed bottom-0 right-[320px] shadow-2xl shadow-slate-950/60 p-0 pb-1 flex flex-col overflow-hidden rounded-none w-[320px] min-w-[260px] max-w-[90vw] ` +
         (isPanelCollapsed ? '' : 'max-h-[45vh]')
       }
     >
