@@ -328,6 +328,80 @@ func (q *Queries) InsertUnitTelemetry(ctx context.Context, arg InsertUnitTelemet
 	return i, err
 }
 
+const listAvailableUnitsNearby = `-- name: ListAvailableUnitsNearby :many
+SELECT
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at,
+    ST_Distance(location, ST_SetSRID(ST_MakePoint($1::double precision, $2::double precision), 4326)::geography)::double precision AS distance
+FROM units
+WHERE status = 'available'
+AND ($3::text[] IS NULL OR unit_type_code = ANY($3::text[]))
+ORDER BY distance ASC
+`
+
+type ListAvailableUnitsNearbyParams struct {
+	Longitude float64  `json:"longitude"`
+	Latitude  float64  `json:"latitude"`
+	UnitTypes []string `json:"unit_types"`
+}
+
+type ListAvailableUnitsNearbyRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CallSign      string             `json:"call_sign"`
+	UnitTypeCode  string             `json:"unit_type_code"`
+	HomeBase      *string            `json:"home_base"`
+	Status        UnitStatus         `json:"status"`
+	MicrobitID    *string            `json:"microbit_id"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	Distance      float64            `json:"distance"`
+}
+
+func (q *Queries) ListAvailableUnitsNearby(ctx context.Context, arg ListAvailableUnitsNearbyParams) ([]ListAvailableUnitsNearbyRow, error) {
+	rows, err := q.db.Query(ctx, listAvailableUnitsNearby, arg.Longitude, arg.Latitude, arg.UnitTypes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAvailableUnitsNearbyRow
+	for rows.Next() {
+		var i ListAvailableUnitsNearbyRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CallSign,
+			&i.UnitTypeCode,
+			&i.HomeBase,
+			&i.Status,
+			&i.MicrobitID,
+			&i.Longitude,
+			&i.Latitude,
+			&i.LastContactAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Distance,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnits = `-- name: ListUnits :many
 SELECT
     id,

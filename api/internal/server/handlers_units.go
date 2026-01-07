@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	db "fast/pin/internal/db/sqlc"
@@ -283,31 +285,33 @@ func (s *Server) handleInsertTelemetry(w http.ResponseWriter, r *http.Request) {
 }
 
 type unitRowData struct {
-	ID           pgtype.UUID
-	CallSign     string
-	UnitTypeCode string
-	HomeBase     *string
-	Status       db.UnitStatus
-	MicrobitID   *string
-	Longitude    float64
-	Latitude     float64
-	LastContact  pgtype.Timestamptz
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	ID             pgtype.UUID
+	CallSign       string
+	UnitTypeCode   string
+	HomeBase       *string
+	Status         db.UnitStatus
+	MicrobitID     *string
+	Longitude      float64
+	Latitude       float64
+	DistanceMeters *float64
+	LastContact    pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
 func mapUnitRow(data unitRowData) UnitResponse {
 	return UnitResponse{
-		ID:           uuidString(data.ID),
-		CallSign:     data.CallSign,
-		UnitTypeCode: data.UnitTypeCode,
-		HomeBase:     optionalString(data.HomeBase),
-		Status:       string(data.Status),
-		MicrobitID:   optionalString(data.MicrobitID),
-		Location:     GeoPoint{Latitude: data.Latitude, Longitude: data.Longitude},
-		LastContact:  timestamptzPtr(data.LastContact),
-		CreatedAt:    data.CreatedAt.Time,
-		UpdatedAt:    data.UpdatedAt.Time,
+		ID:             uuidString(data.ID),
+		CallSign:       data.CallSign,
+		UnitTypeCode:   data.UnitTypeCode,
+		HomeBase:       optionalString(data.HomeBase),
+		Status:         string(data.Status),
+		MicrobitID:     optionalString(data.MicrobitID),
+		Location:       GeoPoint{Latitude: data.Latitude, Longitude: data.Longitude},
+		DistanceMeters: data.DistanceMeters,
+		LastContact:    timestamptzPtr(data.LastContact),
+		CreatedAt:      data.CreatedAt.Time,
+		UpdatedAt:      data.UpdatedAt.Time,
 	}
 }
 
@@ -472,3 +476,76 @@ func (s *Server) handleGetUnitByMicrobit(w http.ResponseWriter, r *http.Request)
 		UpdatedAt:    row.UpdatedAt,
 	}))
 }
+
+// handleListUnitsNearby godoc
+// @Title List available units nearby
+// @Description Returns available units sorted by distance to a given location.
+// @Resource Units
+// @Produce json
+// @Param lat query number true "Latitude"
+// @Param lon query number true "Longitude"
+// @Param unit_types query string false "Comma-separated unit type codes"
+// @Success 200 {array} UnitResponse
+// @Failure 400 {object} APIError
+// @Failure 500 {object} APIError
+// @Route /v1/units/nearby [get]
+func (s *Server) handleListUnitsNearby(w http.ResponseWriter, r *http.Request) {
+	latStr := r.URL.Query().Get("lat")
+	lonStr := r.URL.Query().Get("lon")
+
+	if latStr == "" || lonStr == "" {
+		s.writeError(w, http.StatusBadRequest, "latitude and longitude are required", nil)
+		return
+	}
+
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid latitude", err.Error())
+		return
+	}
+
+	lon, err := strconv.ParseFloat(lonStr, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid longitude", err.Error())
+		return
+	}
+
+	var unitTypes []string
+	if ut := r.URL.Query().Get("unit_types"); ut != "" {
+		unitTypes = strings.Split(ut, ",")
+	}
+
+	params := db.ListAvailableUnitsNearbyParams{
+		Latitude:  lat,
+		Longitude: lon,
+		UnitTypes: unitTypes,
+	}
+
+	rows, err := s.queries.ListAvailableUnitsNearby(r.Context(), params)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to list nearby units", err.Error())
+		return
+	}
+
+	resp := make([]UnitResponse, 0, len(rows))
+	for _, row := range rows {
+		dist := row.Distance
+		resp = append(resp, mapUnitRow(unitRowData{
+			ID:             row.ID,
+			CallSign:       row.CallSign,
+			UnitTypeCode:   row.UnitTypeCode,
+			HomeBase:       row.HomeBase,
+			Status:         row.Status,
+			MicrobitID:     row.MicrobitID,
+			Longitude:      row.Longitude,
+			Latitude:       row.Latitude,
+			DistanceMeters: &dist,
+			LastContact:    row.LastContactAt,
+			CreatedAt:      row.CreatedAt,
+			UpdatedAt:      row.UpdatedAt,
+		}))
+	}
+
+	s.writeJSON(w, http.StatusOK, resp)
+}
+

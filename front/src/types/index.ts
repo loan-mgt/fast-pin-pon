@@ -29,9 +29,19 @@ export type UnitSummary = {
     status: string
     microbit_id?: string
     location: GeoPoint
+    distance_meters?: number
     last_contact_at: string
     created_at: string
     updated_at: string
+}
+
+export type UnitType = {
+    code: string
+    name: string
+    capabilities: string
+    speed_kmh?: number
+    max_crew?: number
+    illustration?: string
 }
 
 export type { EventType, CreateEventRequest } from './eventTypes'

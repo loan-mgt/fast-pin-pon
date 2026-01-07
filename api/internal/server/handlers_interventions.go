@@ -283,6 +283,15 @@ func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Update unit status to 'under_way' when assigned
+	if _, err := s.queries.UpdateUnitStatus(r.Context(), db.UpdateUnitStatusParams{
+		ID:     unitID,
+		Status: db.UnitStatusUnderWay,
+	}); err != nil {
+		s.log.Error().Err(err).Str("unit_id", req.UnitID).Msg("failed to update unit status after assignment")
+		// We don't fail the whole request because the assignment was created
+	}
+
 	s.writeJSON(w, http.StatusCreated, mapAssignment(row))
 }
 

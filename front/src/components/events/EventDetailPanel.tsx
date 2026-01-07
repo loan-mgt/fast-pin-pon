@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import type { JSX } from 'react'
 import { Card } from '../ui/card'
 import { ConfirmationDialog } from '../ui/confirmation-dialog'
+import { UnitAssignmentDialog } from './UnitAssignmentDialog'
 import type { EventSummary } from '../../types'
 import type { Permissions } from '../../auth/AuthProvider'
 import { formatTimestamp, severityLabel } from '../../utils/format'
@@ -13,12 +14,14 @@ interface EventDetailPanelProps {
   readonly onClose: () => void
   readonly permissions?: Permissions
   readonly onRefresh?: () => Promise<void> | void
+  readonly onTogglePauseRefresh?: (paused: boolean) => void
 }
 
-export function EventDetailPanel({ event, onClose, permissions, onRefresh }: EventDetailPanelProps): JSX.Element | null {
+export function EventDetailPanel({ event, onClose, permissions, onRefresh, onTogglePauseRefresh }: EventDetailPanelProps): JSX.Element | null {
   const { token } = useAuth()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const canAssign = permissions?.canAssignUnits ?? false
@@ -144,6 +147,7 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh }: Eve
               aria-label="Assigner une unité"
               title="Assigner une unité"
               disabled={!canAssign}
+              onClick={() => setShowAssignmentDialog(true)}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -204,6 +208,15 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh }: Eve
         confirmLabel="OK"
         onConfirm={() => setErrorMessage(null)}
       />
+      {event && (
+        <UnitAssignmentDialog
+          isOpen={showAssignmentDialog}
+          event={event}
+          onClose={() => setShowAssignmentDialog(false)}
+          onRefresh={onRefresh}
+          onTogglePauseRefresh={onTogglePauseRefresh}
+        />
+      )}
     </>
   )
 }
