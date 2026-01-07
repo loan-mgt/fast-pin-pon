@@ -136,6 +136,14 @@ function buildConnectionLines(
         }))
 }
 
+function isGeoJSONSource(source: unknown): source is maplibregl.GeoJSONSource {
+    return Boolean(
+        source &&
+        typeof (source as maplibregl.GeoJSONSource).setData === 'function' &&
+        (source as maplibregl.GeoJSONSource).type === 'geojson',
+    )
+}
+
 function addConnectionLayers(
     map: maplibregl.Map,
     sourceId: string,
@@ -308,8 +316,8 @@ export function MapContainer({
                 features: connectionLines,
             }
 
-            const source = map.getSource(connectionSourceId) as maplibregl.GeoJSONSource | undefined
-            if (source) {
+            const source = map.getSource(connectionSourceId)
+            if (isGeoJSONSource(source)) {
                 source.setData(geojsonData)
             } else {
                 map.addSource(connectionSourceId, { type: 'geojson', data: geojsonData })
