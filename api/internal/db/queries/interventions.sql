@@ -156,3 +156,12 @@ JOIN interventions i ON ia.intervention_id = i.id
 JOIN units u ON ia.unit_id = u.id
 WHERE i.event_id = $1 AND ia.released_at IS NULL
 ORDER BY ia.dispatched_at DESC;
+
+-- name: ReleaseUnitFromIntervention :one
+UPDATE intervention_assignments
+SET
+    status = 'released',
+    released_at = NOW()
+WHERE intervention_id = $1 AND unit_id = $2 AND released_at IS NULL
+RETURNING id;
+

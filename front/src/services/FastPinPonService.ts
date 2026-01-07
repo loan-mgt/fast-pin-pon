@@ -67,10 +67,15 @@ class FastPinPonService {
   // =========================
   // ADDED: create an incident
   // =========================
-  async createEvent(payload: CreateEventRequest): Promise<void> {
-    const response = await fetch(`${this.API_BASE_URL}/events`, {
+  async createEvent(payload: CreateEventRequest, autoIntervention = false, token?: string): Promise<void> {
+    const url = new URL(`${this.API_BASE_URL}/events`)
+    if (autoIntervention) {
+      url.searchParams.set('auto_intervention', 'true')
+    }
+
+    const response = await fetch(url.toString(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.buildHeaders(token),
       body: JSON.stringify(payload),
     })
 
@@ -172,6 +177,18 @@ class FastPinPonService {
     if (!response.ok) {
       const text = await response.text().catch(() => '')
       throw new Error(`Failed to assign unit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
+  async unassignUnitFromIntervention(interventionId: string, unitId: string, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/interventions/${interventionId}/assignments/${unitId}`, {
+      method: 'DELETE',
+      headers: this.buildHeaders(token),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to unassign unit: ${response.status} ${response.statusText} ${text}`)
     }
   }
 }

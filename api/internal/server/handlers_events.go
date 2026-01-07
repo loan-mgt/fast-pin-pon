@@ -175,6 +175,7 @@ func splitCSV(s string) []string {
 // @Resource Events
 // @Accept json
 // @Produce json
+// @Param auto_intervention query boolean false "Automatically create an intervention for this event"
 // @Param request body CreateEventRequest true "Event payload"
 // @Success 201 {object} EventSummaryResponse
 // @Failure 400 {object} APIError
@@ -202,6 +203,21 @@ func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to create event", err.Error())
 		return
+	}
+
+	// Auto-create intervention if requested via query param
+	if r.URL.Query().Get("auto_intervention") == "true" {
+		_, err := s.queries.CreateIntervention(r.Context(), db.CreateInterventionParams{
+			EventID:      row.ID,
+			Status:       db.InterventionStatusCreated,
+			Priority:     row.Severity,
+			DecisionMode: db.DecisionModeManual,
+		})
+		if err != nil {
+			s.log.Error().Err(err).Msg("failed to auto-create intervention")
+			// We don't fail the event creation, but maybe we should return a different status 
+			// or include it in the response. For now, just log the error.
+		}
 	}
 
 	summary := mapCreateEventRow(row)

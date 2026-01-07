@@ -357,6 +357,27 @@ func (q *Queries) ListUnitsAssignedToEvent(ctx context.Context, eventID pgtype.U
 	return items, nil
 }
 
+const releaseUnitFromIntervention = `-- name: ReleaseUnitFromIntervention :one
+UPDATE intervention_assignments
+SET
+    status = 'released',
+    released_at = NOW()
+WHERE intervention_id = $1 AND unit_id = $2 AND released_at IS NULL
+RETURNING id
+`
+
+type ReleaseUnitFromInterventionParams struct {
+	InterventionID pgtype.UUID `json:"intervention_id"`
+	UnitID         pgtype.UUID `json:"unit_id"`
+}
+
+func (q *Queries) ReleaseUnitFromIntervention(ctx context.Context, arg ReleaseUnitFromInterventionParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, releaseUnitFromIntervention, arg.InterventionID, arg.UnitID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const updateAssignmentStatus = `-- name: UpdateAssignmentStatus :one
 UPDATE intervention_assignments
 SET

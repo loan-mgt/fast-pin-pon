@@ -140,7 +140,7 @@ export function App() {
 
   const handleCreateEvent = useCallback(
     async (payload: CreateEventRequest) => {
-      await fastPinPonService.createEvent(payload)
+      await fastPinPonService.createEvent(payload, true)
       await refreshData()
       setPendingLocation(null)
     },
