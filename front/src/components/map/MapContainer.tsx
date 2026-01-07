@@ -235,9 +235,8 @@ function addEventMarkers(
             onSiteUnits,
         )
 
-        // Anchor at bottom so the event icon stays at the correct position
-        // and unit badges appear below it
-        const marker = new maplibregl.Marker({ element: el, anchor: 'top' })
+        // Anchor at center so connection lines point to the event icon center
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
             .setLngLat([location.lng, location.lat])
             .addTo(map)
 
