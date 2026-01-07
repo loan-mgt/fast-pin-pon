@@ -19,6 +19,8 @@ waiting_ack = False
 last_msg = ""
 retries = 0
 retry_time = 0
+gps_lat = None
+gps_lon = None
 
 CODES = ["AVL", "UWY", "ONS", "UNA", "OFF"]
 
@@ -68,10 +70,6 @@ def check_ack():
     global waiting_ack, retries, retry_time
     if not waiting_ack:
         return
-    p = radio.receive()
-    if p and p.startswith("ACK:"):
-        waiting_ack = False
-        return
     now = running_time()
     if now - retry_time > 500:
         if retries < 3:
@@ -120,6 +118,32 @@ cooldown_until = 0
 while True:
     now = running_time()
     check_ack()
+
+    incoming = radio.receive()
+    while incoming:
+        if incoming.startswith("ACK:"):
+            waiting_ack = False
+            incoming = radio.receive()
+            continue
+        try:
+            parts = incoming.split("|")
+            if len(parts) == 4:
+                seq = int(parts[0])
+                data = parts[1]
+                crc_val = int(parts[2])
+                sig_val = int(parts[3])
+                if crc8(data) == crc_val and sign(data, seq) == sig_val and data.startswith("GPS:"):
+                    payload = data[4:].split(",")
+                    if len(payload) >= 3:
+                        gps_lat = float(payload[1])
+                        gps_lon = float(payload[2])
+                        # Renvoi vers le relay pour confirmation / affichage
+                        out = "{}|{}|{}|{}".format(seq_num, data, crc8(data), sign(data, seq_num))
+                        radio.send(out)
+                        seq_num = (seq_num + 1) & 0xFF
+            incoming = radio.receive()
+        except Exception:
+            incoming = radio.receive()
 
     # A+B long -> toggle OFF
     if button_a.is_pressed() and button_b.is_pressed():
