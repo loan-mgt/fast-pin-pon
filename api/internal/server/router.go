@@ -31,6 +31,7 @@ func (s *Server) routes() http.Handler {
 	r.Route("/v1", func(v1 chi.Router) {
 		v1.Get("/event-types", s.handleListEventTypes)
 		v1.Get("/unit-types", s.handleListUnitTypes)
+			v1.Get("/buildings", s.handleListBuildings)
 
 		v1.Get("/events", s.handleListEvents)
 		v1.Post("/events", s.handleCreateEvent)

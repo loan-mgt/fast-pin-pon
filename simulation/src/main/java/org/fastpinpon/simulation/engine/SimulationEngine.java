@@ -7,6 +7,7 @@ import org.fastpinpon.simulation.model.Vehicle;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ public final class SimulationEngine {
     private final Random random = new Random();
     private final List<Vehicle> vehicles = new ArrayList<>();
     private final DecisionEngine decisionEngine;
+        private final List<BaseLocation> bases;
     private final List<IncidentSource> incidentSources = new ArrayList<>();
 
     private int tickCounter = 0;
@@ -56,7 +58,7 @@ public final class SimulationEngine {
     private static final String BASE_PART_DIEU = "Lyon Part-Dieu";
     private static final String BASE_CUSSET = "Cusset";
 
-    private static final BaseLocation[] BASES = new BaseLocation[]{
+        private static final BaseLocation[] DEFAULT_BASES = new BaseLocation[]{
             new BaseLocation(BASE_VILLEURBANNE, 45.766180, 4.878770),
             new BaseLocation(BASE_CONFLUENCE, 45.741054, 4.823733),
             new BaseLocation(BASE_PART_DIEU, 45.760540, 4.861700),
@@ -80,8 +82,11 @@ public final class SimulationEngine {
      */
     public SimulationEngine(ApiClient api, IncidentSource incidentSource) {
         this.api = api;
+        // Load stations from API; fallback to defaults
+        List<BaseLocation> stations = api.loadStations();
+        this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles);
+        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases);
         if (incidentSource != null) {
             this.incidentSources.add(incidentSource);
         }
@@ -96,8 +101,10 @@ public final class SimulationEngine {
      */
     public SimulationEngine(ApiClient api, boolean noGenerator) {
         this.api = api;
+        List<BaseLocation> stations = api.loadStations();
+        this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles);
+        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases);
         if (!noGenerator) {
             this.incidentSources.add(new IncidentGenerator());
         }
@@ -227,19 +234,19 @@ public final class SimulationEngine {
             return;
         }
         // Count units per base
-        int[] counts = new int[BASES.length];
+        int[] counts = new int[bases.size()];
         for (Vehicle v : vehicles) {
-            for (int i = 0; i < BASES.length; i++) {
-                if (BASES[i].name.equals(v.getHomeBase())) {
+            for (int i = 0; i < bases.size(); i++) {
+                if (bases.get(i).name.equals(v.getHomeBase())) {
                     counts[i]++;
                     break;
                 }
             }
         }
         StringBuilder sb = new StringBuilder("[SIM] Fleet distribution (").append(vehicles.size()).append(" units): ");
-        for (int i = 0; i < BASES.length; i++) {
-            sb.append(BASES[i].name).append("=").append(counts[i]);
-            if (i < BASES.length - 1) {
+        for (int i = 0; i < bases.size(); i++) {
+            sb.append(bases.get(i).name).append("=").append(counts[i]);
+            if (i < bases.size() - 1) {
                 sb.append(", ");
             }
         }
@@ -279,7 +286,7 @@ public final class SimulationEngine {
         targetPerBase.put(BASE_PART_DIEU, UNITS_PART_DIEU);
 
         // Fill each base to its target count
-        for (BaseLocation base : BASES) {
+        for (BaseLocation base : bases) {
             int target = targetPerBase.getOrDefault(base.name, 8);
             int current = baseUnitCounts.getOrDefault(base.name, 0);
             
@@ -380,7 +387,7 @@ public final class SimulationEngine {
     }
 
     private BaseLocation getBaseByName(String name) {
-        for (BaseLocation base : BASES) {
+        for (BaseLocation base : bases) {
             if (base.name.equals(name)) {
                 return base;
             }
@@ -482,7 +489,7 @@ public final class SimulationEngine {
     private String nearestBaseName(double lat, double lon) {
         String name = BASE_PART_DIEU;
         double best = Double.MAX_VALUE;
-        for (BaseLocation b : BASES) {
+        for (BaseLocation b : bases) {
             double d = Math.pow(lat - b.lat, 2) + Math.pow(lon - b.lon, 2);
             if (d < best) {
                 best = d;

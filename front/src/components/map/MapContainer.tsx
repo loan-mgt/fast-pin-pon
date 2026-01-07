@@ -2,11 +2,12 @@ import type { JSX, MutableRefObject } from 'react'
 import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import type { EventSummary, UnitSummary } from '../../types'
+import type { EventSummary, UnitSummary, Building } from '../../types'
 import { STATUS_COLORS } from '../../utils/format'
 import {
     createEventMarkerElement as createEventMarkerWithIcon,
     createUnitMarkerElement,
+    createBuildingMarkerElement,
 } from './mapIcons'
 
 const DEFAULT_CENTER: [number, number] = [4.8467, 45.7485]
@@ -123,6 +124,8 @@ function buildConnectionLines(
 
     return unitLocations
         .filter((loc) => unitToEvent.get(loc.unit.id) === selectedEventId)
+        // Exclude on_site units - they are displayed under the event icon
+        .filter((loc) => loc.unit.status.toLowerCase() !== 'on_site')
         .map((loc) => ({
             type: 'Feature' as const,
             properties: { unitId: loc.unit.id, eventId: selectedEventId },
@@ -188,11 +191,51 @@ function addEventMarkers(
     selectedEventId: string | null | undefined,
     onEventSelect: ((eventId: string) => void) | undefined,
     eventMarkersRef: MutableRefObject<maplibregl.Marker[]>,
+    units: UnitSummary[],
 ): void {
+    // Build a map of units by ID for quick lookup (to get current status)
+    const unitsById = new Map<string, UnitSummary>()
+    for (const unit of units) {
+        unitsById.set(unit.id, unit)
+    }
+
     for (const location of eventLocations) {
         const isSelected = selectedEventId === location.event.id
-        const el = createEventMarkerWithIcon(location.event.event_type_code, isSelected, location.event.severity)
 
+        // Get on-site units for this event
+        // Check status from the global units list (most up-to-date status)
+        // Fallback to assigned_unit's status if not found in global list
+        const onSiteUnits: UnitSummary[] = []
+        for (const assignedUnit of location.event.assigned_units ?? []) {
+            // First try to find the unit in the global units list (most up-to-date)
+            const globalUnit = unitsById.get(assignedUnit.id)
+            // Use global unit if found, otherwise use assigned unit data
+            const currentUnit = globalUnit ?? assignedUnit
+            const status = (currentUnit.status ?? '').toLowerCase().trim()
+            
+            // Debug: log unit matching
+            if (!globalUnit) {
+                console.warn(`[MapContainer] Unit ${assignedUnit.id} (${assignedUnit.call_sign}) not found in global units list`)
+            }
+            
+            if (status === 'on_site') {
+                // Make sure we have a valid unit_type_code
+                if (currentUnit.unit_type_code) {
+                    onSiteUnits.push(currentUnit)
+                } else {
+                    console.warn(`[MapContainer] Unit ${currentUnit.id} has no unit_type_code`)
+                }
+            }
+        }
+
+        const el = createEventMarkerWithIcon(
+            location.event.event_type_code,
+            isSelected,
+            location.event.severity,
+            onSiteUnits,
+        )
+
+        // Anchor at center so connection lines point to the event icon center
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
             .setLngLat([location.lng, location.lat])
             .addTo(map)
@@ -205,6 +248,7 @@ function addEventMarkers(
 interface MapContainerProps {
     events: EventSummary[]
     units: UnitSummary[]
+    buildings?: Building[]
     onEventSelect?: (eventId: string) => void
     selectedEventId?: string | null
     onCreateAtLocation?: (coords: { latitude: number; longitude: number }) => void
@@ -216,11 +260,13 @@ export function MapContainer({
     onEventSelect,
     selectedEventId,
     onCreateAtLocation,
+    buildings = [],
 }: Readonly<MapContainerProps>): JSX.Element {
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const eventMarkersRef = useRef<maplibregl.Marker[]>([])
     const unitMarkersRef = useRef<maplibregl.Marker[]>([])
+    const buildingMarkersRef = useRef<maplibregl.Marker[]>([])
     const isFirstLoad = useRef(true)
     const connectionLayerId = 'unit-event-connections'
     const connectionSourceId = 'unit-event-connections-source'
@@ -274,6 +320,7 @@ export function MapContainer({
             // Cleanup markers
             for (const marker of eventMarkersRef.current) marker.remove()
             for (const marker of unitMarkersRef.current) marker.remove()
+            for (const marker of buildingMarkersRef.current) marker.remove()
 
             map.remove()
             window.removeEventListener('resize', handleResize)
@@ -291,8 +338,30 @@ export function MapContainer({
         if (!eventLocations.length) return
 
         flyToInitialLocation(map, eventLocations, isFirstLoad)
-        addEventMarkers(map, eventLocations, selectedEventId, onEventSelect, eventMarkersRef)
-    }, [events, onEventSelect, selectedEventId])
+        addEventMarkers(map, eventLocations, selectedEventId, onEventSelect, eventMarkersRef, units)
+    }, [events, onEventSelect, selectedEventId, units])
+
+    // Effect for building markers (casernes)
+    useEffect(() => {
+        const map = mapRef.current
+        if (!map) return
+
+        // Clear existing
+        for (const marker of buildingMarkersRef.current) marker.remove()
+        buildingMarkersRef.current = []
+
+        if (!buildings || buildings.length === 0) return
+
+        for (const b of buildings) {
+            if (!b.location?.longitude || !b.location?.latitude) continue
+            const el = createBuildingMarkerElement()
+            const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+                .setLngLat([b.location.longitude, b.location.latitude])
+                .setPopup(new maplibregl.Popup({ offset: 18 }).setText(b.name))
+                .addTo(map)
+            buildingMarkersRef.current.push(marker)
+        }
+    }, [buildings])
 
     // Effect for unit markers and connection lines
     useEffect(() => {
@@ -308,6 +377,19 @@ export function MapContainer({
             const { unitToEvent, eventById } = buildUnitEventMaps(events)
             const engagedStatuses = new Set(['on_site', 'under_way'])
             const unitLocations = getUnitLocations(units)
+
+            // Build set of unit IDs that are on_site and assigned to an event (displayed under event marker)
+            const unitsDisplayedUnderEvent = new Set<string>()
+            for (const event of events) {
+                for (const assignedUnit of event.assigned_units ?? []) {
+                    // Find the actual unit to check its current status
+                    const fullUnit = units.find((u) => u.id === assignedUnit.id)
+                    if (fullUnit && fullUnit.status.toLowerCase() === 'on_site') {
+                        unitsDisplayedUnderEvent.add(assignedUnit.id)
+                    }
+                }
+            }
+
             const connectionLines = buildConnectionLines(selectedEventId, eventById, unitLocations, unitToEvent)
 
             // Update or create the connection lines source and layer
@@ -325,7 +407,12 @@ export function MapContainer({
             }
 
             // Add unit markers with custom SVG icons based on unit type
+            // Skip units that are on_site and assigned to an event (they're shown under the event marker)
             for (const loc of unitLocations) {
+                if (unitsDisplayedUnderEvent.has(loc.unit.id)) {
+                    continue
+                }
+
                 const color = STATUS_COLORS[loc.unit.status] ?? STATUS_COLORS.offline
                 const normalizedStatus = loc.unit.status.toLowerCase()
                 const eventIdForUnit = unitToEvent.get(loc.unit.id)

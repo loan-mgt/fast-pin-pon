@@ -45,3 +45,12 @@ export type UnitType = {
 }
 
 export type { EventType, CreateEventRequest } from './eventTypes'
+
+export type Building = {
+    id: string
+    name: string
+    type: string
+    location: GeoPoint
+    created_at: string
+    updated_at: string
+}
