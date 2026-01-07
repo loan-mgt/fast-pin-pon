@@ -20,7 +20,7 @@
     <commons-lang3.version>3.14.0</commons-lang3.version>
     <dotenv.version>2.3.2</dotenv.version>
     <retrofit.version>2.11.0</retrofit.version>
-    <exec.mainClass>org.fastpinpon.engine.DecisionEngine</exec.mainClass>
+    <exec.mainClass>org.fastpinpon.engine.Main</exec.mainClass>
   </properties>
 
   <dependencies>

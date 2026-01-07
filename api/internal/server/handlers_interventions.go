@@ -82,6 +82,11 @@ func (s *Server) handleCreateIntervention(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Trigger engine if in auto_suggested mode
+	if params.DecisionMode == db.DecisionModeAutoSuggested {
+		go s.notifyEngineDispatch(context.Background(), uuidString(row.ID))
+	}
+
 	s.writeJSON(w, http.StatusCreated, mapIntervention(row))
 }
 
