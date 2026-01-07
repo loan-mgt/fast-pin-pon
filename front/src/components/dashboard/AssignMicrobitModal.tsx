@@ -8,6 +8,7 @@ interface AssignMicrobitModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (microbitId: string) => Promise<void> | void
+  onUnassign?: () => Promise<void> | void
   microbitOptions: string[]
   unitCallSign?: string
   initialSelection?: string
@@ -17,6 +18,7 @@ export function AssignMicrobitModal({
   isOpen,
   onClose,
   onSubmit,
+  onUnassign,
   microbitOptions,
   unitCallSign,
   initialSelection,
@@ -25,6 +27,7 @@ export function AssignMicrobitModal({
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const hasOptions = microbitOptions.length > 0
+  const canUnassign = Boolean(initialSelection) && Boolean(onUnassign)
 
   useEffect(() => {
     if (isOpen) {
@@ -54,6 +57,20 @@ export function AssignMicrobitModal({
     setIsSubmitting(true)
     try {
       await onSubmit(selected)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleUnassign = async () => {
+    if (!onUnassign) return
+    setError(null)
+    setIsSubmitting(true)
+    try {
+      await onUnassign()
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue')
@@ -104,7 +121,12 @@ export function AssignMicrobitModal({
           {error && <p className="text-sm text-red-400">{error}</p>}
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" className="px-3" onClick={onClose}>
+            {canUnassign && (
+              <Button type="button" variant="ghost" className="px-3" onClick={handleUnassign} disabled={isSubmitting}>
+                {isSubmitting ? 'Suppression…' : 'Désassigner'}
+              </Button>
+            )}
+            <Button type="button" variant="ghost" className="px-3" onClick={onClose} disabled={isSubmitting}>
               Annuler
             </Button>
             <Button type="submit" disabled={isSubmitting || !hasOptions}>
