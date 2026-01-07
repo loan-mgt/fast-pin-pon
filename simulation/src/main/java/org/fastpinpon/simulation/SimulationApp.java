@@ -29,13 +29,14 @@ public class SimulationApp {
         SimulationEngine engine = new SimulationEngine(api);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        // Tick every 1 second for smooth, real-time vehicle movement
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 engine.tick();
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }, 0, 3, TimeUnit.SECONDS);
+        }, 0, 1, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(scheduler::shutdownNow));
     }

@@ -1,6 +1,8 @@
 package org.fastpinpon.simulation.model;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public final class Incident {
@@ -17,6 +19,10 @@ public final class Incident {
     private Instant lastUpdate = createdAt;
     private String eventId;
     private String interventionId;
+    
+    // Required unit types for this incident (e.g., ["VSAV", "FPT"])
+    // If empty, any available unit type can be dispatched
+    private List<String> requiredUnitTypes = new ArrayList<>();
 
     public Incident(int number, IncidentType type, double lat, double lon, int gravite) {
         this(UUID.randomUUID(), number, type, lat, lon, gravite);
@@ -109,5 +115,27 @@ public final class Incident {
 
     public void setInterventionId(String interventionId) {
         this.interventionId = interventionId;
+    }
+
+    public List<String> getRequiredUnitTypes() {
+        return requiredUnitTypes;
+    }
+
+    public void setRequiredUnitTypes(List<String> requiredUnitTypes) {
+        this.requiredUnitTypes = requiredUnitTypes != null ? requiredUnitTypes : new ArrayList<>();
+    }
+
+    public void addRequiredUnitType(String unitType) {
+        if (unitType != null && !unitType.isEmpty() && !requiredUnitTypes.contains(unitType)) {
+            requiredUnitTypes.add(unitType);
+        }
+    }
+
+    public boolean requiresUnitType(String unitType) {
+        // If no specific types required, any type is acceptable
+        if (requiredUnitTypes.isEmpty()) {
+            return true;
+        }
+        return requiredUnitTypes.contains(unitType);
     }
 }
