@@ -4,6 +4,10 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { EventSummary, UnitSummary } from '../../types'
 import { STATUS_COLORS } from '../../utils/format'
+import {
+    createEventMarkerElement as createEventMarkerWithIcon,
+    createUnitMarkerElement,
+} from './mapIcons'
 
 const DEFAULT_CENTER: [number, number] = [4.8467, 45.7485]
 const DEFAULT_ZOOM = 11
@@ -74,39 +78,7 @@ function flyToInitialLocation(
     isFirstLoad.current = false
 }
 
-function createEventMarkerElement(isSelected: boolean): HTMLDivElement {
-    const el = document.createElement('div')
-    el.className = 'event-marker'
-    el.style.cursor = 'pointer'
-    el.innerHTML = `
-        <div style="
-            position: relative;
-            width: ${isSelected ? '20px' : '16px'};
-            height: ${isSelected ? '20px' : '16px'};
-        ">
-            <div style="
-                position: absolute;
-                width: 100%;
-                height: 100%;
-                background-color: ${isSelected ? '#22d3ee' : '#ef4444'};
-                border: ${isSelected ? '3px solid #0ea5e9' : '2px solid white'};
-                border-radius: 50%;
-                box-shadow: ${isSelected ? '0 0 14px rgba(59,130,246,0.9)' : '0 2px 8px rgba(0,0,0,0.6)'};
-            "></div>
-            <div style="
-                position: absolute;
-                width: 100%;
-                height: 100%;
-                background-color: ${isSelected ? '#3b82f6' : '#ef4444'};
-                border-radius: 50%;
-                animation: pulse 2s ease-out infinite;
-                opacity: 0.6;
-            "></div>
-        </div>
-    `
 
-    return el
-}
 
 function addEventMarkers(
     map: maplibregl.Map,
@@ -117,9 +89,9 @@ function addEventMarkers(
 ): void {
     for (const location of eventLocations) {
         const isSelected = selectedEventId === location.event.id
-        const el = createEventMarkerElement(isSelected)
+        const el = createEventMarkerWithIcon(location.event.event_type_code, isSelected)
 
-        const marker = new maplibregl.Marker({ element: el })
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
             .setLngLat([location.lng, location.lat])
             .addTo(map)
 
@@ -242,37 +214,15 @@ export function MapContainer({
             .filter((unit) => unit.location?.longitude && unit.location?.latitude)
             .filter((unit) => unit.location.longitude !== 0 && unit.location.latitude !== 0)
 
-        // Add unit markers with custom HTML elements (squares instead of circles)
+        // Add unit markers with custom SVG icons based on unit type
         for (const unit of unitLocations) {
             const color = STATUS_COLORS[unit.status] ?? STATUS_COLORS.offline
             const normalizedStatus = unit.status.toLowerCase()
             const eventIdForUnit = unitToEvent.get(unit.id)
             const canOpenEvent = eventIdForUnit && engagedStatuses.has(normalizedStatus)
 
-            // Create wrapper for proper positioning
-            const wrapper = document.createElement('div')
-            wrapper.style.cssText = 'width: 24px; height: 24px; cursor: pointer;'
-
-            // Create custom HTML element for unit marker (square/diamond shape)
-            const el = document.createElement('div')
-            el.style.cssText = `
-        width: 100%;
-        height: 100%;
-        background-color: ${color};
-        border: 2px solid white;
-        border-radius: 4px;
-        transform: rotate(45deg);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-        transition: transform 0.2s ease;
-      `
-            wrapper.appendChild(el)
-
-            wrapper.addEventListener('mouseenter', () => {
-                el.style.transform = 'rotate(45deg) scale(1.2)'
-            })
-            wrapper.addEventListener('mouseleave', () => {
-                el.style.transform = 'rotate(45deg)'
-            })
+            // Create unit marker with appropriate icon
+            const wrapper = createUnitMarkerElement(unit.unit_type_code)
             wrapper.addEventListener('click', () => {
                 if (canOpenEvent && eventIdForUnit) onEventSelect?.(eventIdForUnit)
             })
