@@ -23,6 +23,10 @@ public final class Vehicle {
     // Route waypoints for road-based navigation
     private List<double[]> currentRoute = new ArrayList<>();
     private int currentWaypointIndex = 0;
+    
+    // Convoy position: 0 = leader, 1 = second, etc.
+    // Used to maintain spacing in convoy formation
+    private int convoyPosition = 0;
 
     public Vehicle(String unitId, String callSign, String unitTypeCode, String homeBase, double lat, double lon) {
         this.unitId = unitId;
@@ -171,5 +175,15 @@ public final class Vehicle {
             return new double[0];
         }
         return currentRoute.get(currentRoute.size() - 1);
+    }
+    
+    // Convoy position methods
+    
+    public int getConvoyPosition() {
+        return convoyPosition;
+    }
+    
+    public void setConvoyPosition(int convoyPosition) {
+        this.convoyPosition = convoyPosition;
     }
 }
