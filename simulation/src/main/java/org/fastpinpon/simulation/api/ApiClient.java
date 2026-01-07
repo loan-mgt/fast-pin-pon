@@ -76,17 +76,42 @@ public final class ApiClient {
     public List<BaseLocation> loadStations() {
         List<BaseLocation> res = new ArrayList<>();
         List<BuildingDto> dtos = execute(api.getBuildings(), "GET /v1/buildings");
-        if (dtos == null) return res;
+        if (dtos == null) {
+            return res;
+        }
         for (BuildingDto b : dtos) {
-            if (b == null || b.location == null) continue;
-            if (b.type != null && !"station".equalsIgnoreCase(b.type)) continue;
-            Double lat = b.location.getLatitude();
-            Double lon = b.location.getLongitude();
-            if (lat == null || lon == null) continue;
-            String name = b.name == null ? (b.id == null ? "Station" : b.id) : b.name;
-            res.add(new BaseLocation(name, lat, lon));
+            BaseLocation station = toBaseLocation(b);
+            if (station == null) {
+                continue;
+            }
+            res.add(station);
         }
         return res;
+    }
+
+    private BaseLocation toBaseLocation(BuildingDto building) {
+        if (building == null || building.location == null) {
+            return null;
+        }
+        if (building.type != null && !"station".equalsIgnoreCase(building.type)) {
+            return null;
+        }
+        Double lat = building.location.getLatitude();
+        Double lon = building.location.getLongitude();
+        if (lat == null || lon == null) {
+            return null;
+        }
+        return new BaseLocation(resolveStationName(building), lat, lon);
+    }
+
+    private String resolveStationName(BuildingDto building) {
+        if (building.name != null) {
+            return building.name;
+        }
+        if (building.id != null) {
+            return building.id;
+        }
+        return "Station";
     }
 
     /**
