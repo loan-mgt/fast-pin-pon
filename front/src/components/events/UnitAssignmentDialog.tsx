@@ -120,6 +120,63 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
 
   if (!isOpen) return null
 
+  const unitCountLabel = selectedUnitIds.length > 0 ? selectedUnitIds.length : ''
+  const unitPluralSuffix = selectedUnitIds.length > 1 ? 's' : ''
+
+  let unitsListContent: JSX.Element | JSX.Element[]
+  if (isLoading) {
+    unitsListContent = (
+      <div className="flex flex-col justify-center items-center space-y-3 py-12">
+        <div className="border-2 border-sky-500/30 border-t-sky-500 rounded-full w-6 h-6 animate-spin" />
+        <p className="text-slate-500 text-xs animate-pulse">Recherche des unités...</p>
+      </div>
+    )
+  } else if (nearbyUnits.length === 0) {
+    unitsListContent = (
+      <div className="bg-slate-800/20 py-12 border border-slate-800 border-dashed rounded-2xl text-center">
+        <p className="text-slate-500 text-sm italic">Aucune unité disponible pour ces critères.</p>
+      </div>
+    )
+  } else {
+    unitsListContent = nearbyUnits.map(unit => {
+      const isSelected = selectedUnitIds.includes(unit.id)
+      const distance = unit.distance_meters ? (unit.distance_meters / 1000).toFixed(1) : '?'
+      return (
+        <button
+          key={unit.id}
+          type="button"
+          onClick={() => toggleUnitSelection(unit.id)}
+          className={`w-full group flex justify-between items-center p-3.5 rounded-xl border transition-all duration-300 ${
+            isSelected
+              ? 'bg-sky-500/10 border-sky-500/50 shadow-[0_0_20px_-10px_rgba(14,165,233,0.3)]'
+              : 'bg-slate-800/30 border-slate-800 hover:bg-slate-800/50 hover:border-slate-700'
+          }`}
+        >
+          <div className="flex items-center gap-4">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-300 ${
+              isSelected ? 'bg-sky-500 border-sky-500' : 'border-slate-700 bg-slate-900'
+            }`}>
+              {isSelected && <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-white"><path d="M2 5L4 7L8 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-white text-sm tracking-tight">{unit.call_sign}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="bg-sky-500/10 px-1.5 py-0.5 rounded font-bold text-[0.65rem] text-sky-400">{unit.unit_type_code}</span>
+                <span className="font-medium text-[0.65rem] text-slate-500">• {unit.home_base}</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="font-black text-white text-xs">{distance} <span className="ml-0.5 font-bold text-[0.6rem] text-slate-400 uppercase">km</span></p>
+            <p className={`text-[0.65rem] mt-1 font-bold uppercase tracking-tighter ${
+              unit.status === 'available' ? 'text-emerald-400/90' : 'text-slate-500'
+            }`}>{unit.status}</p>
+          </div>
+        </button>
+      )
+    })
+  }
+
   return (
     <div className="z-50 fixed inset-0 flex justify-center items-center bg-slate-950/70 backdrop-blur-sm p-4">
       <Card className="flex flex-col bg-slate-900 shadow-2xl border-slate-800 rounded-xl w-full max-w-2xl h-[85vh] overflow-hidden">
@@ -172,54 +229,7 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
             </div>
             
             <div className="space-y-2.5">
-              {isLoading ? (
-                <div className="flex flex-col justify-center items-center space-y-3 py-12">
-                  <div className="border-2 border-sky-500/30 border-t-sky-500 rounded-full w-6 h-6 animate-spin" />
-                  <p className="text-slate-500 text-xs animate-pulse">Recherche des unités...</p>
-                </div>
-              ) : nearbyUnits.length === 0 ? (
-                <div className="bg-slate-800/20 py-12 border border-slate-800 border-dashed rounded-2xl text-center">
-                  <p className="text-slate-500 text-sm italic">Aucune unité disponible pour ces critères.</p>
-                </div>
-              ) : (
-                nearbyUnits.map(unit => {
-                  const isSelected = selectedUnitIds.includes(unit.id)
-                  const distance = unit.distance_meters ? (unit.distance_meters / 1000).toFixed(1) : '?'
-                  return (
-                    <button
-                      key={unit.id}
-                      type="button"
-                      onClick={() => toggleUnitSelection(unit.id)}
-                      className={`w-full group flex justify-between items-center p-3.5 rounded-xl border transition-all duration-300 ${
-                        isSelected
-                          ? 'bg-sky-500/10 border-sky-500/50 shadow-[0_0_20px_-10px_rgba(14,165,233,0.3)]'
-                          : 'bg-slate-800/30 border-slate-800 hover:bg-slate-800/50 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-300 ${
-                          isSelected ? 'bg-sky-500 border-sky-500' : 'border-slate-700 bg-slate-900'
-                        }`}>
-                          {isSelected && <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-white"><path d="M2 5L4 7L8 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                        </div>
-                        <div className="text-left">
-                          <p className="font-bold text-white text-sm tracking-tight">{unit.call_sign}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="bg-sky-500/10 px-1.5 py-0.5 rounded font-bold text-[0.65rem] text-sky-400">{unit.unit_type_code}</span>
-                            <span className="font-medium text-[0.65rem] text-slate-500">• {unit.home_base}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-black text-white text-xs">{distance} <span className="ml-0.5 font-bold text-[0.6rem] text-slate-400 uppercase">km</span></p>
-                        <p className={`text-[0.65rem] mt-1 font-bold uppercase tracking-tighter ${
-                          unit.status === 'available' ? 'text-emerald-400/90' : 'text-slate-500'
-                        }`}>{unit.status}</p>
-                      </div>
-                    </button>
-                  )
-                })
-              )}
+              {unitsListContent}
             </div>
           </section>
         </div>
@@ -239,7 +249,7 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
                 <span>Envoi...</span>
               </div>
             ) : (
-              `Assigner ${selectedUnitIds.length > 0 ? selectedUnitIds.length : ''} unité${selectedUnitIds.length > 1 ? 's' : ''}`
+              `Assigner ${unitCountLabel} unité${unitPluralSuffix}`
             )}
           </Button>
         </div>
