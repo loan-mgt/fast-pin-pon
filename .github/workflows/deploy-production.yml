@@ -18,12 +18,6 @@ jobs:
       folder: api
     secrets: inherit
 
-  build-database:
-    uses: ./.github/workflows/build-and-push.base.yml
-    with:
-      folder: database
-    secrets: inherit
-
   build-front:
     uses: ./.github/workflows/build-and-push.base.yml
     with:
@@ -69,7 +63,6 @@ jobs:
   deploy:
     needs: 
       - build-api
-      - build-database
       - build-front
       - build-grafana
       - build-keycloak
