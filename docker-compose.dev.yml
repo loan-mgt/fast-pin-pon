@@ -22,6 +22,7 @@ services:
       context: ./database
       dockerfile: Dockerfile
     container_name: fast-pin-pon-postgres
+    shm_size: '1gb' 
     ports:
       - "5432:5432"
 
