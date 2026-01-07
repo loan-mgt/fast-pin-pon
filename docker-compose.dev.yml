@@ -18,7 +18,12 @@ services:
     extends:
       file: docker-compose.prod.yml
       service: postgres
+    build:
+      context: ./database
+      dockerfile: Dockerfile
     container_name: fast-pin-pon-postgres
+    ports:
+      - "5432:5432"
 
   front:
     extends:
