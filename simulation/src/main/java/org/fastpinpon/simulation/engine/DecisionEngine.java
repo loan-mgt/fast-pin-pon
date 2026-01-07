@@ -44,15 +44,22 @@ public final class DecisionEngine {
     private static final double ARRIVAL_THRESHOLD_METERS = 30.0;  // 30 meters to trigger arrival
     private static final double WAYPOINT_THRESHOLD_METERS = 25.0; // 25 meters to advance waypoint
     
+    // On-site positioning: units form a semicircle around the incident
+    private static final double ON_SITE_RADIUS_METERS = 25.0;     // 25 meters radius from incident center
+    
+    // Convoy formation spacing
+    private static final double CONVOY_SPACING_METERS = 30.0;     // 30 meters between vehicles in convoy
+    private static final int CONVOY_WAYPOINT_SPACING = 2;         // Waypoints offset between convoy vehicles
+    
     // Movement speed configuration for emergency vehicles
-    // Fast simulation speed: ~0.001 degrees per tick = ~111 meters per tick
-    // At 1 tick per second = 111 m/s = ~400 km/h (accelerated for visible simulation)
-    // For real-time 90 km/h, use 0.00025 instead
-    private static final double MOVEMENT_STEP = 0.001;  // ~111 meters per tick (fast simulation)
+    // 110 km/h = 30.56 m/s
+    // At 1 tick per second: 30.56 meters per tick
+    // 30.56 meters / 111000 meters per degree ≈ 0.000275 degrees per tick
+    private static final double MOVEMENT_STEP = 0.000275;  // ~30.5 meters per tick (110 km/h)
     
     // Timing constants for incident lifecycle
     // Time after all units arrive before incident auto-resolves (in seconds)
-    private static final long INCIDENT_RESOLVE_AFTER_ARRIVAL_SECONDS = 45;
+    private static final long INCIDENT_RESOLVE_AFTER_ARRIVAL_SECONDS = 30;
 
     private static final String SIM_INCIDENT_PREFIX = "[SIM] Incident ";
 
@@ -305,15 +312,147 @@ public final class DecisionEngine {
 
         logDispatchDecision(toDispatch, incident, basePriority);
 
-        for (int i = 0; i < toDispatch; i++) {
-            Vehicle v = availableVehicles.get(i);
-            assignVehicleToIncident(v, incident, interventionId);
-            sleepBetweenDispatches();
-        }
+        // Group vehicles by home base for convoy formation
+        List<Vehicle> toDispatchList = availableVehicles.subList(0, toDispatch);
+        dispatchAsConvoys(toDispatchList, incident, interventionId);
 
         if (incident.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
             api.updateInterventionStatus(incident.getInterventionId(), INTERVENTION_STATUS_EN_ROUTE);
         }
+    }
+    
+    /**
+     * Dispatch vehicles as convoys - units from the same base share the same route
+     * and are positioned in a convoy formation with spacing.
+     */
+    private void dispatchAsConvoys(List<Vehicle> vehiclesToDispatch, Incident incident, String interventionId) {
+        // Group vehicles by home base
+        java.util.Map<String, List<Vehicle>> vehiclesByBase = new java.util.LinkedHashMap<>();
+        for (Vehicle v : vehiclesToDispatch) {
+            String base = v.getHomeBase();
+            vehiclesByBase.computeIfAbsent(base, k -> new ArrayList<>()).add(v);
+        }
+        
+        // Dispatch each base's vehicles as a convoy
+        for (java.util.Map.Entry<String, List<Vehicle>> entry : vehiclesByBase.entrySet()) {
+            String baseName = entry.getKey();
+            List<Vehicle> convoy = entry.getValue();
+            
+            if (convoy.isEmpty()) {
+                continue;
+            }
+            
+            // Calculate route once for the convoy leader (first vehicle from this base)
+            Vehicle leader = convoy.get(0);
+            List<double[]> sharedRoute = routingService.getRoute(
+                    leader.getLat(), leader.getLon(),
+                    incident.getLat(), incident.getLon()
+            );
+            
+            boolean hasRoute = sharedRoute != null && !sharedRoute.isEmpty();
+            
+            if (LOG.isLoggable(Level.INFO)) {
+                LOG.log(Level.INFO, "[Decision] Convoy from {0}: {1} units, route: {2} waypoints",
+                        new Object[]{baseName, convoy.size(), hasRoute ? sharedRoute.size() : 0});
+            }
+            
+            // Assign all vehicles in this convoy with the shared route and convoy positions
+            for (int i = 0; i < convoy.size(); i++) {
+                Vehicle v = convoy.get(i);
+                assignVehicleToConvoy(v, incident, interventionId, sharedRoute, i);
+                sleepBetweenDispatches();
+            }
+        }
+    }
+    
+    /**
+     * Assign a vehicle to an incident as part of a convoy.
+     * 
+     * @param v the vehicle
+     * @param incident the incident
+     * @param interventionId the intervention ID
+     * @param sharedRoute the shared route calculated for this convoy
+     * @param convoyPosition position in convoy (0 = leader)
+     */
+    private void assignVehicleToConvoy(Vehicle v, Incident incident, String interventionId, 
+                                       List<double[]> sharedRoute, int convoyPosition) {
+        v.setCurrentIncident(incident);
+        v.setEtat(VehicleState.EN_ROUTE);
+        v.setAssignmentId(api.assignUnit(interventionId, v.getUnitId(), "unit"));
+        v.setLastUpdate(Instant.now());
+        v.setEnRouteSince(v.getLastUpdate());
+        v.setConvoyPosition(convoyPosition);
+        
+        // Update unit status to "under_way" in backend
+        api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_EN_ROUTE);
+        
+        if (sharedRoute != null && !sharedRoute.isEmpty()) {
+            // Copy the shared route for this vehicle
+            v.setCurrentRoute(new ArrayList<>(sharedRoute));
+            
+            // Stagger the starting waypoint index based on convoy position
+            // Each following vehicle starts a few waypoints behind
+            int startOffset = convoyPosition * CONVOY_WAYPOINT_SPACING;
+            if (startOffset < sharedRoute.size()) {
+                v.setCurrentWaypointIndex(0);
+                // Position the vehicle at an earlier point on the route for convoy spacing
+                if (convoyPosition > 0 && startOffset > 0) {
+                    // Calculate position offset along the route for following vehicles
+                    staggerVehiclePosition(v, sharedRoute, convoyPosition);
+                }
+            }
+            
+            if (LOG.isLoggable(Level.INFO)) {
+                LOG.log(Level.INFO, "[Decision] Assign {0} (convoy pos {1} from {2}) -> incident {3}",
+                        new Object[]{v.getCallSign(), convoyPosition, nvl(v.getHomeBase(), "N/A"), incident.getNumber()});
+            }
+        } else {
+            // Fallback to direct route if OSRM fails
+            v.clearRoute();
+            if (LOG.isLoggable(Level.INFO)) {
+                LOG.log(Level.INFO, "[Decision] Assign {0} (from {1}) -> incident {2} (direct route)",
+                        new Object[]{v.getCallSign(), nvl(v.getHomeBase(), "N/A"), incident.getNumber()});
+            }
+        }
+    }
+    
+    /**
+     * Stagger a vehicle's position behind the convoy leader to maintain formation.
+     * Each following vehicle is positioned behind the leader based on convoy spacing.
+     */
+    private void staggerVehiclePosition(Vehicle v, List<double[]> route, int convoyPosition) {
+        // Calculate how far back this vehicle should be (in meters)
+        double spacingMeters = convoyPosition * CONVOY_SPACING_METERS;
+        
+        // Find the point on the route that is spacingMeters behind the start
+        double accumulatedDistance = 0.0;
+        for (int i = 1; i < route.size(); i++) {
+            double[] prev = route.get(i - 1);
+            double[] curr = route.get(i);
+            double segmentDist = distanceInMeters(prev[0], prev[1], curr[0], curr[1]);
+            
+            if (accumulatedDistance + segmentDist >= spacingMeters) {
+                // Interpolate position on this segment
+                double remaining = spacingMeters - accumulatedDistance;
+                double fraction = remaining / segmentDist;
+                
+                // Position is behind the start, so we offset backwards from start point
+                double[] start = route.get(0);
+                double offsetLat = (start[0] - curr[0]) * fraction * 0.5;
+                double offsetLon = (start[1] - curr[1]) * fraction * 0.5;
+                
+                v.setLat(start[0] + offsetLat);
+                v.setLon(start[1] + offsetLon);
+                return;
+            }
+            accumulatedDistance += segmentDist;
+        }
+        
+        // If route is too short, just offset position slightly behind
+        double[] start = route.get(0);
+        double offsetMeters = convoyPosition * 15.0; // 15 meters per position
+        double offsetDegrees = offsetMeters / 111000.0;
+        v.setLat(start[0] - offsetDegrees);
     }
     
     private void logDispatchDecision(int toDispatch, Incident incident, List<String> basePriority) {
@@ -343,35 +482,6 @@ public final class DecisionEngine {
     protected int calculateUnitsNeeded(Incident incident) {
         // Default: dispatch units equal to severity level
         return incident.getGravite();
-    }
-
-    private void assignVehicleToIncident(Vehicle v, Incident incident, String interventionId) {
-        v.setCurrentIncident(incident);
-        v.setEtat(VehicleState.EN_ROUTE);
-        v.setAssignmentId(api.assignUnit(interventionId, v.getUnitId(), "unit"));
-        v.setLastUpdate(Instant.now());
-        v.setEnRouteSince(v.getLastUpdate());
-        
-        // Calculate route following roads
-        List<double[]> route = routingService.getRoute(
-                v.getLat(), v.getLon(),
-                incident.getLat(), incident.getLon()
-        );
-        
-        if (route != null && !route.isEmpty()) {
-            v.setCurrentRoute(route);
-            if (LOG.isLoggable(Level.INFO)) {
-                LOG.log(Level.INFO, "[Decision] Assign {0} (from {1}) -> incident {2} via {3} waypoints",
-                        new Object[]{v.getCallSign(), nvl(v.getHomeBase(), "N/A"), incident.getNumber(), route.size()});
-            }
-        } else {
-            // Fallback to direct route if OSRM fails
-            v.clearRoute();
-            if (LOG.isLoggable(Level.INFO)) {
-                LOG.log(Level.INFO, "[Decision] Assign {0} (from {1}) -> incident {2} (direct route - routing unavailable)",
-                        new Object[]{v.getCallSign(), nvl(v.getHomeBase(), "N/A"), incident.getNumber()});
-            }
-        }
     }
 
     // =========================================================================
@@ -545,30 +655,79 @@ public final class DecisionEngine {
     }
 
     private void onVehicleArrivedAtIncident(Vehicle v, double distMeters) {
-        double targetLat = v.getCurrentIncident().getLat();
-        double targetLon = v.getCurrentIncident().getLon();
+        Incident incident = v.getCurrentIncident();
         
-        // Snap to exact incident location
-        v.setLat(targetLat);
-        v.setLon(targetLon);
+        // Position unit around the incident (semicircle formation) instead of on top
+        double[] position = calculateOnSitePosition(incident, v);
+        v.setLat(position[0]);
+        v.setLon(position[1]);
         v.setEtat(VehicleState.SUR_PLACE);
         v.setLastUpdate(Instant.now());
         v.setEnRouteSince(null);
         v.clearRoute();
+        v.setConvoyPosition(0); // Reset convoy position when arrived
         
         if (LOG.isLoggable(Level.INFO)) {
             LOG.log(Level.INFO, "[Decision] {0} arrived ON SITE at incident {1} (distance: {2}m)", 
-                    new Object[]{v.getCallSign(), v.getCurrentIncident().getNumber(), String.format("%.1f", distMeters)});
+                    new Object[]{v.getCallSign(), incident.getNumber(), String.format("%.1f", distMeters)});
         }
         
         if (PATCH_ASSIGNMENT_STATUS) {
             api.updateAssignmentStatus(v.getAssignmentId(), ASSIGNMENT_STATUS_ARRIVED);
         }
         api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_ON_SITE);
-        printIncidentStatusLine(v.getCurrentIncident());
-        if (v.getCurrentIncident().getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
-            api.updateInterventionStatus(v.getCurrentIncident().getInterventionId(), INTERVENTION_STATUS_ON_SITE);
+        printIncidentStatusLine(incident);
+        if (incident.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
+            api.updateInterventionStatus(incident.getInterventionId(), INTERVENTION_STATUS_ON_SITE);
         }
+    }
+    
+    /**
+     * Calculate the position for a unit arriving on site.
+     * Units are positioned in a semicircle around the incident to avoid overlapping.
+     * 
+     * @param incident the incident
+     * @param arrivingVehicle the vehicle arriving
+     * @return [lat, lon] position for the unit
+     */
+    private double[] calculateOnSitePosition(Incident incident, Vehicle arrivingVehicle) {
+        // Count how many units are already on site for this incident
+        int unitsOnSite = 0;
+        for (Vehicle v : vehicles) {
+            if (v != arrivingVehicle && v.getCurrentIncident() == incident 
+                    && v.getEtat() == VehicleState.SUR_PLACE) {
+                unitsOnSite++;
+            }
+        }
+        
+        // Position in a semicircle (180 degrees) facing south of the incident
+        // This keeps the incident icon visible at the center/north
+        int slotIndex = unitsOnSite;
+        int maxSlots = 8; // Maximum units in the semicircle before starting a second row
+        
+        double radius = ON_SITE_RADIUS_METERS;
+        if (slotIndex >= maxSlots) {
+            // Second row, slightly further out
+            radius = ON_SITE_RADIUS_METERS * 1.8;
+            slotIndex = slotIndex - maxSlots;
+        }
+        
+        // Calculate angle: spread units across 180 degrees (PI radians)
+        // Start from -90 degrees (west) to +90 degrees (east)
+        double angleStep = Math.PI / (maxSlots + 1);
+        double angle = -Math.PI / 2 + angleStep * (slotIndex + 1);
+        
+        // Convert radius from meters to degrees (approximate)
+        // 1 degree latitude ≈ 111,000 meters
+        // 1 degree longitude ≈ 111,000 * cos(latitude) meters
+        double latOffset = (radius * Math.cos(angle)) / 111000.0;
+        double lonOffset = (radius * Math.sin(angle)) / (111000.0 * Math.cos(Math.toRadians(incident.getLat())));
+        
+        // Position south of incident (negative latitude offset) so incident icon is visible
+        return new double[]{
+                incident.getLat() - Math.abs(latOffset),
+                incident.getLon() + lonOffset
+        };
     }
 
     private void followRouteOrDirect(Vehicle v, double finalLat, double finalLon) {
@@ -636,6 +795,9 @@ public final class DecisionEngine {
         v.setEtat(VehicleState.RETOUR);
         v.setReturnSince(Instant.now());
         v.setLastUpdate(v.getReturnSince());
+        
+        // Update unit status to "under_way" when returning to base
+        api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_EN_ROUTE);
         
         ensureReturnRouteCalculated(v);
         
@@ -829,14 +991,86 @@ public final class DecisionEngine {
     }
 
     /**
-     * Get bases sorted by distance to a given location (nearest first).
-     * This enables dynamic dispatch priority based on actual distances.
+     * Get bases sorted by intelligent priority based on incident zone.
+     * 
+     * Priority rules by zone:
+     * - Confluence zone: Confluence -> Part-Dieu -> Villeurbanne -> Cusset
+     * - Part-Dieu zone: Part-Dieu -> (Villeurbanne/Confluence equally) -> Cusset
+     * - Villeurbanne zone: Villeurbanne -> Cusset -> Part-Dieu -> Confluence
+     * - Cusset zone: Cusset -> Villeurbanne -> Part-Dieu -> Confluence
+     * 
+     * Zone is determined by finding the nearest base to the incident.
      * 
      * @param lat incident latitude
      * @param lon incident longitude
-     * @return list of base names sorted by distance (nearest first)
+     * @return list of base names in priority order
      */
     private List<String> getBasesByDistance(double lat, double lon) {
+        String nearestBase = nearestBaseName(lat, lon);
+        
+        List<String> priority;
+        switch (nearestBase) {
+            case BASE_CONFLUENCE:
+                // Confluence zone: Confluence -> Part-Dieu -> Villeurbanne -> Cusset
+                priority = Arrays.asList(BASE_CONFLUENCE, BASE_PART_DIEU, BASE_VILLEURBANNE, BASE_CUSSET);
+                break;
+            case BASE_PART_DIEU:
+                // Part-Dieu zone: Part-Dieu -> (Villeurbanne/Confluence by distance) -> Cusset
+                priority = getPartDieuPriority(lat, lon);
+                break;
+            case BASE_VILLEURBANNE:
+                // Villeurbanne zone: Villeurbanne -> Cusset -> Part-Dieu -> Confluence
+                priority = Arrays.asList(BASE_VILLEURBANNE, BASE_CUSSET, BASE_PART_DIEU, BASE_CONFLUENCE);
+                break;
+            case BASE_CUSSET:
+                // Cusset zone: Cusset -> Villeurbanne -> Part-Dieu -> Confluence
+                priority = Arrays.asList(BASE_CUSSET, BASE_VILLEURBANNE, BASE_PART_DIEU, BASE_CONFLUENCE);
+                break;
+            default:
+                // Fallback to distance-based sorting
+                priority = getBasesByDistanceFallback(lat, lon);
+                break;
+        }
+        
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[Decision] Incident in {0} zone -> priority: {1}", 
+                    new Object[]{nearestBase, priority});
+        }
+        
+        return priority;
+    }
+    
+    /**
+     * Special priority for Part-Dieu zone where Villeurbanne and Confluence
+     * are equally prioritized based on distance to incident.
+     */
+    private List<String> getPartDieuPriority(double lat, double lon) {
+        BaseLocation villeurbanne = getBaseByName(BASE_VILLEURBANNE);
+        BaseLocation confluence = getBaseByName(BASE_CONFLUENCE);
+        
+        double distToVilleurbanne = distance(villeurbanne.lat, villeurbanne.lon, lat, lon);
+        double distToConfluence = distance(confluence.lat, confluence.lon, lat, lon);
+        
+        List<String> result = new ArrayList<>();
+        result.add(BASE_PART_DIEU);
+        
+        // Choose Villeurbanne or Confluence based on which is closer
+        if (distToVilleurbanne <= distToConfluence) {
+            result.add(BASE_VILLEURBANNE);
+            result.add(BASE_CONFLUENCE);
+        } else {
+            result.add(BASE_CONFLUENCE);
+            result.add(BASE_VILLEURBANNE);
+        }
+        
+        result.add(BASE_CUSSET);
+        return result;
+    }
+    
+    /**
+     * Fallback: get bases sorted by distance (nearest first).
+     */
+    private List<String> getBasesByDistanceFallback(double lat, double lon) {
         List<BaseLocation> sorted = new ArrayList<>(Arrays.asList(BASES));
         sorted.sort((a, b) -> Double.compare(
                 distance(a.lat, a.lon, lat, lon),
