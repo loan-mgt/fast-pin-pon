@@ -1,5 +1,6 @@
 
 import type { ChangeEvent, JSX } from 'react'
+import { MapLegendModal } from './MapLegendModal'
 
 const REFRESH_OPTIONS = [5, 10, 20, 30] as const
 
@@ -102,6 +103,7 @@ export function Navbar({
                                 <path d="M8 16H3v5" />
                             </svg>
                         </button>
+                        <MapLegendModal />
                     </div>
                     {userLabel && (
                         <button

@@ -89,7 +89,7 @@ function addEventMarkers(
 ): void {
     for (const location of eventLocations) {
         const isSelected = selectedEventId === location.event.id
-        const el = createEventMarkerWithIcon(location.event.event_type_code, isSelected)
+        const el = createEventMarkerWithIcon(location.event.event_type_code, isSelected, location.event.severity)
 
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
             .setLngLat([location.lng, location.lat])
@@ -221,8 +221,8 @@ export function MapContainer({
             const eventIdForUnit = unitToEvent.get(unit.id)
             const canOpenEvent = eventIdForUnit && engagedStatuses.has(normalizedStatus)
 
-            // Create unit marker with appropriate icon
-            const wrapper = createUnitMarkerElement(unit.unit_type_code)
+            // Create unit marker with appropriate icon and status color
+            const wrapper = createUnitMarkerElement(unit.unit_type_code, unit.status)
             wrapper.addEventListener('click', () => {
                 if (canOpenEvent && eventIdForUnit) onEventSelect?.(eventIdForUnit)
             })
