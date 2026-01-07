@@ -76,6 +76,7 @@ services:
     environment:
       - KC_HOSTNAME=localhost
       - KC_HOSTNAME_PORT=8082
+      - PASSWORD_USER=Test1234!
 
   keycloakdb:
     extends:
