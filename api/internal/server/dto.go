@@ -103,16 +103,17 @@ type AssignmentResponse struct {
 }
 
 type UnitResponse struct {
-	ID           string     `json:"id"`
-	CallSign     string     `json:"call_sign"`
-	UnitTypeCode string     `json:"unit_type_code"`
-	HomeBase     string     `json:"home_base,omitempty"`
-	Status       string     `json:"status"`
-	MicrobitID   string     `json:"microbit_id,omitempty"`
-	Location     GeoPoint   `json:"location"`
-	LastContact  *time.Time `json:"last_contact_at,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID             string     `json:"id"`
+	CallSign       string     `json:"call_sign"`
+	UnitTypeCode   string     `json:"unit_type_code"`
+	HomeBase       string     `json:"home_base,omitempty"`
+	Status         string     `json:"status"`
+	MicrobitID     string     `json:"microbit_id,omitempty"`
+	Location       GeoPoint   `json:"location"`
+	DistanceMeters *float64   `json:"distance_meters,omitempty"`
+	LastContact    *time.Time `json:"last_contact_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 type TelemetryResponse struct {

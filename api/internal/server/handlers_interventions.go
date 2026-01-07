@@ -283,7 +283,64 @@ func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Update unit status to 'under_way' when assigned
+	if _, err := s.queries.UpdateUnitStatus(r.Context(), db.UpdateUnitStatusParams{
+		ID:     unitID,
+		Status: db.UnitStatusUnderWay,
+	}); err != nil {
+		s.log.Error().Err(err).Str("unit_id", req.UnitID).Msg("failed to update unit status after assignment")
+		// We don't fail the whole request because the assignment was created
+	}
+
 	s.writeJSON(w, http.StatusCreated, mapAssignment(row))
+}
+
+// handleReleaseAssignment godoc
+// @Title Release assignment
+// @Description Marks a unit as released from an intervention.
+// @Resource Interventions
+// @Param interventionID path string true "Intervention ID"
+// @Param unitID path string true "Unit ID"
+// @Success 204
+// @Failure 400 {object} APIError
+// @Failure 404 {object} APIError
+// @Failure 500 {object} APIError
+// @Route /v1/interventions/{interventionID}/assignments/{unitID} [delete]
+func (s *Server) handleReleaseAssignment(w http.ResponseWriter, r *http.Request) {
+	interventionID, err := s.parseUUIDParam(r, "interventionID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidInterventionID, err.Error())
+		return
+	}
+
+	unitID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	_, err = s.queries.ReleaseUnitFromIntervention(r.Context(), db.ReleaseUnitFromInterventionParams{
+		InterventionID: interventionID,
+		UnitID:         unitID,
+	})
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, "active assignment not found", nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to release unit", err.Error())
+		return
+	}
+
+	// Set unit available again
+	if _, err := s.queries.UpdateUnitStatus(r.Context(), db.UpdateUnitStatusParams{
+		ID:     unitID,
+		Status: db.UnitStatusAvailable,
+	}); err != nil {
+		s.log.Error().Err(err).Str("unit_id", uuidString(unitID)).Msg("failed to update unit status after release")
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleListAssignmentsForIntervention godoc

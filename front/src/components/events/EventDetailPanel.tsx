@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import type { JSX } from 'react'
 import { Card } from '../ui/card'
 import { ConfirmationDialog } from '../ui/confirmation-dialog'
+import { UnitAssignmentDialog } from './UnitAssignmentDialog'
 import type { EventSummary } from '../../types'
 import type { Permissions } from '../../auth/AuthProvider'
 import { formatTimestamp, severityLabel } from '../../utils/format'
@@ -13,13 +14,16 @@ interface EventDetailPanelProps {
   readonly onClose: () => void
   readonly permissions?: Permissions
   readonly onRefresh?: () => Promise<void> | void
+  readonly onTogglePauseRefresh?: (paused: boolean) => void
 }
 
-export function EventDetailPanel({ event, onClose, permissions, onRefresh }: EventDetailPanelProps): JSX.Element | null {
+export function EventDetailPanel({ event, onClose, permissions, onRefresh, onTogglePauseRefresh }: EventDetailPanelProps): JSX.Element | null {
   const { token } = useAuth()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [unitToUnassign, setUnitToUnassign] = useState<{ id: string, callSign: string } | null>(null)
 
   const canAssign = permissions?.canAssignUnits ?? false
   const canDelete = permissions?.canDeleteIncident ?? false
@@ -51,6 +55,23 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh }: Eve
       setIsDeleting(false)
     }
   }, [event, onClose, token, onRefresh])
+
+  const confirmUnassign = useCallback(async () => {
+    if (!event?.intervention_id || !unitToUnassign) return
+
+    const { id: unitId } = unitToUnassign
+    setUnitToUnassign(null)
+    
+    try {
+      await fastPinPonService.unassignUnitFromIntervention(event.intervention_id, unitId, token ?? undefined)
+      if (onRefresh) {
+        await onRefresh()
+      }
+    } catch (err) {
+      console.error('Failed to unassign unit', err)
+      setErrorMessage('Impossible de libérer l\'unité. Veuillez réessayer.')
+    }
+  }, [event, unitToUnassign, token, onRefresh])
 
   if (!event) return null
 
@@ -144,6 +165,7 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh }: Eve
               aria-label="Assigner une unité"
               title="Assigner une unité"
               disabled={!canAssign}
+              onClick={() => setShowAssignmentDialog(true)}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -177,15 +199,36 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh }: Eve
                     </p>
                     <p className="text-[0.7rem] text-slate-400 truncate leading-tight">{unit.status}</p>
                   </div>
-                  <span className="self-center bg-cyan-500/15 px-2 py-1 border border-cyan-500/30 rounded-full text-[0.65rem] text-cyan-200">
-                    {unit.microbit_id ?? '—'}
-                  </span>
+                  {canAssign && (
+                    <button
+                      type="button"
+                      className="bg-rose-500/20 hover:bg-rose-500/40 p-1.5 border border-rose-500/30 rounded-full h-fit text-rose-300 transition-colors cursor-pointer"
+                      title="Désassigner l'unité"
+                      onClick={() => setUnitToUnassign({ id: unit.id, callSign: unit.call_sign })}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
                 </article>
               ))
             )}
           </div>
         </div>
       </Card>
+
       <ConfirmationDialog
         isOpen={showConfirm}
         title="Fermer l'incident ?"
@@ -193,10 +236,22 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh }: Eve
         confirmLabel="Clore l'incident"
         cancelLabel="Annuler"
         variant="danger"
+        isSubmitting={isDeleting}
         onConfirm={confirmDelete}
         onCancel={() => setShowConfirm(false)}
-        isSubmitting={isDeleting}
       />
+
+      <ConfirmationDialog
+        isOpen={unitToUnassign !== null}
+        title="Libérer l'unité ?"
+        description={`Êtes-vous sûr de vouloir retirer l'unité "${unitToUnassign?.callSign}" de cette intervention ? L'unité redeviendra disponible.`}
+        confirmLabel="Libérer"
+        cancelLabel="Annuler"
+        variant="danger"
+        onConfirm={confirmUnassign}
+        onCancel={() => setUnitToUnassign(null)}
+      />
+
       <ConfirmationDialog
         isOpen={!!errorMessage}
         title="Erreur"
@@ -204,6 +259,15 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh }: Eve
         confirmLabel="OK"
         onConfirm={() => setErrorMessage(null)}
       />
+
+      <UnitAssignmentDialog
+        isOpen={showAssignmentDialog}
+        event={event}
+        onClose={() => setShowAssignmentDialog(false)}
+        onRefresh={onRefresh}
+        onTogglePauseRefresh={onTogglePauseRefresh}
+      />
     </>
   )
 }
+

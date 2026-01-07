@@ -24,6 +24,7 @@ export function App() {
   const [isSpinning, setIsSpinning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<string>('—')
+  const [isPaused, setIsPaused] = useState(false)
   const [refreshInterval, setRefreshInterval] = useState<number>(() => {
     const saved = localStorage.getItem(REFRESH_INTERVAL_KEY)
     return saved ? Number.parseInt(saved, 10) : 10
@@ -96,11 +97,11 @@ export function App() {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      if (isAuthenticated) refreshData()
+      if (isAuthenticated && !isPaused) refreshData()
     }, refreshInterval * 1000)
 
     return () => clearInterval(intervalId)
-  }, [isAuthenticated, refreshData, refreshInterval])
+  }, [isAuthenticated, refreshData, refreshInterval, isPaused])
 
   const handleIntervalChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = Number.parseInt(event.target.value, 10)
@@ -139,7 +140,7 @@ export function App() {
 
   const handleCreateEvent = useCallback(
     async (payload: CreateEventRequest) => {
-      await fastPinPonService.createEvent(payload)
+      await fastPinPonService.createEvent(payload, true)
       await refreshData()
       setPendingLocation(null)
     },
@@ -207,6 +208,7 @@ export function App() {
           onClose={handleCloseDetail}
           permissions={permissions}
           onRefresh={refreshData}
+          onTogglePauseRefresh={setIsPaused}
         />
         </main>
       )}

@@ -1,4 +1,4 @@
-import type { EventSummary, UnitSummary } from '../types'
+import type { EventSummary, UnitSummary, UnitType } from '../types'
 import type { CreateEventRequest, EventType } from '../types/eventTypes'
 
 type InterventionStatus = 'created' | 'on_site' | 'completed' | 'cancelled'
@@ -56,13 +56,26 @@ class FastPinPonService {
     return response.json()
   }
 
+  async getUnitTypes(): Promise<UnitType[]> {
+    const response = await fetch(`${this.API_BASE_URL}/unit-types`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch unit types: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+
   // =========================
   // ADDED: create an incident
   // =========================
-  async createEvent(payload: CreateEventRequest): Promise<void> {
-    const response = await fetch(`${this.API_BASE_URL}/events`, {
+  async createEvent(payload: CreateEventRequest, autoIntervention = false, token?: string): Promise<void> {
+    const url = new URL(`${this.API_BASE_URL}/events`)
+    if (autoIntervention) {
+      url.searchParams.set('auto_intervention', 'true')
+    }
+
+    const response = await fetch(url.toString(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.buildHeaders(token),
       body: JSON.stringify(payload),
     })
 
@@ -134,6 +147,48 @@ class FastPinPonService {
     if (!response.ok) {
       const text = await response.text().catch(() => '')
       throw new Error(`Failed to update unit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
+  async getNearbyUnits(lat: number, lon: number, unitTypes?: string[], token?: string): Promise<UnitSummary[]> {
+    const params = new URLSearchParams({ lat: String(lat), lon: String(lon) })
+    if (unitTypes && unitTypes.length > 0) {
+      params.set('unit_types', unitTypes.join(','))
+    }
+    const response = await fetch(`${this.API_BASE_URL}/units/nearby?${params.toString()}`, {
+      headers: this.buildHeaders(token),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to fetch nearby units: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+
+  async assignUnitToIntervention(interventionId: string, unitId: string, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/interventions/${interventionId}/assignments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.buildHeaders(token),
+      },
+      body: JSON.stringify({ unit_id: unitId }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to assign unit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
+  async unassignUnitFromIntervention(interventionId: string, unitId: string, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/interventions/${interventionId}/assignments/${unitId}`, {
+      method: 'DELETE',
+      headers: this.buildHeaders(token),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to unassign unit: ${response.status} ${response.statusText} ${text}`)
     }
   }
 }

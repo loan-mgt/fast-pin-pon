@@ -43,10 +43,12 @@ func (s *Server) routes() http.Handler {
 		v1.Get("/interventions/{interventionID}", s.handleGetIntervention)
 		v1.Patch("/interventions/{interventionID}/status", s.handleUpdateInterventionStatus)
 		v1.Post("/interventions/{interventionID}/assignments", s.handleCreateAssignment)
+		v1.Delete("/interventions/{interventionID}/assignments/{unitID}", s.handleReleaseAssignment)
 		v1.Get("/interventions/{interventionID}/assignments", s.handleListAssignmentsForIntervention)
 		v1.Patch("/assignments/{assignmentID}/status", s.handleUpdateAssignmentStatus)
 
 		v1.Get("/units", s.handleListUnits)
+		v1.Get("/units/nearby", s.handleListUnitsNearby)
 		v1.Post("/units", s.handleCreateUnit)
 		v1.Patch("/units/{unitID}/status", s.handleUpdateUnitStatus)
 		v1.Patch("/units/{unitID}/location", s.handleUpdateUnitLocation)
