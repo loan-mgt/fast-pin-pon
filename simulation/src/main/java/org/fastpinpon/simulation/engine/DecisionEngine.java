@@ -428,7 +428,7 @@ public final class DecisionEngine {
                 return true;
             }
         }
-        return false;;
+        return false;
     }
 
     private void resolveIncident(Incident inc, String reason) {
