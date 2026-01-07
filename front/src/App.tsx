@@ -8,13 +8,14 @@ import { EventPanel } from './components/events/EventPanel'
 import { UnitPanel } from './components/units/UnitPanel'
 import { EventDetailPanel } from './components/events/EventDetailPanel'
 import { CreateEventModal } from './components/events/CreateEventModal'
+import { DashboardPage } from './components/dashboard/DashboardPage'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
 import type { EventSummary, UnitSummary } from './types'
 import { useAuth } from './auth/AuthProvider'
-import { Button } from './components/ui/button'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
 const MIN_SPIN_DURATION = 500
+type ViewMode = 'live' | 'dashboard'
 
 export function App() {
   const [events, setEvents] = useState<EventSummary[]>([])
@@ -27,14 +28,13 @@ export function App() {
     const saved = localStorage.getItem(REFRESH_INTERVAL_KEY)
     return saved ? Number.parseInt(saved, 10) : 10
   })
+  const [view, setView] = useState<ViewMode>('live')
   const {
     isAuthenticated,
     initializing: isAuthLoading,
     token,
     profile,
     permissions,
-    error: authError,
-    login,
     logout,
   } = useAuth()
 
@@ -52,7 +52,7 @@ export function App() {
 
     try {
       const [eventsData, unitsData] = await Promise.all([
-        fastPinPonService.getEvents(25, token ?? undefined),
+        fastPinPonService.getEvents(25, token ?? undefined, ['completed']),
         fastPinPonService.getUnits(token ?? undefined),
       ])
 
@@ -156,24 +156,8 @@ export function App() {
 
   if (isAuthLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100">
-        <p className="text-sm text-slate-400">Initialisation de la session…</p>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 px-6">
-        <div className="max-w-md w-full space-y-4 text-center">
-          <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Fast Pin Pon</p>
-          <h1 className="text-2xl font-semibold text-white">Connexion requise</h1>
-          <p className="text-slate-400 text-sm">Authentifiez-vous via Keycloak pour accéder au tableau de bord.</p>
-          {authError && <p className="text-red-400 text-sm">{authError}</p>}
-          <div className="flex justify-center">
-            <Button onClick={login} className="px-6">Se connecter</Button>
-          </div>
-        </div>
+      <div className="flex flex-col justify-center items-center bg-slate-950 min-h-screen text-slate-100">
+        <p className="text-slate-400 text-sm">Initialisation de la session…</p>
       </div>
     )
   }
@@ -189,30 +173,43 @@ export function App() {
         onRefresh={refreshData}
         isSpinning={isSpinning}
         lastUpdated={lastUpdated}
+        currentView={view}
+        onNavigate={setView}
         onLogout={logout}
         userLabel={userLabel}
       />
 
-      <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">
-        <MapContainer
-          events={sortedEvents}
-          units={units}
-          onEventSelect={handleEventSelect}
-          selectedEventId={selectedEventId}
-          onCreateAtLocation={(coords) => {
-            setPendingLocation(coords)
-            setIsCreateOpen(true)
-          }}
+      {view === 'dashboard' ? (
+        <main className="flex flex-1 min-h-[calc(100vh-72px)]">
+          <DashboardPage units={units} lastUpdated={lastUpdated} onRefresh={refreshData} />
+        </main>
+      ) : (
+        <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">
+          <MapContainer
+            events={sortedEvents}
+            units={units}
+            onEventSelect={handleEventSelect}
+            selectedEventId={selectedEventId}
+            onCreateAtLocation={(coords) => {
+              setPendingLocation(coords)
+              setIsCreateOpen(true)
+            }}
+          />
+          <UnitPanel units={units} />
+          <EventPanel
+            events={sortedEvents}
+            error={error}
+            onEventSelect={handleEventSelect}
+            selectedEventId={selectedEventId}
+          />
+          <EventDetailPanel
+          event={selectedEvent}
+          onClose={handleCloseDetail}
+          permissions={permissions}
+          onRefresh={refreshData}
         />
-        <UnitPanel units={units} />
-        <EventPanel
-          events={sortedEvents}
-          error={error}
-          onEventSelect={handleEventSelect}
-          selectedEventId={selectedEventId}
-        />
-        <EventDetailPanel event={selectedEvent} onClose={handleCloseDetail} permissions={permissions} />
-      </main>
+        </main>
+      )}
 
       <CreateEventModal
         isOpen={isCreateOpen}

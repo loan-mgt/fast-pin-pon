@@ -23,12 +23,8 @@ def get_env(key: str, default: str) -> str:
     return os.environ.get(key, default)
 
 
+# Default to prod API; override with API_URL for dev/local
 API_DEFAULT_URL = "https://api.fast-pin-pon.4loop.org"
-
-# Cache microbit_id -> (unit_id, call_sign) avec timestamp
-microbit_cache: Dict[str, Tuple[str, str]] = {}
-cache_last_refresh: float = 0
-CACHE_TTL: float = 60  # Invalider le cache toutes les 60 secondes
 
 STATUS_MAP = {
     "AVL": "available",
@@ -63,32 +59,17 @@ def parse_microbit_message(message: str) -> Optional[Tuple[str, str]]:
 
 
 def find_unit_by_microbit(api_url: str, microbit_id: str) -> Optional[Tuple[str, str]]:
-    global cache_last_refresh, microbit_cache
-    
-    now = time.time()
-    # Invalider le cache si trop vieux
-    if now - cache_last_refresh > CACHE_TTL:
-        microbit_cache.clear()
-        cache_last_refresh = now
-    
-    if microbit_id in microbit_cache:
-        return microbit_cache[microbit_id]
-
     try:
-        response = requests.get(f"{api_url}/v1/units", timeout=5)
+        base = api_url.rstrip("/")
+        response = requests.get(f"{base}/v1/units/by-microbit/{microbit_id}", timeout=5)
+        if response.status_code == 404:
+            return None
         response.raise_for_status()
-        units = response.json()
-
-        for unit in units:
-            if unit.get("microbit_id") == microbit_id:
-                unit_id = unit.get("id")
-                call_sign = unit.get("call_sign")
-                microbit_cache[microbit_id] = (unit_id, call_sign)
-                print(f"[INFO] Micro:bit {microbit_id} -> Unité {call_sign}")
-                return (unit_id, call_sign)
-
-        # Micro:bit non assigné - le marquer dans le cache comme None
-        return None
+        unit = response.json()
+        unit_id = unit.get("id")
+        call_sign = unit.get("call_sign")
+        print(f"[INFO] Micro:bit {microbit_id} -> Unité {call_sign}")
+        return (unit_id, call_sign)
     except requests.RequestException as e:
         print(f"[ERREUR] API: {e}")
         return None
@@ -97,12 +78,20 @@ def find_unit_by_microbit(api_url: str, microbit_id: str) -> Optional[Tuple[str,
 def update_unit_status(api_url: str, unit_id: str, status: str) -> bool:
     try:
         api_status = STATUS_MAP.get(status, "available")
+        base = api_url.rstrip("/")
+        url = f"{base}/v1/units/{unit_id}/status"
+        print(f"[API] PATCH {url} -> {api_status}")
         response = requests.patch(
-            f"{api_url}/v1/units/{unit_id}/status",
+            url,
             json={"status": api_status},
             timeout=5
         )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            body = response.text if response.text else ""
+            print(f"[ERREUR] API status update {response.status_code}: {body}")
+            response.raise_for_status()
+        else:
+            print(f"[API] OK {response.status_code}: {response.text}")
         return True
     except requests.RequestException as e:
         print(f"[ERREUR] Mise à jour: {e}")
@@ -111,6 +100,7 @@ def update_unit_status(api_url: str, unit_id: str, status: str) -> bool:
 
 def process_microbit_data(api_url: str, microbit_id: str, status: str,
                           last_statuses: Dict[str, str]) -> None:
+    print(f"[MBIT] {microbit_id} -> {status}")
     unit_info = find_unit_by_microbit(api_url, microbit_id)
     if not unit_info:
         print(f"[WARN] Micro:bit {microbit_id} non assigné")

@@ -1,7 +1,10 @@
 package server
 
 import (
+	"context"
 	"net/http"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	db "fast/pin/internal/db/sqlc"
 )
@@ -163,7 +166,41 @@ func (s *Server) handleUpdateInterventionStatus(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// When an intervention is completed, release all assignments and set units available.
+	if req.Status == string(db.InterventionStatusCompleted) {
+		if err := s.releaseInterventionUnits(r.Context(), interventionID); err != nil {
+			s.writeError(w, http.StatusInternalServerError, "failed to release assignments", err.Error())
+			return
+		}
+	}
+
 	s.writeJSON(w, http.StatusOK, mapIntervention(row))
+}
+
+func (s *Server) releaseInterventionUnits(ctx context.Context, interventionID pgtype.UUID) error {
+	assignments, err := s.queries.ListAssignmentsByIntervention(ctx, interventionID)
+	if err != nil {
+		return err
+	}
+
+	for _, a := range assignments {
+		if a.Status != db.AssignmentStatusReleased {
+			if _, err := s.queries.UpdateAssignmentStatus(ctx, db.UpdateAssignmentStatusParams{
+				ID:      a.ID,
+				Column2: db.AssignmentStatusReleased,
+			}); err != nil {
+				return err
+			}
+		}
+
+		if _, err := s.queries.UpdateUnitStatus(ctx, db.UpdateUnitStatusParams{
+			ID:     a.UnitID,
+			Status: db.UnitStatusAvailable,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // handleListInterventionsForEvent godoc

@@ -5,17 +5,17 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+
 jobs:
   build-api:
     uses: ./.github/workflows/build-and-push.base.yml
     with:
       folder: api
-    secrets: inherit
-
-  build-database:
-    uses: ./.github/workflows/build-and-push.base.yml
-    with:
-      folder: database
     secrets: inherit
 
   build-front:
@@ -63,7 +63,6 @@ jobs:
   deploy:
     needs: 
       - build-api
-      - build-database
       - build-front
       - build-grafana
       - build-keycloak

@@ -1,122 +1,283 @@
+/* =========================================================
+   Fast Pin Pon – Keycloak Login Theme
+   Clean, minimal dark theme matching the main application
+   ========================================================= */
+
+/* -------------------- Base -------------------- */
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-  background: radial-gradient(circle at 20% 20%, rgba(14,165,233,0.08), transparent 35%),
-              radial-gradient(circle at 80% 30%, rgba(236,72,153,0.12), transparent 40%),
-              #0f172a;
-  color: #ffffff;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
-}
-
-#kc-container-wrapper {
   display: flex;
-  justify-content: center;
   align-items: center;
-  padding: 48px 16px;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+  background: #020617;
+  color: #f1f5f9;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-#kc-form-wrapper,
-#kc-info-wrapper,
-#kc-reset-password-form,
-#kc-register-form {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-  border-radius: 18px;
-  padding: 32px;
-  backdrop-filter: blur(6px);
-  max-width: 460px;
+/* -------------------- Layout -------------------- */
+.login-pf-page {
   width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
+.login-pf-page .card-pf {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.12);
+}
+
+/* -------------------- Header -------------------- */
 #kc-header {
   text-align: center;
-  margin-bottom: 12px;
-}
-
-#kc-logo {
-  display: none;
+  margin-bottom: 24px;
 }
 
 #kc-header-wrapper {
-  font-size: 22px;
-  font-weight: 700;
-  color: #f8fafc;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(103, 232, 249, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
 }
 
 #kc-page-title {
-  color: #cbd5e1;
-}
-
-.kcFormGroup label,
-#kc-form-options label {
-  color: #cbd5e1;
+  margin: 12px 0 0;
+  font-size: 24px;
   font-weight: 600;
+  color: #fff;
 }
 
-input[type="text"],
-input[type="password"],
-input[type="email"] {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  border-radius: 10px;
-  color: #e2e8f0;
-  padding: 12px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+/* -------------------- Form -------------------- */
+.form-group {
+  margin-bottom: 18px;
 }
 
-input[type="text"]:focus,
-input[type="password"]:focus,
-input[type="email"]:focus {
-  border-color: rgba(59, 130, 246, 0.8);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-  outline: none;
+.pf-c-form__label,
+.pf-c-form__label-text {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #cbd5e1;
 }
 
-#kc-login, .btn-primary {
-  background: linear-gradient(90deg, #06b6d4, #2563eb);
-  border: none;
-  border-radius: 12px;
-  color: #f8fafc;
-  font-weight: 700;
-  padding: 12px;
+/* -------------------- Inputs -------------------- */
+.pf-c-form-control {
   width: 100%;
-  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.35);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  height: 48px;
+  padding: 0 14px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 10px;
+  color: #f1f5f9;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-#kc-login:hover, .btn-primary:hover {
+.pf-c-form-control::placeholder {
+  color: #64748b;
+}
+
+.pf-c-form-control:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Error state */
+.pf-c-form-control[aria-invalid="true"] {
+  border-color: rgba(248, 113, 113, 0.8) !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18) !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+  background-image: none !important;
+}
+
+/* -------------------- Password Input Group -------------------- */
+.pf-c-input-group {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  background: transparent !important;
+}
+
+/* PatternFly v4 sometimes wraps controls in input-group__item */
+.pf-c-input-group__item {
+  display: flex;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+}
+
+.pf-c-input-group__item.pf-m-fill {
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-c-input-group > .pf-c-form-control {
+  flex: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+  height: 48px;
+  margin: 0;
+}
+
+.pf-c-input-group__item > .pf-c-form-control {
+  flex: 1;
+  width: 100%;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+  height: 48px;
+  margin: 0;
+}
+
+.pf-c-input-group > .pf-c-button.pf-m-control {
+  height: 48px;
+  width: 48px;
+  min-width: 48px;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  background: rgba(15, 23, 42, 0.6) !important;
+  background-image: none !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+  border-left: none !important;
+  border-radius: 0 10px 10px 0;
+  color: #94a3b8;
+  box-shadow: none !important;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pf-c-input-group__item > .pf-c-button.pf-m-control {
+  height: 48px;
+  width: 48px;
+  min-width: 48px;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  background: rgba(15, 23, 42, 0.6) !important;
+  background-image: none !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+  border-left: none !important;
+  border-radius: 0 10px 10px 0;
+  color: #94a3b8;
+  box-shadow: none !important;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pf-c-input-group > .pf-c-button.pf-m-control::before,
+.pf-c-input-group > .pf-c-button.pf-m-control::after {
+  content: none !important;
+}
+
+.pf-c-input-group__item > .pf-c-button.pf-m-control::before,
+.pf-c-input-group__item > .pf-c-button.pf-m-control::after {
+  content: none !important;
+}
+
+.pf-c-input-group:focus-within > .pf-c-button.pf-m-control {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.pf-c-input-group:focus-within .pf-c-input-group__item > .pf-c-button.pf-m-control {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* If password input is invalid, highlight the toggle button too */
+.pf-c-input-group > .pf-c-form-control[aria-invalid="true"] + .pf-c-button.pf-m-control {
+  border-color: rgba(248, 113, 113, 0.8) !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18) !important;
+}
+
+/* Same, but for the wrapped input-group__item structure (progressive enhancement) */
+@supports selector(.pf-c-input-group:has(.pf-c-form-control)) {
+  .pf-c-input-group:has(.pf-c-form-control[aria-invalid="true"]) .pf-c-button.pf-m-control {
+    border-color: rgba(248, 113, 113, 0.8) !important;
+    box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18) !important;
+  }
+}
+
+/* -------------------- Error Text -------------------- */
+.pf-c-form__helper-text.pf-m-error,
+.kc-feedback-text {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #f87171;
+}
+
+/* -------------------- Submit Button -------------------- */
+#kc-login,
+.pf-c-button.pf-m-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 46px;
+  margin-top: 24px;
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  border: none;
+  border-radius: 9999px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(6, 182, 212, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+#kc-login:hover,
+.pf-c-button.pf-m-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 34px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 12px 32px rgba(6, 182, 212, 0.35);
 }
 
-#kc-login:active, .btn-primary:active {
+#kc-login:active,
+.pf-c-button.pf-m-primary:active {
   transform: translateY(0);
 }
 
-#kc-info-message, .instruction {
-  color: #cbd5e1;
+/* -------------------- Links -------------------- */
+a {
+  color: #67e8f9;
+  text-decoration: none;
 }
 
-#kc-locale {
-  display: none;
+a:hover {
+  text-decoration: underline;
 }
 
-.alert-error {
-  background: #4a0d0d;
-  border: 1px solid #fca5a5;
-  color: #ffffff;
-  border-radius: 10px;
+/* -------------------- Autofill Fix -------------------- */
+input:-webkit-autofill {
+  -webkit-text-fill-color: #f1f5f9;
+  -webkit-box-shadow: 0 0 0 1000px rgba(15, 23, 42, 0.8) inset;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
-.login-pf-page {
-  background: transparent;
-}
-
-#kc-content {
-  width: 100%;
-}
-
-#kc-form-buttons {
-  margin-top: 16px;
+/* -------------------- Responsive -------------------- */
+@media (max-width: 480px) {
+  body { padding: 16px; }
+  .login-pf-page .card-pf { padding: 24px 20px; border-radius: 16px; }
+  #kc-page-title { font-size: 20px; }
 }

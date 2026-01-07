@@ -152,6 +152,7 @@ services:
       GF_AUTH_GENERIC_OAUTH_API_URL: ${GF_AUTH_GENERIC_OAUTH_API_URL}
       # --- MAPPING DES RÔLES ---
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: ${GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/api-http.json
     ports:
       - 3002:3000
     networks:
@@ -177,6 +178,20 @@ services:
     command: -config.file=/etc/promtail/config.yml
     networks:
       - internal-grafana
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: fast-pin-pon-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - 9090:9090
+    networks:
+      - internal
+      - internal-keycloak
+      - internal-grafana
+      
 networks:
   internal: null
   internal-keycloak: null
