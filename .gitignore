@@ -3,6 +3,9 @@
 simulation/.env
 simulation/.env.local
 simulation/target/
+engine/.env
+engine/.env.local
+engine/target/
 network\micropython.hex
 network/output/
 api/docs/
