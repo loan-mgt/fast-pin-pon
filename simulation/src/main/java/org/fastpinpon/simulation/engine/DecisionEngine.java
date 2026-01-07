@@ -1048,11 +1048,19 @@ public final class DecisionEngine {
         BaseLocation villeurbanne = getBaseByName(BASE_VILLEURBANNE);
         BaseLocation confluence = getBaseByName(BASE_CONFLUENCE);
         
-        double distToVilleurbanne = distance(villeurbanne.lat, villeurbanne.lon, lat, lon);
-        double distToConfluence = distance(confluence.lat, confluence.lon, lat, lon);
-        
         List<String> result = new ArrayList<>();
         result.add(BASE_PART_DIEU);
+        
+        // Fallback if base locations not found
+        if (villeurbanne == null || confluence == null) {
+            result.add(BASE_VILLEURBANNE);
+            result.add(BASE_CONFLUENCE);
+            result.add(BASE_CUSSET);
+            return result;
+        }
+        
+        double distToVilleurbanne = distance(villeurbanne.lat, villeurbanne.lon, lat, lon);
+        double distToConfluence = distance(confluence.lat, confluence.lon, lat, lon);
         
         // Choose Villeurbanne or Confluence based on which is closer
         if (distToVilleurbanne <= distToConfluence) {
