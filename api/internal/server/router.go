@@ -51,6 +51,7 @@ func (s *Server) routes() http.Handler {
 		v1.Get("/units", s.handleListUnits)
 		v1.Get("/units/nearby", s.handleListUnitsNearby)
 		v1.Post("/units", s.handleCreateUnit)
+		v1.Delete("/units/{unitID}", s.handleDeleteUnit)
 		v1.Patch("/units/{unitID}/status", s.handleUpdateUnitStatus)
 		v1.Patch("/units/{unitID}/location", s.handleUpdateUnitLocation)
 		v1.Post("/units/{unitID}/telemetry", s.handleInsertTelemetry)

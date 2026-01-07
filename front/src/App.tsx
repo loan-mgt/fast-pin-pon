@@ -9,8 +9,9 @@ import { UnitPanel } from './components/units/UnitPanel'
 import { EventDetailPanel } from './components/events/EventDetailPanel'
 import { CreateEventModal } from './components/events/CreateEventModal'
 import { DashboardPage } from './components/dashboard/DashboardPage'
+import { AddUnitModal } from './components/dashboard/AddUnitModal'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
-import type { EventSummary, UnitSummary, Building } from './types'
+import type { EventSummary, UnitSummary, Building, UnitType } from './types'
 import { useAuth } from './auth/AuthProvider'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
@@ -40,7 +41,9 @@ export function App() {
   } = useAuth()
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isAddUnitOpen, setIsAddUnitOpen] = useState(false)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
+  const [unitTypes, setUnitTypes] = useState<UnitType[]>([])
   const [buildings, setBuildings] = useState<Building[]>([])
   const [pendingLocation, setPendingLocation] = useState<{ latitude: number; longitude: number } | null>(null)
 
@@ -90,6 +93,8 @@ export function App() {
       try {
         const types = await fastPinPonService.getEventTypes()
         setEventTypes(types)
+        const uTypes = await fastPinPonService.getUnitTypes()
+        setUnitTypes(uTypes)
         const blds = await fastPinPonService.getBuildings()
         setBuildings(blds)
       } catch (err) {
@@ -150,6 +155,14 @@ export function App() {
     [refreshData],
   )
 
+  const handleAddUnit = useCallback(
+    async (callSign: string, unitTypeCode: string, homeBase: string, lat: number, lon: number) => {
+      await fastPinPonService.createUnit(callSign, unitTypeCode, homeBase, lat, lon, token ?? undefined)
+      await refreshData()
+    },
+    [refreshData, token],
+  )
+
   const handleEventSelect = (eventId: string) => {
     setSelectedEventId(eventId)
   }
@@ -181,6 +194,7 @@ export function App() {
         onNavigate={setView}
         onLogout={logout}
         userLabel={userLabel}
+        onAddUnit={() => setIsAddUnitOpen(true)}
       />
 
       {view === 'dashboard' ? (
@@ -226,6 +240,14 @@ export function App() {
         eventTypes={eventTypes}
         onSubmit={handleCreateEvent}
         initialLocation={pendingLocation}
+      />
+
+      <AddUnitModal
+        isOpen={isAddUnitOpen}
+        onClose={() => setIsAddUnitOpen(false)}
+        onSubmit={handleAddUnit}
+        unitTypes={unitTypes}
+        buildings={buildings}
       />
     </div>
   )

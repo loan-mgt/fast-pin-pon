@@ -199,6 +199,48 @@ class FastPinPonService {
       throw new Error(`Failed to unassign unit: ${response.status} ${response.statusText} ${text}`)
     }
   }
+
+  async createUnit(
+    callSign: string,
+    unitTypeCode: string,
+    homeBase: string,
+    latitude: number,
+    longitude: number,
+    token?: string,
+  ): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/units`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.buildHeaders(token),
+      },
+      body: JSON.stringify({
+        call_sign: callSign,
+        unit_type_code: unitTypeCode,
+        home_base: homeBase,
+        status: 'available',
+        latitude,
+        longitude,
+      }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to create unit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
+  async deleteUnit(unitId: string, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/units/${unitId}`, {
+      method: 'DELETE',
+      headers: this.buildHeaders(token),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to delete unit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
 }
 
 // Export a singleton instance (like Angular's 'providedIn: root')

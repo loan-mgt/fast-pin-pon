@@ -69,6 +69,33 @@ func (q *Queries) AssignMicrobit(ctx context.Context, arg AssignMicrobitParams) 
 	return i, err
 }
 
+const deleteUnitAssignments = `-- name: DeleteUnitAssignments :exec
+DELETE FROM intervention_assignments WHERE unit_id = $1
+`
+
+func (q *Queries) DeleteUnitAssignments(ctx context.Context, unitID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUnitAssignments, unitID)
+	return err
+}
+
+const deleteUnitTelemetry = `-- name: DeleteUnitTelemetry :exec
+DELETE FROM unit_telemetry WHERE unit_id = $1
+`
+
+func (q *Queries) DeleteUnitTelemetry(ctx context.Context, unitID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUnitTelemetry, unitID)
+	return err
+}
+
+const deleteUnit = `-- name: DeleteUnit :exec
+DELETE FROM units WHERE id = $1
+`
+
+func (q *Queries) DeleteUnit(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUnit, id)
+	return err
+}
+
 const createUnit = `-- name: CreateUnit :one
 INSERT INTO units (
     call_sign,
