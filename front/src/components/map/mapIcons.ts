@@ -1,30 +1,30 @@
 import type { UnitSummary } from '../../types'
 
 // Unit marker size in pixels
-const UNIT_SIZE = 22
+const UNIT_SIZE = 30
 
 // Unit type icons - SVG strings (use viewBox only, size set by container)
 export const UNIT_TYPE_ICONS: Record<string, string> = {
     FPT: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="white" stroke-width="8"/>
   <path d="M 50 80 Q 20 60 50 20 Q 80 60 50 80 Z" fill="none" stroke="white" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
   <path d="M 50 80 Q 35 65 50 45" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
 </svg>`,
 
     FPTL: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="white" stroke-width="8"/>
   <polygon points="58,15 28,50 48,50 42,85 72,45 52,45" fill="none" stroke="white" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>`,
 
     VER: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="white" stroke-width="8"/>
   <path d="M 30 70 L 45 50 L 30 30" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M 70 70 L 55 50 L 70 30" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   <circle cx="50" cy="50" r="5" fill="white"/>
 </svg>`,
 
     VIA: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="white" stroke-width="8"/>
   <circle cx="50" cy="50" r="8" fill="white"/>
   <line x1="50" y1="20" x2="50" y2="80" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <line x1="24" y1="65" x2="76" y2="35" stroke="white" stroke-width="8" stroke-linecap="round"/>
@@ -32,27 +32,27 @@ export const UNIT_TYPE_ICONS: Record<string, string> = {
 </svg>`,
 
     VIM: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="white" stroke-width="8"/>
   <line x1="50" y1="20" x2="50" y2="70" stroke="white" stroke-width="6" stroke-linecap="round"/>
   <line x1="40" y1="25" x2="60" y2="25" stroke="white" stroke-width="6" stroke-linecap="round"/>
   <path d="M 25 55 Q 50 90 75 55" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
 </svg>`,
 
     VSAV: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="white" stroke-width="8"/>
   <line x1="50" y1="25" x2="50" y2="75" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <line x1="25" y1="50" x2="75" y2="50" stroke="white" stroke-width="8" stroke-linecap="round"/>
 </svg>`,
 
     VLHR: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="white" stroke-width="8"/>
   <line x1="50" y1="20" x2="50" y2="80" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <line x1="24" y1="35" x2="76" y2="65" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <line x1="24" y1="65" x2="76" y2="35" stroke="white" stroke-width="8" stroke-linecap="round"/>
 </svg>`,
 
     EPA: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="white" stroke-width="8"/>
   <line x1="35" y1="80" x2="35" y2="20" stroke="white" stroke-width="6" stroke-linecap="round"/>
   <line x1="65" y1="80" x2="65" y2="20" stroke="white" stroke-width="6" stroke-linecap="round"/>
   <line x1="35" y1="35" x2="65" y2="35" stroke="white" stroke-width="6" stroke-linecap="round"/>
@@ -63,53 +63,53 @@ export const UNIT_TYPE_ICONS: Record<string, string> = {
 
 // Default unit icon for unknown types
 export const DEFAULT_UNIT_ICON = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="#0095FF" stroke="white" stroke-width="8"/>
   <circle cx="50" cy="50" r="15" fill="white"/>
 </svg>`
 
 // Unit type icon templates - functions that return SVG with dynamic color
 export const UNIT_TYPE_ICON_TEMPLATES: Record<string, (color: string) => string> = {
     FPT: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="${color}" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
   <path d="M 50 80 Q 20 60 50 20 Q 80 60 50 80 Z" fill="none" stroke="white" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
   <path d="M 50 80 Q 35 65 50 45" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
 </svg>`,
     FPTL: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="${color}" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
   <polygon points="58,15 28,50 48,50 42,85 72,45 52,45" fill="none" stroke="white" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>`,
     VER: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="${color}" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
   <path d="M 30 70 L 45 50 L 30 30" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M 70 70 L 55 50 L 70 30" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   <circle cx="50" cy="50" r="5" fill="white"/>
 </svg>`,
     VIA: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="${color}" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
   <circle cx="50" cy="50" r="8" fill="white"/>
   <line x1="50" y1="20" x2="50" y2="80" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <line x1="24" y1="65" x2="76" y2="35" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <circle cx="50" cy="50" r="32" fill="none" stroke="white" stroke-width="4" stroke-dasharray="10, 10"/>
 </svg>`,
     VIM: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="${color}" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
   <line x1="50" y1="20" x2="50" y2="70" stroke="white" stroke-width="6" stroke-linecap="round"/>
   <line x1="40" y1="25" x2="60" y2="25" stroke="white" stroke-width="6" stroke-linecap="round"/>
   <path d="M 25 55 Q 50 90 75 55" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
 </svg>`,
     VSAV: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="${color}" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
   <line x1="50" y1="25" x2="50" y2="75" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <line x1="25" y1="50" x2="75" y2="50" stroke="white" stroke-width="8" stroke-linecap="round"/>
 </svg>`,
     VLHR: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="${color}" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
   <line x1="50" y1="20" x2="50" y2="80" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <line x1="24" y1="35" x2="76" y2="65" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <line x1="24" y1="65" x2="76" y2="35" stroke="white" stroke-width="8" stroke-linecap="round"/>
 </svg>`,
     EPA: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="${color}" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
   <line x1="35" y1="80" x2="35" y2="20" stroke="white" stroke-width="6" stroke-linecap="round"/>
   <line x1="65" y1="80" x2="65" y2="20" stroke="white" stroke-width="6" stroke-linecap="round"/>
   <line x1="35" y1="35" x2="65" y2="35" stroke="white" stroke-width="6" stroke-linecap="round"/>
@@ -120,7 +120,7 @@ export const UNIT_TYPE_ICON_TEMPLATES: Record<string, (color: string) => string>
 
 // Default unit icon template
 const DEFAULT_UNIT_ICON_TEMPLATE = (color: string) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="${color}" stroke="black" stroke-width="6"/>
+  <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
   <circle cx="50" cy="50" r="15" fill="white"/>
 </svg>`
 
@@ -134,7 +134,7 @@ export function getUnitIconWithStatus(unitTypeCode: string, status?: string): st
 }
 
 // Event marker size in pixels
-const EVENT_SIZE = 28
+const EVENT_SIZE = 46
 
 // Severity color mapping
 export const SEVERITY_COLORS: Record<string, string> = {
@@ -165,26 +165,26 @@ export function getSeverityColor(severity?: number): string {
 // Event type icon templates - functions that return SVG with dynamic color
 export const EVENT_TYPE_ICON_TEMPLATES: Record<string, (color: string) => string> = {
     CRASH: (color) => `<svg viewBox="0 0 100 100">
-  <polygon points="50,5 95,50 50,95 5,50" fill="${color}" stroke="black" stroke-width="6"/>
+  <rect x="18.18" y="18.18" width="63.64" height="63.64" rx="9" transform="rotate(45 50 50)" fill="${color}" stroke="white" stroke-width="8"/>
   <path d="M 25 50 L 45 50 M 75 50 L 55 50" stroke="white" stroke-width="8" stroke-linecap="round"/>
   <path d="M 40 35 L 50 50 L 40 65 M 60 35 L 50 50 L 60 65" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`,
 
     OTHER: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <polygon points="50,5 95,50 50,95 5,50" fill="${color}" stroke="black" stroke-width="6"/>
+  <rect x="18.18" y="18.18" width="63.64" height="63.64" rx="9" transform="rotate(45 50 50)" fill="${color}" stroke="white" stroke-width="8"/>
   <circle cx="30" cy="50" r="5" fill="white"/>
   <circle cx="50" cy="50" r="5" fill="white"/>
   <circle cx="70" cy="50" r="5" fill="white"/>
 </svg>`,
 
     FIRE_INDUSTRIAL: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <polygon points="50,5 95,50 50,95 5,50" fill="${color}" stroke="black" stroke-width="6"/>
+  <rect x="18.18" y="18.18" width="63.64" height="63.64" rx="9" transform="rotate(45 50 50)" fill="${color}" stroke="white" stroke-width="8"/>
   <path d="M30 70 V50 L40 50 V40 L50 40 V30 L70 30 V70 Z" fill="none" stroke="white" stroke-width="4"/>
   <path d="M50 75 Q40 60 50 45 Q60 60 50 75" fill="white"/>
 </svg>`,
 
     AQUATIC_RESCUE: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <polygon points="50,5 95,50 50,95 5,50" fill="${color}" stroke="black" stroke-width="6"/>
+  <rect x="18.18" y="18.18" width="63.64" height="63.64" rx="9" transform="rotate(45 50 50)" fill="${color}" stroke="white" stroke-width="8"/>
   <circle cx="50" cy="50" r="20" fill="none" stroke="white" stroke-width="8"/>
   <path d="M38 28 Q50 18 62 28" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
   <path d="M38 72 Q50 82 62 72" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
@@ -193,7 +193,7 @@ export const EVENT_TYPE_ICON_TEMPLATES: Record<string, (color: string) => string
 </svg>`,
 
     HAZMAT: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <polygon points="50,5 95,50 50,95 5,50" fill="${color}" stroke="black" stroke-width="6"/>
+  <rect x="18.18" y="18.18" width="63.64" height="63.64" rx="9" transform="rotate(45 50 50)" fill="${color}" stroke="white" stroke-width="8"/>
   <path d="M50 30 Q35 30 35 45 Q35 58 50 58 Q65 58 65 45 Q65 30 50 30" fill="white"/>
   <rect x="44" y="55" width="12" height="8" rx="2" fill="white"/>
   <circle cx="43" cy="45" r="4" fill="${color}"/>
@@ -201,19 +201,19 @@ export const EVENT_TYPE_ICON_TEMPLATES: Record<string, (color: string) => string
 </svg>`,
 
     FIRE_URBAN: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <polygon points="50,5 95,50 50,95 5,50" fill="${color}" stroke="black" stroke-width="6"/>
+  <rect x="18.18" y="18.18" width="63.64" height="63.64" rx="9" transform="rotate(45 50 50)" fill="${color}" stroke="white" stroke-width="8"/>
   <path d="M42 70 V35 Q50 25 58 35 V70 M35 45 H65" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
 </svg>`,
 
     RESCUE_MEDICAL: (color) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <polygon points="50,5 95,50 50,95 5,50" fill="${color}" stroke="black" stroke-width="6"/>
+  <rect x="18.18" y="18.18" width="63.64" height="63.64" rx="9" transform="rotate(45 50 50)" fill="${color}" stroke="white" stroke-width="8"/>
   <path d="M25 50 H35 L42 30 L53 70 L60 50 H75" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`,
 }
 
 // Default event icon template
 export const DEFAULT_EVENT_ICON_TEMPLATE = (color: string) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <polygon points="50,5 95,50 50,95 5,50" fill="${color}" stroke="black" stroke-width="6"/>
+  <rect x="18.18" y="18.18" width="63.64" height="63.64" rx="9" transform="rotate(45 50 50)" fill="${color}" stroke="white" stroke-width="8"/>
   <circle cx="50" cy="45" r="8" fill="white"/>
   <rect x="46" y="58" width="8" height="15" rx="2" fill="white"/>
 </svg>`

@@ -385,7 +385,6 @@ export function MapContainer({
             unitMarkersRef.current = []
 
             const { unitToEvent, eventById } = buildUnitEventMaps(events)
-            const engagedStatuses = new Set(['on_site', 'under_way'])
             const unitLocations = getUnitLocations(units)
 
             // Build set of unit IDs that are on_site and assigned to an event (displayed under event marker)
@@ -424,13 +423,11 @@ export function MapContainer({
                 }
 
                 const color = STATUS_COLORS[loc.unit.status] ?? STATUS_COLORS.offline
-                const normalizedStatus = loc.unit.status.toLowerCase()
                 const eventIdForUnit = unitToEvent.get(loc.unit.id)
-                const canOpenEvent = eventIdForUnit && engagedStatuses.has(normalizedStatus)
 
                 const wrapper = createUnitMarkerElement(loc.unit.unit_type_code, loc.unit.status)
                 wrapper.addEventListener('click', () => {
-                    if (canOpenEvent && eventIdForUnit) onEventSelect?.(eventIdForUnit)
+                    if (eventIdForUnit) onEventSelect?.(eventIdForUnit)
                 })
 
                 const marker = new maplibregl.Marker({ element: wrapper, anchor: 'center' })

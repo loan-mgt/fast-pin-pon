@@ -12,13 +12,14 @@ import { useAuth } from '../../auth/AuthProvider'
 interface EventDetailPanelProps {
   readonly event: EventSummary | null
   readonly onClose: () => void
+  readonly onEventSelect?: (eventId: string) => void
   readonly permissions?: Permissions
   readonly onRefresh?: () => Promise<void> | void
   readonly onTogglePauseRefresh?: (paused: boolean) => void
   readonly onLocateEvent?: (lng: number, lat: number) => void
 }
 
-export function EventDetailPanel({ event, onClose, permissions, onRefresh, onTogglePauseRefresh, onLocateEvent }: EventDetailPanelProps): JSX.Element | null {
+export function EventDetailPanel({ event, onClose, onEventSelect, permissions, onRefresh, onTogglePauseRefresh, onLocateEvent }: EventDetailPanelProps): JSX.Element | null {
   const { token } = useAuth()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -90,7 +91,7 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh, onTog
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="p-2 rounded-md border border-sky-500/40 text-sky-200 hover:bg-sky-500/10 cursor-pointer transition-colors"
+              className="hover:bg-sky-500/10 p-2 border border-sky-500/40 rounded-md text-sky-200 transition-colors cursor-pointer"
               aria-label="Centrer sur l'incident"
               title="Centrer sur l'incident"
               onClick={() => {
@@ -222,7 +223,8 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh, onTog
               assignedUnits.map((unit) => (
                 <article
                   key={unit.id}
-                  className="flex justify-between items-start gap-2 bg-slate-800/60 px-3 py-2 border border-slate-700 rounded-lg"
+                  className="flex justify-between items-start gap-2 bg-slate-800/60 hover:bg-slate-800/80 px-3 py-2 border border-slate-700 rounded-lg transition-colors cursor-pointer"
+                  onClick={() => onEventSelect?.(event.id)}
                 >
                   <div className="space-y-1 min-w-0">
                     <p className="font-semibold text-white text-sm truncate leading-tight">{unit.call_sign}</p>
