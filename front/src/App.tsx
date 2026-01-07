@@ -10,7 +10,7 @@ import { EventDetailPanel } from './components/events/EventDetailPanel'
 import { CreateEventModal } from './components/events/CreateEventModal'
 import { DashboardPage } from './components/dashboard/DashboardPage'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
-import type { EventSummary, UnitSummary } from './types'
+import type { EventSummary, UnitSummary, Building } from './types'
 import { useAuth } from './auth/AuthProvider'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
@@ -41,6 +41,7 @@ export function App() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
+  const [buildings, setBuildings] = useState<Building[]>([])
   const [pendingLocation, setPendingLocation] = useState<{ latitude: number; longitude: number } | null>(null)
 
   const refreshData = useCallback(async () => {
@@ -89,6 +90,8 @@ export function App() {
       try {
         const types = await fastPinPonService.getEventTypes()
         setEventTypes(types)
+        const blds = await fastPinPonService.getBuildings()
+        setBuildings(blds)
       } catch (err) {
         console.error(err)
       }
@@ -189,6 +192,7 @@ export function App() {
           <MapContainer
             events={sortedEvents}
             units={units}
+            buildings={buildings}
             onEventSelect={handleEventSelect}
             selectedEventId={selectedEventId}
             onCreateAtLocation={(coords) => {

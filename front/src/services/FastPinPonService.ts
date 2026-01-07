@@ -1,4 +1,4 @@
-import type { EventSummary, UnitSummary, UnitType } from '../types'
+import type { EventSummary, UnitSummary, UnitType, Building } from '../types'
 import type { CreateEventRequest, EventType } from '../types/eventTypes'
 
 type InterventionStatus = 'created' | 'on_site' | 'completed' | 'cancelled'
@@ -60,6 +60,14 @@ class FastPinPonService {
     const response = await fetch(`${this.API_BASE_URL}/unit-types`)
     if (!response.ok) {
       throw new Error(`Failed to fetch unit types: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+
+  async getBuildings(): Promise<Building[]> {
+    const response = await fetch(`${this.API_BASE_URL}/buildings`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch buildings: ${response.status} ${response.statusText}`)
     }
     return response.json()
   }

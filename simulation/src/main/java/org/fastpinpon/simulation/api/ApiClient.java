@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.OkHttpClient;
 import org.fastpinpon.simulation.model.Incident;
 import org.fastpinpon.simulation.model.IncidentType;
+import org.fastpinpon.simulation.model.BaseLocation;
 import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.Retrofit;
@@ -67,6 +68,25 @@ public final class ApiClient {
             this.latitude = latitude;
             this.longitude = longitude;
         }
+    }
+
+    /**
+     * Load all buildings (locations) from the API and return fire stations as base locations.
+     */
+    public List<BaseLocation> loadStations() {
+        List<BaseLocation> res = new ArrayList<>();
+        List<BuildingDto> dtos = execute(api.getBuildings(), "GET /v1/buildings");
+        if (dtos == null) return res;
+        for (BuildingDto b : dtos) {
+            if (b == null || b.location == null) continue;
+            if (b.type != null && !"station".equalsIgnoreCase(b.type)) continue;
+            Double lat = b.location.getLatitude();
+            Double lon = b.location.getLongitude();
+            if (lat == null || lon == null) continue;
+            String name = b.name == null ? (b.id == null ? "Station" : b.id) : b.name;
+            res.add(new BaseLocation(name, lat, lon));
+        }
+        return res;
     }
 
     /**
@@ -349,6 +369,9 @@ public final class ApiClient {
         @GET("/v1/unit-types")
         Call<List<CodeDto>> getUnitTypes();
 
+        @GET("/v1/buildings")
+        Call<List<BuildingDto>> getBuildings();
+
         @POST("/v1/events")
         Call<IdDto> createEvent(@Body CreateEventRequest body);
 
@@ -427,6 +450,18 @@ public final class ApiClient {
         public LocationDto getLocation() {
             return location;
         }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static final class BuildingDto {
+        @JsonProperty("id")
+        private String id;
+        @JsonProperty("name")
+        private String name;
+        @JsonProperty("type")
+        private String type;
+        @JsonProperty("location")
+        private LocationDto location;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

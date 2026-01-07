@@ -1,3 +1,5 @@
+import type { UnitSummary } from '../../types'
+
 // Unit marker size in pixels
 const UNIT_SIZE = 22
 
@@ -292,16 +294,108 @@ export function createUnitMarkerElement(unitTypeCode: string, status?: string): 
     return wrapper
 }
 
+// Size for unit badges displayed under events
+const UNIT_BADGE_SIZE = 18
+
 /**
- * Create an event marker element with the appropriate icon and severity color
+ * Group units by their type code and return an array of [typeCode, count]
  */
-export function createEventMarkerElement(eventTypeCode: string, isSelected: boolean, severity?: number): HTMLDivElement {
+function groupUnitsByType(units: UnitSummary[]): Array<{ typeCode: string; count: number }> {
+    const counts = new Map<string, number>()
+    for (const unit of units) {
+        // Normalize type code: uppercase and trim whitespace
+        const code = (unit.unit_type_code ?? '').toUpperCase().trim()
+        if (code) {
+            counts.set(code, (counts.get(code) ?? 0) + 1)
+        }
+    }
+    return Array.from(counts.entries()).map(([typeCode, count]) => ({ typeCode, count }))
+}
+
+/**
+ * Create a small unit badge element with optional count indicator
+ */
+function createUnitBadge(typeCode: string, count: number): HTMLDivElement {
+    const badge = document.createElement('div')
+    badge.style.cssText = `
+        position: relative;
+        width: ${UNIT_BADGE_SIZE}px;
+        height: ${UNIT_BADGE_SIZE}px;
+        flex-shrink: 0;
+        margin: 0 2px;
+    `
+
+    // Unit icon (use on_site color - blue)
+    const iconContainer = document.createElement('div')
+    iconContainer.style.cssText = `
+        width: 100%;
+        height: 100%;
+    `
+    iconContainer.innerHTML = getUnitIconWithStatus(typeCode, 'on_site')
+    const svg = iconContainer.querySelector('svg')
+    if (svg) {
+        svg.style.width = '100%'
+        svg.style.height = '100%'
+        svg.style.display = 'block'
+    }
+    badge.appendChild(iconContainer)
+
+    // Count badge (only if count > 1)
+    if (count > 1) {
+        const countBadge = document.createElement('div')
+        countBadge.textContent = String(count)
+        countBadge.style.cssText = `
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            min-width: 16px;
+            height: 16px;
+            background: #facc15;
+            color: #000;
+            font-size: 11px;
+            font-weight: 700;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+            padding: 0 3px;
+            line-height: 1;
+        `
+        badge.appendChild(countBadge)
+    }
+
+    return badge
+}
+
+/**
+ * Create an event marker element with the appropriate icon and severity color.
+ * Optionally displays on-site units grouped by type below the event icon.
+ */
+export function createEventMarkerElement(
+    eventTypeCode: string,
+    isSelected: boolean,
+    severity?: number,
+    onSiteUnits?: UnitSummary[],
+): HTMLDivElement {
+    const hasUnits = onSiteUnits && onSiteUnits.length > 0
+    const groupedUnits = hasUnits ? groupUnitsByType(onSiteUnits) : []
+
     const wrapper = document.createElement('div')
     wrapper.className = 'event-marker'
     wrapper.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+    `
+
+    // Event icon container
+    const eventContainer = document.createElement('div')
+    eventContainer.style.cssText = `
         width: ${EVENT_SIZE}px;
         height: ${EVENT_SIZE}px;
-        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -319,7 +413,6 @@ export function createEventMarkerElement(eventTypeCode: string, isSelected: bool
     `
     svgContainer.innerHTML = getEventIconWithSeverity(eventTypeCode, severity)
 
-    // Make SVG fill container
     const svg = svgContainer.querySelector('svg')
     if (svg) {
         svg.style.width = '100%'
@@ -327,7 +420,24 @@ export function createEventMarkerElement(eventTypeCode: string, isSelected: bool
         svg.style.display = 'block'
     }
 
-    wrapper.appendChild(svgContainer)
+    eventContainer.appendChild(svgContainer)
+    wrapper.appendChild(eventContainer)
+
+    // Unit badges row (if units are on site)
+    if (groupedUnits.length > 0) {
+        const unitsRow = document.createElement('div')
+        unitsRow.style.cssText = `
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+            justify-content: center;
+        `
+        for (const { typeCode, count } of groupedUnits) {
+            unitsRow.appendChild(createUnitBadge(typeCode, count))
+        }
+        wrapper.appendChild(unitsRow)
+    }
 
     wrapper.addEventListener('mouseenter', () => {
         svgContainer.style.transform = 'scale(1.15)'
@@ -337,4 +447,46 @@ export function createEventMarkerElement(eventTypeCode: string, isSelected: bool
     })
 
     return wrapper
+}
+
+// Building (caserne) icon SVG (static)
+const BUILDING_ICON_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <rect x="8" y="8" width="84" height="84" rx="8" fill="#9146FF" stroke="white" stroke-width="6"/>
+  <circle cx="50" cy="50" r="30" fill="none" stroke="white" stroke-width="2" stroke-dasharray="4,4"/>
+  <path d="M40 65 V45 L50 35 L60 45 V65 H40" fill="white"/>
+  <rect x="47" y="55" width="6" height="10" fill="#9146FF"/>
+</svg>`
+
+const BUILDING_SIZE = 24
+
+export function createBuildingMarkerElement(): HTMLDivElement {
+  const wrapper = document.createElement('div')
+  wrapper.className = 'building-marker'
+  wrapper.style.cssText = `
+    width: ${BUILDING_SIZE}px;
+    height: ${BUILDING_SIZE}px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `
+
+  const svgContainer = document.createElement('div')
+  svgContainer.style.cssText = `
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `
+  svgContainer.innerHTML = BUILDING_ICON_SVG
+
+  const svg = svgContainer.querySelector('svg')
+  if (svg) {
+    svg.style.width = '100%'
+    svg.style.height = '100%'
+    svg.style.display = 'block'
+  }
+
+  wrapper.appendChild(svgContainer)
+  return wrapper
 }

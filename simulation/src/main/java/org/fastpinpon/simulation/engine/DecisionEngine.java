@@ -39,6 +39,7 @@ public final class DecisionEngine {
     private final List<Incident> activeIncidents = new ArrayList<>();
     private final List<Vehicle> vehicles;
     private final RoutingService routingService = new RoutingService();
+    private final List<BaseLocation> bases;
 
     // Distance thresholds in METERS
     private static final double ARRIVAL_THRESHOLD_METERS = 30.0;  // 30 meters to trigger arrival
@@ -90,7 +91,7 @@ public final class DecisionEngine {
     private static final double CITY_CENTER_LAT = 45.75;
     private static final double CITY_CENTER_LON = 4.85;
 
-    private static final BaseLocation[] BASES = new BaseLocation[]{
+        private static final BaseLocation[] DEFAULT_BASES = new BaseLocation[]{
             new BaseLocation(BASE_VILLEURBANNE, 45.766180, 4.878770),
             new BaseLocation(BASE_CONFLUENCE, 45.741054, 4.823733),
             new BaseLocation(BASE_PART_DIEU, 45.760540, 4.861700),
@@ -105,9 +106,14 @@ public final class DecisionEngine {
      * @param api the API client for backend communication
      * @param vehicles the fleet of vehicles to manage
      */
-    public DecisionEngine(ApiClient api, List<Vehicle> vehicles) {
+    public DecisionEngine(ApiClient api, List<Vehicle> vehicles, List<BaseLocation> bases) {
         this.api = api;
         this.vehicles = vehicles;
+        if (bases != null && !bases.isEmpty()) {
+            this.bases = new ArrayList<>(bases);
+        } else {
+            this.bases = new ArrayList<>(Arrays.asList(DEFAULT_BASES));
+        }
     }
 
     /**
@@ -867,7 +873,7 @@ public final class DecisionEngine {
         if (name == null) {
             return null;
         }
-        for (BaseLocation base : BASES) {
+        for (BaseLocation base : bases) {
             if (base.name.equals(name)) {
                 return base;
             }
@@ -1079,7 +1085,7 @@ public final class DecisionEngine {
      * Fallback: get bases sorted by distance (nearest first).
      */
     private List<String> getBasesByDistanceFallback(double lat, double lon) {
-        List<BaseLocation> sorted = new ArrayList<>(Arrays.asList(BASES));
+        List<BaseLocation> sorted = new ArrayList<>(bases);
         sorted.sort((a, b) -> Double.compare(
                 distance(a.lat, a.lon, lat, lon),
                 distance(b.lat, b.lon, lat, lon)
@@ -1094,7 +1100,7 @@ public final class DecisionEngine {
     private String nearestBaseName(double lat, double lon) {
         String name = BASE_PART_DIEU;
         double best = Double.MAX_VALUE;
-        for (BaseLocation b : BASES) {
+        for (BaseLocation b : bases) {
             double d = Math.pow(lat - b.lat, 2) + Math.pow(lon - b.lon, 2);
             if (d < best) {
                 best = d;
