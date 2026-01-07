@@ -247,8 +247,6 @@ def main() -> None:
     serial_buffer = ""
     last_statuses: Dict[str, str] = {}
 
-    last_gps = 0.0
-
     try:
         run_loop(api_url, ser, serial_buffer, last_statuses, gps_interval, target_microbit)
     except KeyboardInterrupt:
