@@ -1,6 +1,8 @@
 package org.fastpinpon.simulation.model;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class Vehicle {
 
@@ -17,6 +19,10 @@ public final class Vehicle {
     private Instant lastUpdate = Instant.now();
     private Instant enRouteSince;
     private Instant returnSince;
+    
+    // Route waypoints for road-based navigation
+    private List<double[]> currentRoute = new ArrayList<>();
+    private int currentWaypointIndex = 0;
 
     public Vehicle(String unitId, String callSign, String unitTypeCode, String homeBase, double lat, double lon) {
         this.unitId = unitId;
@@ -113,5 +119,57 @@ public final class Vehicle {
 
     public void setReturnSince(Instant returnSince) {
         this.returnSince = returnSince;
+    }
+
+    // Route navigation methods
+    
+    public List<double[]> getCurrentRoute() {
+        return currentRoute;
+    }
+
+    public void setCurrentRoute(List<double[]> route) {
+        this.currentRoute = route != null ? route : new ArrayList<>();
+        this.currentWaypointIndex = 0;
+    }
+
+    public void clearRoute() {
+        this.currentRoute.clear();
+        this.currentWaypointIndex = 0;
+    }
+
+    public int getCurrentWaypointIndex() {
+        return currentWaypointIndex;
+    }
+
+    public void setCurrentWaypointIndex(int index) {
+        this.currentWaypointIndex = index;
+    }
+
+    public boolean hasRoute() {
+        return currentRoute != null && !currentRoute.isEmpty();
+    }
+
+    public boolean hasNextWaypoint() {
+        return hasRoute() && currentWaypointIndex < currentRoute.size();
+    }
+
+    public double[] getNextWaypoint() {
+        if (!hasNextWaypoint()) {
+            return new double[0];
+        }
+        return currentRoute.get(currentWaypointIndex);
+    }
+
+    public void advanceToNextWaypoint() {
+        if (hasNextWaypoint()) {
+            currentWaypointIndex++;
+        }
+    }
+
+    public double[] getFinalDestination() {
+        if (!hasRoute()) {
+            return new double[0];
+        }
+        return currentRoute.get(currentRoute.size() - 1);
     }
 }
