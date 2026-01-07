@@ -191,7 +191,6 @@ def process_line(api_url: str, line: str, last_statuses: Dict[str, str]) -> None
     if gps_data:
         microbit_id, lat, lon = gps_data
         print(f"[GPS] {microbit_id}: {lat:.6f}, {lon:.6f}")
-        return
 
 
 def wait_for_api(api_url: str) -> None:
@@ -248,32 +247,8 @@ def main() -> None:
     serial_buffer = ""
     last_statuses: Dict[str, str] = {}
 
-    last_gps = 0.0
-
     try:
-        while True:
-            now = time.time()
-            if now - last_gps >= gps_interval:
-                lat = random.uniform(LYON_BBOX["lat_min"], LYON_BBOX["lat_max"])
-                lon = random.uniform(LYON_BBOX["lon_min"], LYON_BBOX["lon_max"])
-                cmd = f"GPSCMD:{target_microbit},{lat:.6f},{lon:.6f}"
-                packet = build_packet(cmd)
-                ser.write((packet + "\n").encode("utf-8"))
-                print(f"[SEND GPS] {cmd}\n")
-                last_gps = now
-
-            if ser.in_waiting > 0:
-                data = ser.read(ser.in_waiting)
-                serial_buffer += data.decode('utf-8', errors='ignore')
-
-            while '\n' in serial_buffer:
-                line, serial_buffer = serial_buffer.split('\n', 1)
-                line = line.strip()
-                if line:
-                    process_line(api_url, line, last_statuses)
-
-            time.sleep(0.01)
-
+        run_loop(api_url, ser, serial_buffer, last_statuses, gps_interval, target_microbit)
     except KeyboardInterrupt:
         print("\n[INFO] Arrêt du bridge")
     finally:
@@ -283,3 +258,30 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def run_loop(api_url: str, ser: serial.Serial, serial_buffer: str, last_statuses: Dict[str, str],
+             gps_interval: float, target_microbit: str) -> None:
+    last_gps = 0.0
+    while True:
+        now = time.time()
+        if now - last_gps >= gps_interval:
+            lat = random.uniform(LYON_BBOX["lat_min"], LYON_BBOX["lat_max"])
+            lon = random.uniform(LYON_BBOX["lon_min"], LYON_BBOX["lon_max"])
+            cmd = f"GPSCMD:{target_microbit},{lat:.6f},{lon:.6f}"
+            packet = build_packet(cmd)
+            ser.write((packet + "\n").encode("utf-8"))
+            print(f"[SEND GPS] {cmd}\n")
+            last_gps = now
+
+        if ser.in_waiting > 0:
+            data = ser.read(ser.in_waiting)
+            serial_buffer += data.decode('utf-8', errors='ignore')
+
+        while '\n' in serial_buffer:
+            line, serial_buffer = serial_buffer.split('\n', 1)
+            line = line.strip()
+            if line:
+                process_line(api_url, line, last_statuses)
+
+        time.sleep(0.01)
