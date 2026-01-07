@@ -3,7 +3,6 @@ package org.fastpinpon.simulation.engine;
 import org.fastpinpon.simulation.api.ApiClient;
 import org.fastpinpon.simulation.model.BaseLocation;
 import org.fastpinpon.simulation.model.Incident;
-import org.fastpinpon.simulation.model.IncidentState;
 import org.fastpinpon.simulation.model.Vehicle;
 
 import java.time.Instant;
@@ -342,14 +341,12 @@ public final class SimulationEngine {
         }
         
         for (ApiClient.UnitInfo u : units) {
-            String home = (u.homeBase == null || u.homeBase.isEmpty()) 
-                    ? nearestBaseName(u.latitude != null ? u.latitude : CITY_CENTER_LAT, 
-                                      u.longitude != null ? u.longitude : CITY_CENTER_LON) 
-                    : u.homeBase;
+            String home = determineHomeBase(u);
             
             // Always position units in a row at their home base for consistent display
             BaseLocation homeBase = getBaseByName(home);
-            double lat, lon;
+            double lat;
+            double lon;
             
             if (homeBase != null) {
                 int unitAtBase = baseUnitIndex.getOrDefault(home, 0);
@@ -389,6 +386,15 @@ public final class SimulationEngine {
             }
         }
         return null;
+    }
+    
+    private String determineHomeBase(ApiClient.UnitInfo u) {
+        if (u.homeBase != null && !u.homeBase.isEmpty()) {
+            return u.homeBase;
+        }
+        double lat = u.latitude != null ? u.latitude : CITY_CENTER_LAT;
+        double lon = u.longitude != null ? u.longitude : CITY_CENTER_LON;
+        return nearestBaseName(lat, lon);
     }
 
     private String getBasePrefix(String baseName) {

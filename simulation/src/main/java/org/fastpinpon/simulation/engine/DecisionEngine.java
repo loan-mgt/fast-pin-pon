@@ -13,11 +13,8 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -54,8 +51,6 @@ public final class DecisionEngine {
     private static final double MOVEMENT_STEP = 0.001;  // ~111 meters per tick (fast simulation)
     
     // Timing constants for incident lifecycle
-    // Minimum time vehicles must stay ON SITE before incident can be resolved (in seconds)
-    private static final long MIN_ON_SITE_SECONDS = 30;
     // Time after all units arrive before incident auto-resolves (in seconds)
     private static final long INCIDENT_RESOLVE_AFTER_ARRIVAL_SECONDS = 45;
 
@@ -249,73 +244,92 @@ public final class DecisionEngine {
     // =========================================================================
 
     private void dispatchUnits(String interventionId, Incident incident) {
-        // Build priority order of bases sorted by distance to incident
         List<String> basePriority = getBasesByDistance(incident.getLat(), incident.getLon());
+        List<Vehicle> availableVehicles = findAvailableVehicles(incident);
         
-        // Filter available vehicles that match required unit types
-        List<Vehicle> availableVehicles = new ArrayList<>();
-        for (Vehicle v : vehicles) {
-            if (v.getEtat() == VehicleState.DISPONIBLE && incident.requiresUnitType(v.getUnitTypeCode())) {
-                availableVehicles.add(v);
-            }
+        if (availableVehicles.isEmpty()) {
+            LOG.log(Level.INFO, "[Decision] No available units for incident {0}", incident.getId());
+            return;
         }
 
-        if (availableVehicles.isEmpty()) {
-            // Try again without type filter if no matching units available
-            for (Vehicle v : vehicles) {
-                if (v.getEtat() == VehicleState.DISPONIBLE) {
-                    availableVehicles.add(v);
+        sortVehiclesByPriority(availableVehicles, basePriority, incident);
+        dispatchVehiclesToIncident(availableVehicles, incident, interventionId, basePriority);
+    }
+    
+    private List<Vehicle> findAvailableVehicles(Incident incident) {
+        List<Vehicle> matching = new ArrayList<>();
+        List<Vehicle> fallback = new ArrayList<>();
+        
+        for (Vehicle v : vehicles) {
+            if (v.getEtat() == VehicleState.DISPONIBLE) {
+                if (incident.requiresUnitType(v.getUnitTypeCode())) {
+                    matching.add(v);
                 }
+                fallback.add(v);
             }
-            if (availableVehicles.isEmpty()) {
-                LOG.log(Level.INFO, "[Decision] No available units for incident {0}", incident.getId());
-                return;
-            }
+        }
+        
+        if (!matching.isEmpty()) {
+            return matching;
+        }
+        if (!fallback.isEmpty()) {
             LOG.log(Level.WARNING, "[Decision] No units matching required types {0}, using any available", 
                     incident.getRequiredUnitTypes());
         }
-
-        // Sort by priority: first by base proximity to incident, then by vehicle distance
-        availableVehicles.sort((a, b) -> {
-            int pa = basePriority.indexOf(a.getHomeBase());
-            int pb = basePriority.indexOf(b.getHomeBase());
-            if (pa == -1) pa = basePriority.size();
-            if (pb == -1) pb = basePriority.size();
+        return fallback;
+    }
+    
+    private void sortVehiclesByPriority(List<Vehicle> vehicles, List<String> basePriority, Incident incident) {
+        vehicles.sort((a, b) -> {
+            int pa = getBasePriorityIndex(a.getHomeBase(), basePriority);
+            int pb = getBasePriorityIndex(b.getHomeBase(), basePriority);
             if (pa != pb) {
                 return Integer.compare(pa, pb);
             }
-            // Same base priority: sort by actual distance to incident
             return Double.compare(
                     distance(a.getLat(), a.getLon(), incident.getLat(), incident.getLon()),
                     distance(b.getLat(), b.getLon(), incident.getLat(), incident.getLon())
             );
         });
-
-        // Dispatch units based on incident severity
+    }
+    
+    private int getBasePriorityIndex(String homeBase, List<String> basePriority) {
+        int index = basePriority.indexOf(homeBase);
+        return index == -1 ? basePriority.size() : index;
+    }
+    
+    private void dispatchVehiclesToIncident(List<Vehicle> availableVehicles, Incident incident, 
+                                            String interventionId, List<String> basePriority) {
         int needed = calculateUnitsNeeded(incident);
         int toDispatch = Math.min(needed, availableVehicles.size());
 
-        // Log dispatch decision with base priority and type requirements
+        logDispatchDecision(toDispatch, incident, basePriority);
+
+        for (int i = 0; i < toDispatch; i++) {
+            Vehicle v = availableVehicles.get(i);
+            assignVehicleToIncident(v, incident, interventionId);
+            sleepBetweenDispatches();
+        }
+
+        if (incident.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
+            api.updateInterventionStatus(incident.getInterventionId(), INTERVENTION_STATUS_EN_ROUTE);
+        }
+    }
+    
+    private void logDispatchDecision(int toDispatch, Incident incident, List<String> basePriority) {
         if (LOG.isLoggable(Level.INFO)) {
             String nearestBase = basePriority.isEmpty() ? "unknown" : basePriority.get(0);
             String typeReq = incident.getRequiredUnitTypes().isEmpty() ? "any" : incident.getRequiredUnitTypes().toString();
             LOG.log(Level.INFO, "[Decision] Dispatching {0} units for incident {1} (nearest base: {2}, types: {3})",
                     new Object[]{toDispatch, incident.getNumber(), nearestBase, typeReq});
         }
-
-        for (int i = 0; i < toDispatch; i++) {
-            Vehicle v = availableVehicles.get(i);
-            assignVehicleToIncident(v, incident, interventionId);
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
-
-        if (incident.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
-            api.updateInterventionStatus(incident.getInterventionId(), INTERVENTION_STATUS_EN_ROUTE);
+    }
+    
+    private void sleepBetweenDispatches() {
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -367,33 +381,42 @@ public final class DecisionEngine {
     private void advanceIncidents() {
         Instant now = Instant.now();
         for (Incident inc : activeIncidents) {
-            if (inc.getEtat() == IncidentState.NOUVEAU && hasArrivedUnit(inc)) {
-                // First unit arrived - transition to EN_COURS (in progress)
-                inc.setEtat(IncidentState.EN_COURS);
-                inc.setLastUpdate(now); // This marks when intervention started on site
-                if (inc.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
-                    api.updateInterventionStatus(inc.getInterventionId(), INTERVENTION_STATUS_ON_SITE);
-                }
-                if (LOG.isLoggable(Level.INFO)) {
-                    LOG.log(Level.INFO, "[Decision] Incident {0} now IN PROGRESS - units working on site", inc.getNumber());
-                }
-            }
-            // Only auto-resolve after units have been on site for the required duration
-            if (inc.getEtat() == IncidentState.EN_COURS) {
-                long secondsOnSite = now.getEpochSecond() - inc.getLastUpdate().getEpochSecond();
-                if (secondsOnSite >= INCIDENT_RESOLVE_AFTER_ARRIVAL_SECONDS && allUnitsOnSite(inc)) {
-                    resolveIncident(inc, "intervention complete after " + secondsOnSite + "s on site");
-                }
-            }
+            advanceIncidentState(inc, now);
+        }
+    }
+    
+    private void advanceIncidentState(Incident inc, Instant now) {
+        if (inc.getEtat() == IncidentState.NOUVEAU && hasArrivedUnit(inc)) {
+            transitionToInProgress(inc, now);
+        }
+        if (inc.getEtat() == IncidentState.EN_COURS) {
+            checkAndResolveIfComplete(inc, now);
+        }
+    }
+    
+    private void transitionToInProgress(Incident inc, Instant now) {
+        inc.setEtat(IncidentState.EN_COURS);
+        inc.setLastUpdate(now);
+        if (inc.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
+            api.updateInterventionStatus(inc.getInterventionId(), INTERVENTION_STATUS_ON_SITE);
+        }
+        if (LOG.isLoggable(Level.INFO)) {
+            LOG.log(Level.INFO, "[Decision] Incident {0} now IN PROGRESS - units working on site", inc.getNumber());
+        }
+    }
+    
+    private void checkAndResolveIfComplete(Incident inc, Instant now) {
+        long secondsOnSite = now.getEpochSecond() - inc.getLastUpdate().getEpochSecond();
+        boolean timeElapsed = secondsOnSite >= INCIDENT_RESOLVE_AFTER_ARRIVAL_SECONDS;
+        if (timeElapsed && allUnitsOnSite(inc)) {
+            resolveIncident(inc, "intervention complete after " + secondsOnSite + "s on site");
         }
     }
 
     private boolean allUnitsOnSite(Incident inc) {
         for (Vehicle v : vehicles) {
-            if (v.getCurrentIncident() == inc) {
-                if (v.getEtat() != VehicleState.SUR_PLACE) {
-                    return false; // At least one unit still en route
-                }
+            if (v.getCurrentIncident() == inc && v.getEtat() != VehicleState.SUR_PLACE) {
+                return false;
             }
         }
         return true;
@@ -405,7 +428,7 @@ public final class DecisionEngine {
                 return true;
             }
         }
-        return false;
+        return false;;
     }
 
     private void resolveIncident(Incident inc, String reason) {
@@ -414,46 +437,63 @@ public final class DecisionEngine {
         }
         inc.setEtat(IncidentState.RESOLU);
         inc.setLastUpdate(Instant.now());
+        logIncidentResolved(inc, reason);
+        updateInterventionStatusOnResolve(inc);
+        sendVehiclesHome(inc);
+        printIncidentStatusLine(inc);
+    }
+    
+    private void logIncidentResolved(Incident inc, String reason) {
         if (LOG.isLoggable(Level.INFO)) {
             LOG.log(Level.INFO, "{0}{1} RESOLVED ({2})", new Object[]{SIM_INCIDENT_PREFIX, inc.getNumber(), reason});
         }
+    }
+    
+    private void updateInterventionStatusOnResolve(Incident inc) {
         if (inc.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
             api.updateInterventionStatus(inc.getInterventionId(), INTERVENTION_STATUS_COMPLETED);
         }
-        
-        // Send all vehicles back to their home base
+    }
+    
+    private void sendVehiclesHome(Incident inc) {
         for (Vehicle v : vehicles) {
             if (v.getCurrentIncident() == inc) {
-                v.setEtat(VehicleState.RETOUR);
-                v.setLastUpdate(Instant.now());
-                v.setReturnSince(v.getLastUpdate());
-                
-                // Update API status
-                api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_EN_ROUTE);
-                
-                if (PATCH_ASSIGNMENT_STATUS) {
-                    api.updateAssignmentStatus(v.getAssignmentId(), ASSIGNMENT_STATUS_RELEASED);
-                }
-                
-                // Calculate return route to home base
-                BaseLocation homeBase = getBaseByName(v.getHomeBase());
-                if (homeBase != null) {
-                    List<double[]> returnRoute = routingService.getRoute(
-                            v.getLat(), v.getLon(),
-                            homeBase.lat, homeBase.lon
-                    );
-                    if (returnRoute != null && !returnRoute.isEmpty()) {
-                        v.setCurrentRoute(returnRoute);
-                    }
-                }
-                
-                if (LOG.isLoggable(Level.INFO)) {
-                    LOG.log(Level.INFO, "[Decision] {0} returning to home base {1}", 
-                            new Object[]{v.getCallSign(), v.getHomeBase()});
-                }
+                prepareVehicleForReturn(v);
             }
         }
-        printIncidentStatusLine(inc);
+    }
+    
+    private void prepareVehicleForReturn(Vehicle v) {
+        v.setEtat(VehicleState.RETOUR);
+        v.setLastUpdate(Instant.now());
+        v.setReturnSince(v.getLastUpdate());
+        
+        api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_EN_ROUTE);
+        
+        if (PATCH_ASSIGNMENT_STATUS) {
+            api.updateAssignmentStatus(v.getAssignmentId(), ASSIGNMENT_STATUS_RELEASED);
+        }
+        
+        calculateReturnRoute(v);
+        
+        if (LOG.isLoggable(Level.INFO)) {
+            LOG.log(Level.INFO, "[Decision] {0} returning to home base {1}", 
+                    new Object[]{v.getCallSign(), v.getHomeBase()});
+        }
+    }
+    
+    private void calculateReturnRoute(Vehicle v) {
+        BaseLocation homeBase = getBaseByName(v.getHomeBase());
+        if (homeBase == null) {
+            return;
+        }
+        List<double[]> returnRoute = routingService.getRoute(
+                v.getLat(), v.getLon(),
+                homeBase.lat, homeBase.lon
+        );
+        if (!returnRoute.isEmpty()) {
+            v.setCurrentRoute(returnRoute);
+        }
     }
 
     // =========================================================================
@@ -565,49 +605,61 @@ public final class DecisionEngine {
     private void handleSurPlace(Vehicle v) {
         Incident inc = v.getCurrentIncident();
         if (inc == null) {
-            // No incident assigned - this shouldn't happen, reset to available
-            v.setEtat(VehicleState.DISPONIBLE);
-            v.clearRoute();
-            v.setLastUpdate(Instant.now());
+            resetToAvailable(v);
             return;
         }
         
-        // Log on-site time periodically (every ~10 seconds based on tick)
+        logOnSiteTime(v, inc);
+        
+        // Check if incident is resolved - time to return home
+        if (inc.getEtat() == IncidentState.RESOLU && v.getEtat() != VehicleState.RETOUR) {
+            transitionToReturn(v);
+        }
+        // Otherwise, vehicle stays on site - no movement
+    }
+    
+    private void resetToAvailable(Vehicle v) {
+        v.setEtat(VehicleState.DISPONIBLE);
+        v.clearRoute();
+        v.setLastUpdate(Instant.now());
+    }
+    
+    private void logOnSiteTime(Vehicle v, Incident inc) {
         if (inc.getLastUpdate() != null && LOG.isLoggable(Level.FINE)) {
             long onSiteSeconds = Instant.now().getEpochSecond() - inc.getLastUpdate().getEpochSecond();
             LOG.log(Level.FINE, "[Decision] {0} ON_SITE at incident {1} for {2}s (resolves at {3}s)",
                     new Object[]{v.getCallSign(), inc.getNumber(), onSiteSeconds, INCIDENT_RESOLVE_AFTER_ARRIVAL_SECONDS});
         }
+    }
+    
+    private void transitionToReturn(Vehicle v) {
+        v.setEtat(VehicleState.RETOUR);
+        v.setReturnSince(Instant.now());
+        v.setLastUpdate(v.getReturnSince());
         
-        // Check if incident is resolved - time to return home
-        if (inc.getEtat() == IncidentState.RESOLU) {
-            // Transition handled by resolveIncident(), but double-check state here
-            if (v.getEtat() != VehicleState.RETOUR) {
-                v.setEtat(VehicleState.RETOUR);
-                v.setReturnSince(Instant.now());
-                v.setLastUpdate(v.getReturnSince());
-                
-                // Calculate route back to home base if not already set
-                if (v.getCurrentRoute() == null || v.getCurrentRoute().isEmpty()) {
-                    BaseLocation homeBase = getBaseByName(v.getHomeBase());
-                    if (homeBase != null) {
-                        List<double[]> returnRoute = routingService.getRoute(
-                                v.getLat(), v.getLon(),
-                                homeBase.lat, homeBase.lon
-                        );
-                        if (returnRoute != null && !returnRoute.isEmpty()) {
-                            v.setCurrentRoute(returnRoute);
-                        }
-                    }
-                }
-                
-                if (LOG.isLoggable(Level.INFO)) {
-                    LOG.log(Level.INFO, "[Decision] {0} incident resolved, returning to {1}",
-                            new Object[]{v.getCallSign(), v.getHomeBase()});
-                }
-            }
+        ensureReturnRouteCalculated(v);
+        
+        if (LOG.isLoggable(Level.INFO)) {
+            LOG.log(Level.INFO, "[Decision] {0} incident resolved, returning to {1}",
+                    new Object[]{v.getCallSign(), v.getHomeBase()});
         }
-        // Otherwise, vehicle stays on site - no movement
+    }
+    
+    private void ensureReturnRouteCalculated(Vehicle v) {
+        if (v.getCurrentRoute() != null && !v.getCurrentRoute().isEmpty()) {
+            return;
+        }
+        BaseLocation homeBase = getBaseByName(v.getHomeBase());
+        if (homeBase == null) {
+            return;
+        }
+        List<double[]> returnRoute = routingService.getRoute(
+                v.getLat(), v.getLon(),
+                homeBase.lat, homeBase.lon
+        );
+        if (!returnRoute.isEmpty()) {
+            v.setCurrentRoute(returnRoute);
+        }
     }
 
     private void handleReturn(Vehicle v) {

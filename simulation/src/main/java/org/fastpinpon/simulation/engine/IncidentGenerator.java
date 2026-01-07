@@ -5,7 +5,7 @@ import org.fastpinpon.simulation.model.IncidentType;
 
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -28,7 +28,7 @@ public final class IncidentGenerator implements IncidentSource {
     private static final long DEFAULT_INCIDENT_INTERVAL_SECONDS = 60;
 
     // Unit types typically needed for each incident type
-    private static final Map<IncidentType, List<String>> INCIDENT_UNIT_TYPES = new HashMap<>();
+    private static final Map<IncidentType, List<String>> INCIDENT_UNIT_TYPES = new EnumMap<>(IncidentType.class);
     
     static {
         // Fire incidents need fire trucks (FPT) and ladder trucks (EPA)

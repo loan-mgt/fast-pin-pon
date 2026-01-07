@@ -155,7 +155,7 @@ public final class Vehicle {
 
     public double[] getNextWaypoint() {
         if (!hasNextWaypoint()) {
-            return null;
+            return new double[0];
         }
         return currentRoute.get(currentWaypointIndex);
     }
@@ -168,7 +168,7 @@ public final class Vehicle {
 
     public double[] getFinalDestination() {
         if (!hasRoute()) {
-            return null;
+            return new double[0];
         }
         return currentRoute.get(currentRoute.size() - 1);
     }

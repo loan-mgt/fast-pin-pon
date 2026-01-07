@@ -43,7 +43,7 @@ public final class RoutingService {
      * @param fromLon starting longitude
      * @param toLat destination latitude
      * @param toLon destination longitude
-     * @return list of waypoints (lat/lon pairs) forming the route, or null if routing fails
+     * @return list of waypoints (lat/lon pairs) forming the route, or empty list if routing fails
      */
     public List<double[]> getRoute(double fromLat, double fromLon, double toLat, double toLon) {
         String cacheKey = String.format("%.5f,%.5f->%.5f,%.5f", fromLat, fromLon, toLat, toLon);
@@ -75,7 +75,7 @@ public final class RoutingService {
             int responseCode = conn.getResponseCode();
             if (responseCode != 200) {
                 LOG.log(Level.WARNING, "[Routing] OSRM returned status {0}", responseCode);
-                return null;
+                return new ArrayList<>();
             }
             
             StringBuilder response = new StringBuilder();
@@ -88,7 +88,7 @@ public final class RoutingService {
             
             List<double[]> waypoints = parseOsrmResponse(response.toString());
             
-            if (waypoints != null && !waypoints.isEmpty()) {
+            if (!waypoints.isEmpty()) {
                 synchronized (routeCache) {
                     routeCache.put(cacheKey, new ArrayList<>(waypoints));
                 }
@@ -99,7 +99,7 @@ public final class RoutingService {
             
         } catch (Exception e) {
             LOG.log(Level.WARNING, "[Routing] Failed to get route: {0}", e.getMessage());
-            return null;
+            return new ArrayList<>();
         }
     }
     
@@ -114,36 +114,19 @@ public final class RoutingService {
             // Find the coordinates array in the GeoJSON geometry
             int coordsStart = json.indexOf("\"coordinates\":");
             if (coordsStart == -1) {
-                return null;
+                return waypoints;
             }
             
             int arrayStart = json.indexOf("[[", coordsStart);
             int arrayEnd = json.indexOf("]]", arrayStart);
             if (arrayStart == -1 || arrayEnd == -1) {
-                return null;
+                return waypoints;
             }
             
             String coordsStr = json.substring(arrayStart + 1, arrayEnd + 1);
             
             // Parse each coordinate pair [lon, lat]
-            int pos = 0;
-            while (pos < coordsStr.length()) {
-                int pairStart = coordsStr.indexOf("[", pos);
-                if (pairStart == -1) break;
-                
-                int pairEnd = coordsStr.indexOf("]", pairStart);
-                if (pairEnd == -1) break;
-                
-                String pair = coordsStr.substring(pairStart + 1, pairEnd);
-                String[] parts = pair.split(",");
-                if (parts.length >= 2) {
-                    double lon = Double.parseDouble(parts[0].trim());
-                    double lat = Double.parseDouble(parts[1].trim());
-                    waypoints.add(new double[]{lat, lon}); // Store as lat, lon
-                }
-                
-                pos = pairEnd + 1;
-            }
+            parseCoordinatePairs(coordsStr, waypoints);
             
             // Keep all waypoints for accurate road-following at higher speeds
             // Important turns are preserved to keep vehicles on roads
@@ -151,7 +134,32 @@ public final class RoutingService {
             
         } catch (Exception e) {
             LOG.log(Level.WARNING, "[Routing] Failed to parse OSRM response: {0}", e.getMessage());
-            return null;
+            return waypoints;
+        }
+    }
+    
+    private void parseCoordinatePairs(String coordsStr, List<double[]> waypoints) {
+        int pos = 0;
+        while (pos < coordsStr.length()) {
+            int pairStart = coordsStr.indexOf("[", pos);
+            if (pairStart == -1) {
+                return;
+            }
+            
+            int pairEnd = coordsStr.indexOf("]", pairStart);
+            if (pairEnd == -1) {
+                return;
+            }
+            
+            String pair = coordsStr.substring(pairStart + 1, pairEnd);
+            String[] parts = pair.split(",");
+            if (parts.length >= 2) {
+                double lon = Double.parseDouble(parts[0].trim());
+                double lat = Double.parseDouble(parts[1].trim());
+                waypoints.add(new double[]{lat, lon}); // Store as lat, lon
+            }
+            
+            pos = pairEnd + 1;
         }
     }
     
