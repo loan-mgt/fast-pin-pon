@@ -202,7 +202,7 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh, onTog
                   {canAssign && (
                     <button
                       type="button"
-                      className="bg-rose-500/20 hover:bg-rose-500/40 p-1.5 border border-rose-500/30 rounded-full text-rose-300 transition-colors h-fit cursor-pointer"
+                      className="bg-rose-500/20 hover:bg-rose-500/40 p-1.5 border border-rose-500/30 rounded-full h-fit text-rose-300 transition-colors cursor-pointer"
                       title="Désassigner l'unité"
                       onClick={() => setUnitToUnassign({ id: unit.id, callSign: unit.call_sign })}
                     >

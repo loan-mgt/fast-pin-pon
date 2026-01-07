@@ -215,7 +215,7 @@ func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 		})
 		if err != nil {
 			s.log.Error().Err(err).Msg("failed to auto-create intervention")
-			// We don't fail the event creation, but maybe we should return a different status 
+			// We don't fail the event creation, but maybe we should return a different status
 			// or include it in the response. For now, just log the error.
 		}
 	}
