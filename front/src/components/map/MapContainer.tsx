@@ -78,7 +78,101 @@ function flyToInitialLocation(
     isFirstLoad.current = false
 }
 
+type UnitLocation = {
+    unit: UnitSummary
+    longitude: number
+    latitude: number
+}
 
+function buildUnitEventMaps(events: EventSummary[]): {
+    unitToEvent: Map<string, string>
+    eventById: Map<string, EventSummary>
+} {
+    const unitToEvent = new Map<string, string>()
+    const eventById = new Map<string, EventSummary>()
+    for (const event of events) {
+        eventById.set(event.id, event)
+        for (const unit of event.assigned_units ?? []) {
+            unitToEvent.set(unit.id, event.id)
+        }
+    }
+    return { unitToEvent, eventById }
+}
+
+function getUnitLocations(units: UnitSummary[]): UnitLocation[] {
+    return units
+        .filter((unit) => unit.location?.longitude && unit.location?.latitude)
+        .filter((unit) => unit.location.longitude !== 0 && unit.location.latitude !== 0)
+        .map((unit) => ({
+            unit,
+            longitude: unit.location.longitude,
+            latitude: unit.location.latitude,
+        }))
+}
+
+function buildConnectionLines(
+    selectedEventId: string | null | undefined,
+    eventById: Map<string, EventSummary>,
+    unitLocations: UnitLocation[],
+    unitToEvent: Map<string, string>,
+): GeoJSON.Feature<GeoJSON.LineString>[] {
+    if (!selectedEventId) return []
+
+    const selectedEvent = eventById.get(selectedEventId)
+    if (!selectedEvent?.location?.longitude || !selectedEvent?.location?.latitude) return []
+
+    return unitLocations
+        .filter((loc) => unitToEvent.get(loc.unit.id) === selectedEventId)
+        .map((loc) => ({
+            type: 'Feature' as const,
+            properties: { unitId: loc.unit.id, eventId: selectedEventId },
+            geometry: {
+                type: 'LineString' as const,
+                coordinates: [
+                    [loc.longitude, loc.latitude],
+                    [selectedEvent.location.longitude, selectedEvent.location.latitude],
+                ],
+            },
+        }))
+}
+
+function addConnectionLayers(
+    map: maplibregl.Map,
+    sourceId: string,
+    lineLayerId: string,
+    arrowLayerId: string,
+): void {
+    map.addLayer({
+        id: lineLayerId,
+        type: 'line',
+        source: sourceId,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+            'line-color': '#60a5fa',
+            'line-width': 2,
+            'line-opacity': 0.7,
+            'line-dasharray': [2, 2],
+        },
+    })
+
+    map.addLayer({
+        id: arrowLayerId,
+        type: 'symbol',
+        source: sourceId,
+        layout: {
+            'symbol-placement': 'line',
+            'symbol-spacing': 100,
+            'text-field': '▶',
+            'text-size': 12,
+            'text-rotation-alignment': 'map',
+            'text-keep-upright': false,
+        },
+        paint: {
+            'text-color': '#60a5fa',
+            'text-opacity': 0.9,
+        },
+    })
+}
 
 function addEventMarkers(
     map: maplibregl.Map,
@@ -203,122 +297,52 @@ export function MapContainer({
             for (const marker of unitMarkersRef.current) marker.remove()
             unitMarkersRef.current = []
 
-            // Build a lookup of unit -> event from assigned units on events
-            const unitToEvent = new Map<string, string>()
-        const eventById = new Map<string, EventSummary>()
-        for (const event of events) {
-            eventById.set(event.id, event)
-            if (event.assigned_units) {
-                for (const unit of event.assigned_units) {
-                    unitToEvent.set(unit.id, event.id)
-                }
+            const { unitToEvent, eventById } = buildUnitEventMaps(events)
+            const engagedStatuses = new Set(['on_site', 'under_way'])
+            const unitLocations = getUnitLocations(units)
+            const connectionLines = buildConnectionLines(selectedEventId, eventById, unitLocations, unitToEvent)
+
+            // Update or create the connection lines source and layer
+            const geojsonData: GeoJSON.FeatureCollection<GeoJSON.LineString> = {
+                type: 'FeatureCollection',
+                features: connectionLines,
             }
-        }
-        const engagedStatuses = new Set(['on_site', 'under_way'])
 
-        // Prepare unit marker locations
-        const unitLocations = units
-            .filter((unit) => unit.location?.longitude && unit.location?.latitude)
-            .filter((unit) => unit.location.longitude !== 0 && unit.location.latitude !== 0)
-
-        // Build connection lines only for the selected event's assigned units
-        const connectionLines: GeoJSON.Feature<GeoJSON.LineString>[] = []
-        if (selectedEventId) {
-            const selectedEvent = eventById.get(selectedEventId)
-            if (selectedEvent?.location?.longitude && selectedEvent?.location?.latitude) {
-                for (const unit of unitLocations) {
-                    const eventId = unitToEvent.get(unit.id)
-                    if (eventId === selectedEventId) {
-                        connectionLines.push({
-                            type: 'Feature',
-                            properties: { unitId: unit.id, eventId: selectedEventId },
-                            geometry: {
-                                type: 'LineString',
-                                coordinates: [
-                                    [unit.location.longitude, unit.location.latitude],
-                                    [selectedEvent.location.longitude, selectedEvent.location.latitude],
-                                ],
-                            },
-                        })
-                    }
-                }
+            const source = map.getSource(connectionSourceId) as maplibregl.GeoJSONSource | undefined
+            if (source) {
+                source.setData(geojsonData)
+            } else {
+                map.addSource(connectionSourceId, { type: 'geojson', data: geojsonData })
+                addConnectionLayers(map, connectionSourceId, connectionLayerId, arrowLayerId)
             }
-        }
 
-        // Update or create the connection lines source and layer
-        const geojsonData: GeoJSON.FeatureCollection<GeoJSON.LineString> = {
-            type: 'FeatureCollection',
-            features: connectionLines,
-        }
+            // Add unit markers with custom SVG icons based on unit type
+            for (const loc of unitLocations) {
+                const color = STATUS_COLORS[loc.unit.status] ?? STATUS_COLORS.offline
+                const normalizedStatus = loc.unit.status.toLowerCase()
+                const eventIdForUnit = unitToEvent.get(loc.unit.id)
+                const canOpenEvent = eventIdForUnit && engagedStatuses.has(normalizedStatus)
 
-        const source = map.getSource(connectionSourceId) as maplibregl.GeoJSONSource | undefined
-        if (source) {
-            source.setData(geojsonData)
-        } else {
-            map.addSource(connectionSourceId, { type: 'geojson', data: geojsonData })
-            
-            // Add the connection line layer
-            map.addLayer({
-                id: connectionLayerId,
-                type: 'line',
-                source: connectionSourceId,
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: {
-                    'line-color': '#60a5fa',
-                    'line-width': 2,
-                    'line-opacity': 0.7,
-                    'line-dasharray': [2, 2],
-                },
-            })
+                const wrapper = createUnitMarkerElement(loc.unit.unit_type_code, loc.unit.status)
+                wrapper.addEventListener('click', () => {
+                    if (canOpenEvent && eventIdForUnit) onEventSelect?.(eventIdForUnit)
+                })
 
-            // Add arrow symbols along the line to show direction
-            map.addLayer({
-                id: arrowLayerId,
-                type: 'symbol',
-                source: connectionSourceId,
-                layout: {
-                    'symbol-placement': 'line',
-                    'symbol-spacing': 100,
-                    'text-field': '▶',
-                    'text-size': 12,
-                    'text-rotation-alignment': 'map',
-                    'text-keep-upright': false,
-                },
-                paint: {
-                    'text-color': '#60a5fa',
-                    'text-opacity': 0.9,
-                },
-            })
-        }
+                const marker = new maplibregl.Marker({ element: wrapper, anchor: 'center' })
+                    .setLngLat([loc.longitude, loc.latitude])
+                    .setPopup(
+                        new maplibregl.Popup({ offset: 18, className: 'unit-popup' }).setHTML(
+                            `<div style="font-family: system-ui, sans-serif;">
+                                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${loc.unit.call_sign}</div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 6px;">${loc.unit.unit_type_code} • ${loc.unit.home_base}</div>
+                                <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; color: white; background-color: ${color};">${loc.unit.status.replace('_', ' ')}</div>
+                            </div>`,
+                        ),
+                    )
+                    .addTo(map)
 
-        // Add unit markers with custom SVG icons based on unit type
-        for (const unit of unitLocations) {
-            const color = STATUS_COLORS[unit.status] ?? STATUS_COLORS.offline
-            const normalizedStatus = unit.status.toLowerCase()
-            const eventIdForUnit = unitToEvent.get(unit.id)
-            const canOpenEvent = eventIdForUnit && engagedStatuses.has(normalizedStatus)
-
-            // Create unit marker with appropriate icon and status color
-            const wrapper = createUnitMarkerElement(unit.unit_type_code, unit.status)
-            wrapper.addEventListener('click', () => {
-                if (canOpenEvent && eventIdForUnit) onEventSelect?.(eventIdForUnit)
-            })
-
-            const marker = new maplibregl.Marker({ element: wrapper, anchor: 'center' })
-                .setLngLat([unit.location.longitude, unit.location.latitude])
-                .setPopup(
-                    new maplibregl.Popup({ offset: 18, className: 'unit-popup' }).setHTML(
-                        `<div style="font-family: system-ui, sans-serif;">
-               <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${unit.call_sign}</div>
-               <div style="font-size: 12px; color: #666; margin-bottom: 6px;">${unit.unit_type_code} • ${unit.home_base}</div>
-               <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; color: white; background-color: ${color};">${unit.status.replace('_', ' ')}</div>
-             </div>`,
-                    ),
-                )
-                .addTo(map)
-
-            unitMarkersRef.current.push(marker)
-        }
+                unitMarkersRef.current.push(marker)
+            }
         }
 
         // If style is already loaded, run immediately; otherwise wait for 'load' event
