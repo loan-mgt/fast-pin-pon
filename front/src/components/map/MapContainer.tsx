@@ -120,6 +120,9 @@ export function MapContainer({
     const eventMarkersRef = useRef<maplibregl.Marker[]>([])
     const unitMarkersRef = useRef<maplibregl.Marker[]>([])
     const isFirstLoad = useRef(true)
+    const connectionLayerId = 'unit-event-connections'
+    const connectionSourceId = 'unit-event-connections-source'
+    const arrowLayerId = 'unit-event-arrows'
 
     useEffect(() => {
         if (!mapContainerRef.current) return
@@ -189,18 +192,22 @@ export function MapContainer({
         addEventMarkers(map, eventLocations, selectedEventId, onEventSelect, eventMarkersRef)
     }, [events, onEventSelect, selectedEventId])
 
-    // Effect for unit markers
+    // Effect for unit markers and connection lines
     useEffect(() => {
         const map = mapRef.current
         if (!map) return
 
-        // Remove old unit markers
-        for (const marker of unitMarkersRef.current) marker.remove()
-        unitMarkersRef.current = []
+        // Wait for style to be loaded before adding sources/layers
+        const updateUnitsAndConnections = () => {
+            // Remove old unit markers
+            for (const marker of unitMarkersRef.current) marker.remove()
+            unitMarkersRef.current = []
 
-        // Build a lookup of unit -> event from assigned units on events
-        const unitToEvent = new Map<string, string>()
+            // Build a lookup of unit -> event from assigned units on events
+            const unitToEvent = new Map<string, string>()
+        const eventById = new Map<string, EventSummary>()
         for (const event of events) {
+            eventById.set(event.id, event)
             if (event.assigned_units) {
                 for (const unit of event.assigned_units) {
                     unitToEvent.set(unit.id, event.id)
@@ -213,6 +220,76 @@ export function MapContainer({
         const unitLocations = units
             .filter((unit) => unit.location?.longitude && unit.location?.latitude)
             .filter((unit) => unit.location.longitude !== 0 && unit.location.latitude !== 0)
+
+        // Build connection lines only for the selected event's assigned units
+        const connectionLines: GeoJSON.Feature<GeoJSON.LineString>[] = []
+        if (selectedEventId) {
+            const selectedEvent = eventById.get(selectedEventId)
+            if (selectedEvent?.location?.longitude && selectedEvent?.location?.latitude) {
+                for (const unit of unitLocations) {
+                    const eventId = unitToEvent.get(unit.id)
+                    if (eventId === selectedEventId) {
+                        connectionLines.push({
+                            type: 'Feature',
+                            properties: { unitId: unit.id, eventId: selectedEventId },
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: [
+                                    [unit.location.longitude, unit.location.latitude],
+                                    [selectedEvent.location.longitude, selectedEvent.location.latitude],
+                                ],
+                            },
+                        })
+                    }
+                }
+            }
+        }
+
+        // Update or create the connection lines source and layer
+        const geojsonData: GeoJSON.FeatureCollection<GeoJSON.LineString> = {
+            type: 'FeatureCollection',
+            features: connectionLines,
+        }
+
+        const source = map.getSource(connectionSourceId) as maplibregl.GeoJSONSource | undefined
+        if (source) {
+            source.setData(geojsonData)
+        } else {
+            map.addSource(connectionSourceId, { type: 'geojson', data: geojsonData })
+            
+            // Add the connection line layer
+            map.addLayer({
+                id: connectionLayerId,
+                type: 'line',
+                source: connectionSourceId,
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': '#60a5fa',
+                    'line-width': 2,
+                    'line-opacity': 0.7,
+                    'line-dasharray': [2, 2],
+                },
+            })
+
+            // Add arrow symbols along the line to show direction
+            map.addLayer({
+                id: arrowLayerId,
+                type: 'symbol',
+                source: connectionSourceId,
+                layout: {
+                    'symbol-placement': 'line',
+                    'symbol-spacing': 100,
+                    'text-field': '▶',
+                    'text-size': 12,
+                    'text-rotation-alignment': 'map',
+                    'text-keep-upright': false,
+                },
+                paint: {
+                    'text-color': '#60a5fa',
+                    'text-opacity': 0.9,
+                },
+            })
+        }
 
         // Add unit markers with custom SVG icons based on unit type
         for (const unit of unitLocations) {
@@ -242,7 +319,15 @@ export function MapContainer({
 
             unitMarkersRef.current.push(marker)
         }
-    }, [events, onEventSelect, units])
+        }
+
+        // If style is already loaded, run immediately; otherwise wait for 'load' event
+        if (map.isStyleLoaded()) {
+            updateUnitsAndConnections()
+        } else {
+            map.once('load', updateUnitsAndConnections)
+        }
+    }, [events, onEventSelect, selectedEventId, units])
 
     return (
         <div
