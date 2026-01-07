@@ -12,6 +12,14 @@ interface DashboardPageProps {
   onRefresh?: () => void
 }
 
+type SortDirection = 'asc' | 'desc'
+type SortKey = 'call_sign' | 'unit_type_code' | 'home_base' | 'status' | 'microbit_id' | 'last_contact_at'
+
+type SortRule = {
+  key: SortKey
+  direction: SortDirection
+}
+
 const STATUS_COLORS: Record<string, string> = {
   available: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
   en_route: 'bg-blue-500/15 text-blue-200 border-blue-300/30',
@@ -36,6 +44,7 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
   const [selectedUnitCallSign, setSelectedUnitCallSign] = useState<string | undefined>(undefined)
   const [selectedUnitMicrobitId, setSelectedUnitMicrobitId] = useState<string | undefined>(undefined)
+  const [sortRules, setSortRules] = useState<SortRule[]>([])
   const microbitPool = ['MB001', 'MB002', 'MB003', 'MB004', 'MB005', 'MB006', 'MB007', 'MB008', 'MB009', 'MB010']
   const usedMicrobits = new Set(units.map((unit) => unit.microbit_id).filter(Boolean))
   const availableMicrobits = microbitPool.filter(
@@ -62,6 +71,66 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
     if (onRefresh) onRefresh()
   }
 
+  const toggleSort = (key: SortKey) => {
+    setSortRules((current) => {
+      const idx = current.findIndex((rule) => rule.key === key)
+      if (idx === -1) {
+        return [...current, { key, direction: 'asc' }]
+      }
+
+      const existing = current[idx]
+      if (existing.direction === 'asc') {
+        const updated = [...current]
+        updated[idx] = { ...existing, direction: 'desc' }
+        return updated
+      }
+
+      const without = current.filter((rule) => rule.key !== key)
+      return without
+    })
+  }
+
+  const sortValue = (unit: UnitSummary, key: SortKey): string | number => {
+    switch (key) {
+      case 'call_sign':
+        return unit.call_sign ?? ''
+      case 'unit_type_code':
+        return unit.unit_type_code ?? ''
+      case 'home_base':
+        return unit.home_base ?? ''
+      case 'status':
+        return normalizeStatus(unit.status)
+      case 'microbit_id':
+        return unit.microbit_id ?? ''
+      case 'last_contact_at':
+        return unit.last_contact_at ? new Date(unit.last_contact_at).getTime() : 0
+      default:
+        return ''
+    }
+  }
+
+  const sortedUnits = (() => {
+    if (sortRules.length === 0) return units
+    return [...units]
+      .map((unit, idx) => ({ unit, idx }))
+      .sort((a, b) => {
+        for (const rule of sortRules) {
+          const aVal = sortValue(a.unit, rule.key)
+          const bVal = sortValue(b.unit, rule.key)
+          if (aVal < bVal) return rule.direction === 'asc' ? -1 : 1
+          if (aVal > bVal) return rule.direction === 'asc' ? 1 : -1
+        }
+        return a.idx - b.idx
+      })
+      .map((entry) => entry.unit)
+  })()
+
+  const renderSortIndicator = (key: SortKey) => {
+    const rule = sortRules.find((r) => r.key === key)
+    if (!rule) return null
+    return <span className="ml-1 text-xs text-cyan-300">{rule.direction === 'asc' ? '▲' : '▼'}</span>
+  }
+
   return (
     <div className="flex flex-col gap-4 flex-1 pt-0 px-6 py-6 bg-slate-950 text-slate-100">
 
@@ -70,23 +139,41 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
           <table className="w-full text-sm text-left text-slate-200">
             <thead className="text-xs uppercase text-slate-400 border-b border-slate-800">
               <tr>
-                <th className="px-3 py-2">Call sign</th>
-                <th className="px-3 py-2">Type</th>
-                <th className="px-3 py-2">Base</th>
-                <th className="px-3 py-2">Statut</th>
-                <th className="px-3 py-2">Microbit</th>
-                <th className="px-3 py-2">Dernier contact</th>
+                <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('call_sign')}>
+                  Call sign
+                  {renderSortIndicator('call_sign')}
+                </th>
+                <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('unit_type_code')}>
+                  Type
+                  {renderSortIndicator('unit_type_code')}
+                </th>
+                <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('home_base')}>
+                  Base
+                  {renderSortIndicator('home_base')}
+                </th>
+                <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('status')}>
+                  Statut
+                  {renderSortIndicator('status')}
+                </th>
+                <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('microbit_id')}>
+                  Microbit
+                  {renderSortIndicator('microbit_id')}
+                </th>
+                <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('last_contact_at')}>
+                  Dernier contact
+                  {renderSortIndicator('last_contact_at')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-900/60">
-              {units.length === 0 ? (
+              {sortedUnits.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-6 text-center text-slate-400">
                     Aucune unité disponible.
                   </td>
                 </tr>
               ) : (
-                units.map((unit) => {
+                sortedUnits.map((unit) => {
                   const normalizedStatus = normalizeStatus(unit.status)
                   const pillClass = STATUS_COLORS[normalizedStatus] ?? STATUS_COLORS.offline
 
