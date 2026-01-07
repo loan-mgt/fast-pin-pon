@@ -15,9 +15,10 @@ interface EventDetailPanelProps {
   readonly permissions?: Permissions
   readonly onRefresh?: () => Promise<void> | void
   readonly onTogglePauseRefresh?: (paused: boolean) => void
+  readonly onLocateEvent?: (lng: number, lat: number) => void
 }
 
-export function EventDetailPanel({ event, onClose, permissions, onRefresh, onTogglePauseRefresh }: EventDetailPanelProps): JSX.Element | null {
+export function EventDetailPanel({ event, onClose, permissions, onRefresh, onTogglePauseRefresh, onLocateEvent }: EventDetailPanelProps): JSX.Element | null {
   const { token } = useAuth()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -87,6 +88,37 @@ export function EventDetailPanel({ event, onClose, permissions, onRefresh, onTog
             <p className="text-slate-300/80 text-xs leading-snug">{event.description ?? 'No description'}</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="p-2 rounded-md border border-sky-500/40 text-sky-200 hover:bg-sky-500/10 cursor-pointer transition-colors"
+              aria-label="Centrer sur l'incident"
+              title="Centrer sur l'incident"
+              onClick={() => {
+                if (event.location?.longitude && event.location?.latitude) {
+                  onLocateEvent?.(event.location.longitude, event.location.latitude)
+                }
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="6" />
+                <circle cx="12" cy="12" r="2" />
+                <line x1="12" y1="2" x2="12" y2="4" />
+                <line x1="12" y1="20" x2="12" y2="22" />
+                <line x1="2" y1="12" x2="4" y2="12" />
+                <line x1="20" y1="12" x2="22" y2="12" />
+              </svg>
+            </button>
             <button
               type="button"
               className={`p-2 rounded-md border transition-colors ${

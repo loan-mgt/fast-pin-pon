@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { fastPinPonService } from './services/FastPinPonService'
 import { Navbar } from './components/layout/Navbar'
@@ -42,6 +42,7 @@ export function App() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
   const [pendingLocation, setPendingLocation] = useState<{ latitude: number; longitude: number } | null>(null)
+  const flyToLocationRef = useRef<((lng: number, lat: number, zoom?: number) => void) | null>(null)
 
   const refreshData = useCallback(async () => {
     if (!isAuthenticated) return
@@ -195,6 +196,9 @@ export function App() {
               setPendingLocation(coords)
               setIsCreateOpen(true)
             }}
+            onMapReady={(flyTo) => {
+              flyToLocationRef.current = flyTo
+            }}
           />
           <UnitPanel units={units} />
           <EventPanel
@@ -209,6 +213,7 @@ export function App() {
           permissions={permissions}
           onRefresh={refreshData}
           onTogglePauseRefresh={setIsPaused}
+          onLocateEvent={(lng, lat) => flyToLocationRef.current?.(lng, lat, 14)}
         />
         </main>
       )}
