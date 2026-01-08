@@ -222,6 +222,11 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Auto-delete route when unit status changes to something other than under_way or on_site
+	if req.Status != "under_way" && req.Status != "on_site" {
+		_ = s.queries.DeleteUnitRoute(r.Context(), unitID) // Ignore error - route may not exist
+	}
+
 	s.writeJSON(w, http.StatusOK, mapUnitRow(unitRowData{
 		ID:           row.ID,
 		CallSign:     row.CallSign,

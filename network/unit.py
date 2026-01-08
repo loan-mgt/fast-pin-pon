@@ -1,29 +1,21 @@
-# micro:bit Unit Controller - Direct transitions
-from microbit import display, Image, sleep, running_time, button_a, button_b
+# micro:bit Unit - UART to Radio (PC1)
+# Reçoit données du bridge_emitter via UART, transmet par radio au relay
+from microbit import display, Image, sleep, uart, running_time, button_a, button_b
 import radio
 
-radio.config(channel=7, length=64, power=7)
+# Radio configuration - MUST match relay.py
+radio.config(channel=7, length=128, power=7)
 radio.on()
 
-SECRET_KEY = "FPP2024"
+# Constants
 MICROBIT_ID = "MB001"
-
-# 0:AVL, 1:UWY, 2:ONS, 3:UNA, 4:OFF
-status_idx = 0
-last_active = 0
-seq_num = 0
-last_send = 0
-last_blink = 0
-led_on = True
-waiting_ack = False
-last_msg = ""
-retries = 0
-retry_time = 0
-gps_lat = None
-gps_lon = None
-
 CODES = ["AVL", "UWY", "ONS", "UNA", "OFF"]
 
+# State
+status_idx = 0
+last_active = 0
+last_send = 0
+cooldown_until = 0
 
 def get_img(i):
     if i == 0:
@@ -37,47 +29,21 @@ def get_img(i):
     return None
 
 
-def crc8(d):
-    c = 0
-    for ch in d:
-        c = (c + ord(ch)) & 0xFF
-        c = ((c << 1) | (c >> 7)) & 0xFF
-    return c
+def show_status():
+    if status_idx == 4:
+        display.clear()
+    else:
+        img = get_img(status_idx)
+        if img:
+            display.show(img)
 
 
-def sign(d, s):
-    x = SECRET_KEY + d + str(s)
-    r = 0
-    for i, ch in enumerate(x):
-        r = (r + ord(ch) * (i + 1)) & 0xFFFF
-    return r
-
-
-def send_msg():
-    global seq_num, waiting_ack, last_msg, retries, retry_time, last_send
-    d = "MBIT:{},{}".format(MICROBIT_ID, CODES[status_idx])
-    m = "{}|{}|{}|{}".format(seq_num, d, crc8(d), sign(d, seq_num))
-    radio.send(m)
-    seq_num = (seq_num + 1) & 0xFF
-    last_msg = m
-    waiting_ack = True
-    retries = 0
-    retry_time = running_time()
+def send_mbit_status():
+    """Send current status via radio to relay"""
+    global last_send
+    msg = "MBIT:{},{}".format(MICROBIT_ID, CODES[status_idx])
+    radio.send(msg)
     last_send = running_time()
-
-
-def check_ack():
-    global waiting_ack, retries, retry_time
-    if not waiting_ack:
-        return
-    now = running_time()
-    if now - retry_time > 500:
-        if retries < 3:
-            radio.send(last_msg)
-            retries += 1
-            retry_time = now
-        else:
-            waiting_ack = False
 
 
 def set_status(new_idx):
@@ -87,65 +53,60 @@ def set_status(new_idx):
     if status_idx != 4:
         last_active = status_idx
     status_idx = new_idx
-    send_msg()
+    show_status()
+    send_mbit_status()
 
 
-def show():
-    global led_on, last_blink
-    if status_idx == 4:
-        display.clear()
-    elif status_idx == 1:
-        now = running_time()
-        if now - last_blink > 300:
-            led_on = not led_on
-            last_blink = now
-        if led_on:
-            display.show(get_img(1))
-        else:
-            display.clear()
-    else:
-        img = get_img(status_idx)
-        if img:
-            display.show(img)
+# Startup
+display.show(Image.YES)
+sleep(500)
 
+# Initialize UART for USB serial
+uart.init(baudrate=115200, tx=None, rx=None)
+sleep(500)
 
 display.scroll(MICROBIT_ID, delay=80)
 sleep(300)
-send_msg()
+show_status()
+send_mbit_status()
 
-cooldown_until = 0
+raw_buffer = b""
 
 while True:
     now = running_time()
-    check_ack()
-
-    incoming = radio.receive()
-    while incoming:
-        if incoming.startswith("ACK:"):
-            waiting_ack = False
-            incoming = radio.receive()
-            continue
-        try:
-            parts = incoming.split("|")
-            if len(parts) == 4:
-                seq = int(parts[0])
-                data = parts[1]
-                crc_val = int(parts[2])
-                sig_val = int(parts[3])
-                if crc8(data) == crc_val and sign(data, seq) == sig_val and data.startswith("GPS:"):
-                    payload = data[4:].split(",")
-                    if len(payload) >= 3:
-                        gps_lat = float(payload[1])
-                        gps_lon = float(payload[2])
-                        # Renvoi vers le relay pour confirmation / affichage
-                        out = "{}|{}|{}|{}".format(seq_num, data, crc8(data), sign(data, seq_num))
-                        radio.send(out)
-                        seq_num = (seq_num + 1) & 0xFF
-            incoming = radio.receive()
-        except Exception:
-            incoming = radio.receive()
-
-    # A+B long -> toggle OFF
+    
+    # === PART 1: Read UART and forward to Radio ===
+    try:
+        if uart.any():
+            display.show(Image.DIAMOND)
+            chunk = uart.read(64)
+            if chunk:
+                raw_buffer += chunk
+                
+                # Process all complete lines
+                while b"\n" in raw_buffer:
+                    nl_pos = raw_buffer.find(b"\n")
+                    line_bytes = raw_buffer[:nl_pos]
+                    raw_buffer = raw_buffer[nl_pos + 1:]
+                    
+                    # Remove \r if present
+                    line_bytes = line_bytes.replace(b"\r", b"")
+                    if len(line_bytes) > 5 and len(line_bytes) < 120:
+                        try:
+                            line = ""
+                            for b in line_bytes:
+                                if 32 <= b < 127:
+                                    line += chr(b)
+                            if line and len(line) > 5:
+                                radio.send(line)
+                                display.show(Image.ARROW_E)
+                        except Exception:
+                            pass
+    except Exception:
+        pass
+    
+    # === PART 2: Button handling ===
+    # A+B long press -> toggle OFF
     if button_a.is_pressed() and button_b.is_pressed():
         start = running_time()
         while button_a.is_pressed() and button_b.is_pressed():
@@ -155,40 +116,35 @@ while True:
                 set_status(last_active)
             else:
                 set_status(4)
-        # Attendre relâchement complet + cooldown
         while button_a.is_pressed() or button_b.is_pressed():
             sleep(10)
-        # Vider les événements was_pressed accumulés
         button_a.was_pressed()
         button_b.was_pressed()
         cooldown_until = running_time() + 300
-        show()
         continue
-
-    # Ignorer pendant cooldown
+    
+    # Ignore during cooldown
     if now < cooldown_until:
-        show()
-        sleep(50)
+        sleep(5)
         continue
-
-    # Bouton A: AVL/UWY/ONS -> UNA
+    
+    # Button A: set unavailable
     if button_a.was_pressed() and status_idx in (0, 1, 2):
         set_status(3)
-
-    # Bouton B: transitions directes
+    
+    # Button B: cycle through statuses
     if button_b.was_pressed():
-        if status_idx == 0:      # AVL -> UWY
+        if status_idx == 0:
             set_status(1)
-        elif status_idx == 1:    # UWY -> ONS
+        elif status_idx == 1:
             set_status(2)
-        elif status_idx == 2:    # ONS -> AVL
+        elif status_idx == 2:
             set_status(0)
-        elif status_idx == 3:    # UNA -> AVL
+        elif status_idx == 3:
             set_status(0)
-
-    show()
-
+    
+    # === PART 3: Periodic heartbeat ===
     if now - last_send > 5000:
-        send_msg()
-
-    sleep(50)
+        send_mbit_status()
+    
+    sleep(5)
