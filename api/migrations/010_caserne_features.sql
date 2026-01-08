@@ -16,6 +16,27 @@ ALTER TABLE units ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations
 -- Create index for faster lookups by location
 CREATE INDEX IF NOT EXISTS units_location_id_idx ON units(location_id);
 
+COMMIT;
+-- +migrate StatementEnd
+
+-- Separate statement block for data operations (cannot be in same transaction as ALTER TYPE)
+-- +migrate StatementBegin
+BEGIN;
+
+-------------------------
+-- CLEAN and RESEED locations table
+-------------------------
+-- Remove duplicates and ensure clean data
+TRUNCATE TABLE locations CASCADE;
+
+-- Seed fire stations (casernes)
+INSERT INTO locations (name, type, location)
+VALUES
+    ('Villeurbanne', 'station', ST_SetSRID(ST_MakePoint(4.878770, 45.766180), 4326)::geography),
+    ('Lyon Confluence', 'station', ST_SetSRID(ST_MakePoint(4.823733, 45.741054), 4326)::geography),
+    ('Lyon Part-Dieu', 'station', ST_SetSRID(ST_MakePoint(4.861700, 45.760540), 4326)::geography),
+    ('Cusset', 'station', ST_SetSRID(ST_MakePoint(4.895340, 45.766230), 4326)::geography);
+
 -- Update existing units to link to their home_base if a matching location exists
 UPDATE units u
 SET location_id = l.id
