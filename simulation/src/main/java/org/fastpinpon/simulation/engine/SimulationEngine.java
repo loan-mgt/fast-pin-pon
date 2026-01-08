@@ -137,6 +137,21 @@ public final class SimulationEngine {
         public Instant getLastUpdate() {
             return lastUpdate;
         }
+
+        private static String snapshotStatus(org.fastpinpon.simulation.model.VehicleState state) {
+            switch (state) {
+                case DISPONIBLE:
+                    return STATUS_AVAILABLE;
+                case EN_ROUTE:
+                    return STATUS_UNDER_WAY;
+                case SUR_PLACE:
+                    return STATUS_ON_SITE;
+                case RETOUR:
+                    return STATUS_UNDER_WAY;
+                default:
+                    return STATUS_AVAILABLE;
+            }
+        }
     }
 
     /**
@@ -575,20 +590,7 @@ public final class SimulationEngine {
         }
     }
 
-    private static String snapshotStatus(org.fastpinpon.simulation.model.VehicleState state) {
-        switch (state) {
-            case DISPONIBLE:
-                return STATUS_AVAILABLE;
-            case EN_ROUTE:
-                return STATUS_UNDER_WAY;
-            case SUR_PLACE:
-                return STATUS_ON_SITE;
-            case RETOUR:
-                return STATUS_UNDER_WAY;
-            default:
-                return STATUS_AVAILABLE;
-        }
-    }
+
 
     private String nearestBaseName(double lat, double lon) {
         String name = BASE_PART_DIEU;

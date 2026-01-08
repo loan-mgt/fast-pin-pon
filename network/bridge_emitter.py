@@ -225,7 +225,7 @@ def handle_poll(ser: serial.Serial, simulator_url: str, unit_to_microbit: Dict[s
         process_state(state, unit_to_microbit, microbit_latest, microbit_ids)
     
     send_all_microbits(ser, microbit_ids, microbit_latest)
-    return rotation_idx
+    return (rotation_idx + 1) % 10
 
 
 def run_main_loop(ser: serial.Serial, simulator_url: str, poll_interval: float,
