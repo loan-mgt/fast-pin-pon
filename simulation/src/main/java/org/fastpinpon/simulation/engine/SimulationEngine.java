@@ -65,6 +65,67 @@ public final class SimulationEngine {
             new BaseLocation(BASE_CUSSET, 45.76623, 4.89534),
     };
 
+    public static final class VehicleSnapshot {
+        private final String unitId;
+        private final String callSign;
+        private final double lat;
+        private final double lon;
+        private final String status;
+        private final String incidentId;
+        private final String unitTypeCode;
+        private final String homeBase;
+        private final Instant lastUpdate;
+
+        public VehicleSnapshot(String unitId, String callSign, double lat, double lon, String status,
+                               String incidentId, String unitTypeCode, String homeBase, Instant lastUpdate) {
+            this.unitId = unitId;
+            this.callSign = callSign;
+            this.lat = lat;
+            this.lon = lon;
+            this.status = status;
+            this.incidentId = incidentId;
+            this.unitTypeCode = unitTypeCode;
+            this.homeBase = homeBase;
+            this.lastUpdate = lastUpdate;
+        }
+
+        public String getUnitId() {
+            return unitId;
+        }
+
+        public String getCallSign() {
+            return callSign;
+        }
+
+        public double getLat() {
+            return lat;
+        }
+
+        public double getLon() {
+            return lon;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public String getIncidentId() {
+            return incidentId;
+        }
+
+        public String getUnitTypeCode() {
+            return unitTypeCode;
+        }
+
+        public String getHomeBase() {
+            return homeBase;
+        }
+
+        public Instant getLastUpdate() {
+            return lastUpdate;
+        }
+    }
+
     /**
      * Create a simulation engine with the default random incident generator.
      * 
@@ -197,6 +258,37 @@ public final class SimulationEngine {
      */
     public List<Vehicle> getVehicles() {
         return new ArrayList<>(vehicles);
+    }
+
+    /**
+     * Snapshot current vehicle telemetry for external consumers (e.g., bridge).
+     * The simulation engine remains the single source of movement; consumers only read.
+     */
+    public synchronized List<VehicleSnapshot> snapshotVehicles() {
+        List<VehicleSnapshot> snapshots = new ArrayList<>(vehicles.size());
+        for (Vehicle v : vehicles) {
+            String incidentId = null;
+            Incident incident = v.getCurrentIncident();
+            if (incident != null) {
+                if (incident.getId() != null) {
+                    incidentId = incident.getId().toString();
+                } else if (incident.getEventId() != null) {
+                    incidentId = incident.getEventId();
+                }
+            }
+            snapshots.add(new VehicleSnapshot(
+                    v.getUnitId(),
+                    v.getCallSign(),
+                    v.getLat(),
+                    v.getLon(),
+                    snapshotStatus(v.getEtat()),
+                    incidentId,
+                    v.getUnitTypeCode(),
+                    v.getHomeBase(),
+                    v.getLastUpdate()
+            ));
+        }
+        return snapshots;
     }
 
     // =========================================================================
@@ -483,6 +575,21 @@ public final class SimulationEngine {
                 return "return";
             default:
                 return "unknown";
+        }
+    }
+
+    private String snapshotStatus(org.fastpinpon.simulation.model.VehicleState state) {
+        switch (state) {
+            case DISPONIBLE:
+                return "available";
+            case EN_ROUTE:
+                return "under_way";
+            case SUR_PLACE:
+                return "on_site";
+            case RETOUR:
+                return "under_way";
+            default:
+                return "available";
         }
     }
 
