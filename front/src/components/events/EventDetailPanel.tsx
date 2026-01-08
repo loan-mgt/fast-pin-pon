@@ -223,11 +223,11 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
               assignedUnits.map((unit) => (
                 <div
                   key={unit.id}
-                  className="flex justify-between items-start bg-slate-800/60 hover:bg-slate-800/80 border border-slate-700 rounded-lg transition-colors overflow-hidden"
+                  className="flex justify-between items-start bg-slate-800/60 hover:bg-slate-800/80 border border-slate-700 rounded-lg overflow-hidden transition-colors"
                 >
                   <button
                     type="button"
-                    className="flex-1 text-left pl-3 pr-2 py-2 focus:outline-none hover:bg-slate-700/20 transition-colors"
+                    className="flex-1 hover:bg-slate-700/20 py-2 pr-2 pl-3 focus:outline-none text-left transition-colors"
                     onClick={() => onEventSelect?.(event.id)}
                   >
                     <div className="space-y-1 min-w-0">
