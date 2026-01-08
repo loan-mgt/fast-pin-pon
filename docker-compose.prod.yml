@@ -41,28 +41,36 @@ services:
   simulation:
     image: ghcr.io/loan-mgt/fast-pin-pon/simulation:main
     restart: unless-stopped
+    container_name: fast-pin-pon-simulation
     depends_on:
       api:
         condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
+    networks:
+      - internal
     volumes:
       - logs:/app/logs:rw
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
 
   incidentCreation:
-    image: ghcr.io/loan-mgt/fast-pin-pon/incidentCreation:main
-    container_name: fast-pin-pon-incidentCreation
+    image: ghcr.io/loan-mgt/fast-pin-pon/incidentcreation:main
     restart: unless-stopped
+    container_name: fast-pin-pon-incident-creation
     depends_on:
       api:
         condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
       - INCIDENT_INTERVAL_SECONDS=60
-    volumes:
-      - logs:/app/logs:rw
     networks:
       - internal
+    volumes:
+      - logs:/app/logs:rw
     logging:
       driver: json-file
       options:
@@ -72,6 +80,7 @@ services:
   engine:
     image: ghcr.io/loan-mgt/fast-pin-pon/engine:main
     restart: unless-stopped
+    container_name: fast-pin-pon-engine
     depends_on:
       api:
         condition: service_healthy
