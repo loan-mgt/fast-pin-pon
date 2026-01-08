@@ -301,7 +301,7 @@ func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) 
 // @Resource Interventions
 // @Param interventionID path string true "Intervention ID"
 // @Param unitID path string true "Unit ID"
-// @Success 204
+// @Success 204 {string} string "No Content"
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError

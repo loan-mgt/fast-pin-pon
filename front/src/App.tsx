@@ -149,9 +149,10 @@ export function App() {
 
   const handleCreateEvent = useCallback(
     async (payload: CreateEventRequest) => {
-      await fastPinPonService.createEvent(payload, true)
+      const newEvent = await fastPinPonService.createEvent(payload, true)
       await refreshData()
       setPendingLocation(null)
+      setSelectedEventId(newEvent.id)
     },
     [refreshData],
   )
@@ -228,6 +229,7 @@ export function App() {
           <EventDetailPanel
           event={selectedEvent}
           onClose={handleCloseDetail}
+          onEventSelect={handleEventSelect}
           permissions={permissions}
           onRefresh={refreshData}
           onTogglePauseRefresh={setIsPaused}
