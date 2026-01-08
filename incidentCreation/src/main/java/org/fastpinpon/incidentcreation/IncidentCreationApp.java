@@ -85,7 +85,7 @@ public class IncidentCreationApp {
             scheduler.shutdownNow();
         }));
 
-        LOG.info("[IncidentCreation] Service started. Generating incidents every " + intervalSeconds + " seconds.");
+        LOG.log(Level.INFO, "[IncidentCreation] Service started. Generating incidents every {0} seconds.", intervalSeconds);
     }
 
     private static String resolveApiBaseUrl() {
