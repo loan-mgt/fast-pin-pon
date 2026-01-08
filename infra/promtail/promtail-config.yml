@@ -40,3 +40,11 @@ scrape_configs:
           job: simulation
           app: fast-pin-pon-simulation
           __path__: /opt/logs/simulation/*.log*
+  - job_name: engine
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: engine
+          app: fast-pin-pon-engine
+          __path__: /opt/logs/engine/*.log*

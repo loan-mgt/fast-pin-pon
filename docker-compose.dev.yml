@@ -20,9 +20,6 @@ services:
     extends:
       file: docker-compose.prod.yml
       service: postgres
-    build:
-      context: ./database
-      dockerfile: Dockerfile
     container_name: fast-pin-pon-postgres
     shm_size: 256mb 
     ports:
@@ -78,16 +75,6 @@ services:
     build:
       context: ./engine
       dockerfile: Dockerfile
-    depends_on:
-      api:
-        condition: service_healthy
-    environment:
-      - API_BASE_URL=http://api:8080
-      - ENGINE_CALLBACK_PORT=8081
-      - DISPATCH_SCHEDULER_ENABLED=true
-      - DISPATCH_INTERVAL_SECONDS=30
-    networks:
-      - internal
     ports:
       - "8083:8081"
 

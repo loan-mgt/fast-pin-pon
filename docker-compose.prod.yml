@@ -52,6 +52,9 @@ services:
   incidentCreation:
     image: ghcr.io/loan-mgt/fast-pin-pon/incidentCreation:main
     container_name: fast-pin-pon-incidentCreation
+  engine:
+    image: ghcr.io/loan-mgt/fast-pin-pon/engine:main
+    restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
@@ -67,9 +70,16 @@ services:
       options:
         max-size: 100m
         max-file: "3"
+      - ENGINE_CALLBACK_PORT=8081
+      - DISPATCH_SCHEDULER_ENABLED=true
+      - DISPATCH_INTERVAL_SECONDS=30
+    networks:
+      - internal
+    volumes:
+      - logs:/app/logs:rw
 
   postgres:
-    image: ghcr.io/loan-mgt/fast-pin-pon/db:main
+    image: ghcr.io/loan-mgt/fast-pin-pon/database:main
     container_name: fast-pin-pon-postgres
     restart: unless-stopped
     environment:
