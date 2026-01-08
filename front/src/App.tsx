@@ -62,7 +62,20 @@ export function App() {
         fastPinPonService.getUnits(token ?? undefined),
       ])
 
-      setEvents(eventsData)
+      // If we have a selected event that isn't in the fresh list yet (e.g. just created),
+      // we keep it to avoid selection jumping or disappearing.
+      setEvents((prev) => {
+        if (!selectedEventId) return eventsData
+        const existsInNew = eventsData.some((e) => e.id === selectedEventId)
+        if (existsInNew) return eventsData
+
+        const currentSelected = prev.find((e) => e.id === selectedEventId)
+        if (currentSelected) {
+          return [currentSelected, ...eventsData]
+        }
+        return eventsData
+      })
+      
       setUnits(unitsData)
       setLastUpdated(
         new Date().toLocaleTimeString('en-US', {
@@ -127,14 +140,6 @@ export function App() {
   }, [events])
 
   useEffect(() => {
-    if (!selectedEventId) return
-    const exists = events.some((e) => e.id === selectedEventId)
-    if (!exists) {
-      setSelectedEventId(null)
-    }
-  }, [events, selectedEventId])
-
-  useEffect(() => {
     if (!isAuthenticated) {
       setEvents([])
       setUnits([])
@@ -150,11 +155,20 @@ export function App() {
   const handleCreateEvent = useCallback(
     async (payload: CreateEventRequest) => {
       const newEvent = await fastPinPonService.createEvent(payload, true)
-      await refreshData()
+      
+      // Update local state immediately so selection works even before refresh completes
+      // We look up the event type name to avoid showing an empty label
+      const eventTypeName = eventTypes.find((t) => t.code === newEvent.event_type_code)?.name ?? ''
+      const optimisticEvent = { ...newEvent, event_type_name: eventTypeName }
+      
+      setEvents((prev) => [optimisticEvent, ...prev])
+      setSelectedEventId(optimisticEvent.id)
       setPendingLocation(null)
-      setSelectedEventId(newEvent.id)
+      setIsCreateOpen(false)
+
+      await refreshData()
     },
-    [refreshData],
+    [refreshData, eventTypes],
   )
 
   const handleAddUnit = useCallback(
