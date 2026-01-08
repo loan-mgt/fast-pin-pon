@@ -128,7 +128,7 @@ func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
 // @Resource Units
 // @Produce json
 // @Param unitID path string true "Unit UUID"
-// @Success 204
+// @Success 204 {string} string "No Content"
 // @Failure 400 {object} APIError
 // @Failure 500 {object} APIError
 // @Route /v1/units/{unitID} [delete]
@@ -586,4 +586,3 @@ func (s *Server) handleListUnitsNearby(w http.ResponseWriter, r *http.Request) {
 
 	s.writeJSON(w, http.StatusOK, resp)
 }
-
