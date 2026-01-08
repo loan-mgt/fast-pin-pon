@@ -163,11 +163,9 @@ def main() -> None:
     microbit_latest: Dict[str, Dict] = {}
     rotation_idx = 0
     last_poll = 0.0
-    last_send = 0.0
-    send_interval = 0.5  # 500ms between each microbit
     
     # Debug: show mapping
-    print(f"[DEBUG] Mapping unit_id -> microbit_id:")
+    print("[DEBUG] Mapping unit_id -> microbit_id:")
     for uid, mid in list(unit_to_microbit.items())[:5]:
         print(f"  {uid} -> {mid}")
     if len(unit_to_microbit) > 5:
@@ -227,7 +225,7 @@ def main() -> None:
                             if data.get("status"):
                                 send_status_command(ser, microbit_id, data["status"])
                             time.sleep(0.2)  # 200ms between each microbit
-                    print(f"[INFO] Envoi terminé")
+                    print("[INFO] Envoi terminé")
 
             time.sleep(0.1)
 

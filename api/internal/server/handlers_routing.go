@@ -7,6 +7,9 @@ import (
 	db "fast/pin/internal/db/sqlc"
 )
 
+// Error message constants
+const errRouteNotFound = "route not found for unit"
+
 // =============================================================================
 // Request/Response DTOs for Routing
 // =============================================================================
@@ -148,7 +151,7 @@ func (s *Server) handleGetUnitRoute(w http.ResponseWriter, r *http.Request) {
 	route, err := s.queries.GetUnitRoute(r.Context(), unitUUID)
 	if err != nil {
 		if isNotFound(err) {
-			s.writeError(w, http.StatusNotFound, "route not found for unit", nil)
+			s.writeError(w, http.StatusNotFound, errRouteNotFound, nil)
 			return
 		}
 		s.writeError(w, http.StatusInternalServerError, "failed to get route", err.Error())
@@ -245,7 +248,7 @@ func (s *Server) handleUpdateRouteProgress(w http.ResponseWriter, r *http.Reques
 	})
 	if err != nil {
 		if isNotFound(err) {
-			s.writeError(w, http.StatusNotFound, "route not found for unit", nil)
+			s.writeError(w, http.StatusNotFound, errRouteNotFound, nil)
 			return
 		}
 		s.writeError(w, http.StatusInternalServerError, "failed to update progress", err.Error())
@@ -303,7 +306,7 @@ func (s *Server) handleGetRoutePosition(w http.ResponseWriter, r *http.Request) 
 	})
 	if err != nil {
 		if isNotFound(err) {
-			s.writeError(w, http.StatusNotFound, "route not found for unit", nil)
+			s.writeError(w, http.StatusNotFound, errRouteNotFound, nil)
 			return
 		}
 		s.writeError(w, http.StatusInternalServerError, "failed to get position", err.Error())

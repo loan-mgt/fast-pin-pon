@@ -31,7 +31,6 @@ public final class SimulationEngine {
     private static final Logger LOG = Logger.getLogger(SimulationEngine.class.getName());
 
     private final ApiClient api;
-    private final String apiBaseUrl;
     private final Random random = new Random();
     private final List<Vehicle> vehicles = new ArrayList<>();
     private final DecisionEngine decisionEngine;
@@ -146,7 +145,6 @@ public final class SimulationEngine {
      */
     public SimulationEngine(ApiClient api, String apiBaseUrl, IncidentSource incidentSource) {
         this.api = api;
-        this.apiBaseUrl = apiBaseUrl;
         // Load stations from API; fallback to defaults
         List<BaseLocation> stations = api.loadStations();
         this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
@@ -167,7 +165,6 @@ public final class SimulationEngine {
      */
     public SimulationEngine(ApiClient api, String apiBaseUrl, boolean noGenerator) {
         this.api = api;
-        this.apiBaseUrl = apiBaseUrl;
         List<BaseLocation> stations = api.loadStations();
         this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         bootstrapUnits();

@@ -122,12 +122,7 @@ public final class RoutingService {
             Response<CalculateRouteResponse> response = api.calculateRoute(request).execute();
             
             if (!response.isSuccessful()) {
-                String errorBody = "";
-                try {
-                    if (response.errorBody() != null) {
-                        errorBody = response.errorBody().string();
-                    }
-                } catch (Exception ignored) {}
+                String errorBody = extractErrorBody(response);
                 LOG.log(Level.WARNING, "[Routing] API ERROR: status={0}, url={1}, error={2}",
                         new Object[]{response.code(), response.raw().request().url(), errorBody});
                 return null;
@@ -158,9 +153,23 @@ public final class RoutingService {
             
         } catch (Exception e) {
             LOG.log(Level.WARNING, "[Routing] EXCEPTION: {0}", e.getMessage());
-            e.printStackTrace();
             return null;
         }
+    }
+    
+    /**
+     * Extract error body from response.
+     */
+    private String extractErrorBody(Response<CalculateRouteResponse> response) {
+        try {
+            if (response.errorBody() != null) {
+                return response.errorBody().string();
+            }
+        } catch (Exception e) {
+            // Ignore error reading body - not critical
+            LOG.log(Level.FINE, "Could not read error body: {0}", e.getMessage());
+        }
+        return "";
     }
     
     /**

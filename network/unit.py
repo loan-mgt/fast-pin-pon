@@ -100,9 +100,9 @@ while True:
                             if line and len(line) > 5:
                                 radio.send(line)
                                 display.show(Image.ARROW_E)
-                        except:
+                        except Exception:
                             pass
-    except:
+    except Exception:
         pass
     
     # === PART 2: Button handling ===
