@@ -75,7 +75,7 @@ class FastPinPonService {
   // =========================
   // ADDED: create an incident
   // =========================
-  async createEvent(payload: CreateEventRequest, autoIntervention = false, token?: string): Promise<void> {
+  async createEvent(payload: CreateEventRequest, autoIntervention = false, token?: string): Promise<EventSummary> {
     const url = new URL(`${this.API_BASE_URL}/events`)
     if (autoIntervention) {
       url.searchParams.set('auto_intervention', 'true')
@@ -91,6 +91,8 @@ class FastPinPonService {
       const text = await response.text().catch(() => '')
       throw new Error(`Failed to create event: ${response.status} ${response.statusText} ${text}`)
     }
+
+    return response.json()
   }
 
   async assignMicrobit(unitId: string, microbitId: string, token?: string): Promise<void> {

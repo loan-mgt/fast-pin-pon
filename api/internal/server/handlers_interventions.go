@@ -82,6 +82,11 @@ func (s *Server) handleCreateIntervention(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Trigger engine if in auto_suggested mode
+	if params.DecisionMode == db.DecisionModeAutoSuggested {
+		go s.notifyEngineDispatch(context.Background(), uuidString(row.ID))
+	}
+
 	s.writeJSON(w, http.StatusCreated, mapIntervention(row))
 }
 
@@ -301,7 +306,7 @@ func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) 
 // @Resource Interventions
 // @Param interventionID path string true "Intervention ID"
 // @Param unitID path string true "Unit ID"
-// @Success 204
+// @Success 204 {string} string "No Content"
 // @Failure 400 {object} APIError
 // @Failure 404 {object} APIError
 // @Failure 500 {object} APIError

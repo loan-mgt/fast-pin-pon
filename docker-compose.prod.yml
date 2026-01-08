@@ -1,6 +1,7 @@
 services:
   api:
     image: ghcr.io/loan-mgt/fast-pin-pon/api:main
+    restart: unless-stopped
     container_name: fast-pin-pon-api
     env_file:
       - .env
@@ -15,7 +16,7 @@ services:
     volumes:
       - logs:/var/log:rw
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,6 +28,7 @@ services:
         max-file: "3"
   front:
     image: ghcr.io/loan-mgt/fast-pin-pon/front:main
+    restart: unless-stopped
     container_name: fast-pin-pon-front
     networks:
       - default
@@ -38,6 +40,7 @@ services:
         max-file: "3"
   simulation:
     image: ghcr.io/loan-mgt/fast-pin-pon/simulation:main
+    restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy

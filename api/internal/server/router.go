@@ -59,6 +59,14 @@ func (s *Server) routes() http.Handler {
 		v1.Delete("/units/{unitID}/microbit", s.handleUnassignMicrobit)
 		v1.Get("/units/by-microbit/{microbitID}", s.handleGetUnitByMicrobit)
 
+		// Dispatch endpoints
+		v1.Get("/dispatch/config", s.handleGetDispatchConfig)
+		v1.Put("/dispatch/config", s.handleUpdateDispatchConfig)
+		v1.Get("/dispatch/static", s.handleGetDispatchStatic)
+		v1.Get("/dispatch/pending", s.handleListPendingInterventions)
+		v1.Get("/interventions/{interventionID}/candidates", s.handleGetDispatchCandidates)
+		v1.Get("/interventions/{interventionID}/dispatch-info", s.handleGetInterventionDispatchInfo)
+
 	})
 
 	r.Handle("/metrics", promhttp.Handler())

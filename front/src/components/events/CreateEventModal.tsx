@@ -112,9 +112,9 @@ export function CreateEventModal({
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm px-4">
-      <Card className="w-full max-w-lg space-y-4 border-blue-500/30">
-        <div className="flex items-center justify-between gap-3">
+    <div className="z-20 fixed inset-0 flex justify-center items-center bg-slate-950/80 backdrop-blur-sm px-4">
+      <Card className="space-y-4 border-blue-500/30 w-full max-w-lg">
+        <div className="flex justify-between items-center gap-3">
           <div>
             <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Create</p>
             <h2 className="font-semibold text-white text-xl">New incident</h2>
@@ -126,7 +126,7 @@ export function CreateEventModal({
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <label className="text-sm text-slate-300" htmlFor="title">
+            <label className="text-slate-300 text-sm" htmlFor="title">
               Title *
             </label>
             <input
@@ -134,58 +134,27 @@ export function CreateEventModal({
               type="text"
               value={title}
               onChange={handleInputChange(setTitle)}
-              className="w-full rounded-xl bg-slate-900/60 border border-blue-500/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              className="bg-slate-900/60 px-3 py-2 border border-blue-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 w-full text-white text-sm"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-slate-300" htmlFor="description">
+            <label className="text-slate-300 text-sm" htmlFor="description">
               Description
             </label>
             <textarea
               id="description"
               value={description}
               onChange={handleInputChange(setDescription)}
-              className="w-full rounded-xl bg-slate-900/60 border border-blue-500/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              className="bg-slate-900/60 px-3 py-2 border border-blue-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 w-full text-white text-sm"
               rows={3}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="gap-3 grid grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm text-slate-300" htmlFor="latitude">
-                Latitude *
-              </label>
-              <input
-                id="latitude"
-                type="number"
-                inputMode="decimal"
-                value={latitude}
-                onChange={handleInputChange(setLatitude)}
-                className="w-full rounded-xl bg-slate-900/60 border border-blue-500/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm text-slate-300" htmlFor="longitude">
-                Longitude *
-              </label>
-              <input
-                id="longitude"
-                type="number"
-                inputMode="decimal"
-                value={longitude}
-                onChange={handleInputChange(setLongitude)}
-                className="w-full rounded-xl bg-slate-900/60 border border-blue-500/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-sm text-slate-300" htmlFor="severity">
+              <label className="text-slate-300 text-sm" htmlFor="severity">
                 Severity
               </label>
               <input
@@ -197,18 +166,18 @@ export function CreateEventModal({
                 onChange={(e) => setSeverity(Number.parseInt(e.target.value, 10))}
                 className="w-full"
               />
-              <p className="text-xs text-slate-400">Current: {severity}</p>
+              <p className="text-slate-400 text-xs">Current: {severity}</p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-slate-300" htmlFor="eventType">
+              <label className="text-slate-300 text-sm" htmlFor="eventType">
                 Event type *
               </label>
               <select
                 id="eventType"
                 value={eventTypeCode}
                 onChange={(e) => setEventTypeCode(e.target.value)}
-                className="w-full rounded-xl bg-slate-900/60 border border-blue-500/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="bg-slate-900/60 px-3 py-2 border border-blue-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 w-full text-white text-sm"
                 required
               >
                 {eventTypes.map((type) => (
@@ -220,7 +189,7 @@ export function CreateEventModal({
             </div>
           </div>
 
-          {error && <p className="text-sm text-rose-300">{error}</p>}
+          {error && <p className="text-rose-300 text-sm">{error}</p>}
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={onClose}>
