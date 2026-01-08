@@ -57,6 +57,11 @@ public final class SimulationEngine {
     private static final String BASE_CONFLUENCE = "Lyon Confluence";
     private static final String BASE_PART_DIEU = "Lyon Part-Dieu";
     private static final String BASE_CUSSET = "Cusset";
+    
+    // Status constants
+    private static final String STATUS_AVAILABLE = "available";
+    private static final String STATUS_UNDER_WAY = "under_way";
+    private static final String STATUS_ON_SITE = "on_site";
 
         private static final BaseLocation[] DEFAULT_BASES = new BaseLocation[]{
             new BaseLocation(BASE_VILLEURBANNE, 45.766180, 4.878770),
@@ -584,15 +589,15 @@ public final class SimulationEngine {
     private String snapshotStatus(org.fastpinpon.simulation.model.VehicleState state) {
         switch (state) {
             case DISPONIBLE:
-                return "available";
+                return STATUS_AVAILABLE;
             case EN_ROUTE:
-                return "under_way";
+                return STATUS_UNDER_WAY;
             case SUR_PLACE:
-                return "on_site";
+                return STATUS_ON_SITE;
             case RETOUR:
-                return "under_way";
+                return STATUS_UNDER_WAY;
             default:
-                return "available";
+                return STATUS_AVAILABLE;
         }
     }
 

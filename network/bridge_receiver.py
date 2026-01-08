@@ -161,36 +161,132 @@ def wait_for_api(api_url: str) -> None:
         time.sleep(2)
 
 
-def main() -> None:
-    serial_port = get_env("SERIAL_PORT", "")
-    baud_rate = int(get_env("BAUD_RATE", "115200"))
-    api_url = get_env("API_URL", API_DEFAULT_URL)
-
+def print_config(api_url: str, baud_rate: int) -> None:
+    """Print configuration information."""
     print("=" * 50)
     print("  BRIDGE RÉCEPTEUR (PC2)")
     print("=" * 50)
     print(f"[CONFIG] API_URL: {api_url}")
     print(f"[CONFIG] BAUD_RATE: {baud_rate}")
 
+
+def setup_serial(serial_port: str, baud_rate: int) -> Optional[serial.Serial]:
+    """Set up and return serial connection."""
     if not serial_port:
         serial_port = find_microbit_port()
     if not serial_port:
         print("[ERREUR] Aucun port série trouvé. Définissez SERIAL_PORT.")
-        return
+        return None
 
     print(f"[CONFIG] SERIAL_PORT: {serial_port}")
-
-    wait_for_api(api_url)
 
     try:
         ser = serial.Serial(serial_port, baud_rate, timeout=0.1)
         print(f"[INFO] Connecté au micro:bit unit sur {serial_port}")
         time.sleep(1)
+        return ser
     except serial.SerialException as e:
         print(f"[ERREUR] Connexion: {e}")
+        return None
+
+
+def handle_gps_message(line: str, microbit_to_unit: Dict[str, str], api_url: str) -> bool:
+    """Handle GPS message and return True if handled."""
+    gps_data = parse_gps_message(line)
+    if gps_data:
+        microbit_id, lat, lon = gps_data
+        unit_id = microbit_to_unit.get(microbit_id)
+        if unit_id and update_unit_location(api_url, unit_id, lat, lon):
+            print(f"[API] Location updated: {unit_id}")
+        return True
+    return False
+
+
+def handle_sta_message(line: str, microbit_to_unit: Dict[str, str], 
+                       last_statuses: Dict[str, str], api_url: str) -> bool:
+    """Handle STA message and return True if handled."""
+    sta_data = parse_sta_message(line)
+    if sta_data:
+        microbit_id, status = sta_data
+        unit_id = microbit_to_unit.get(microbit_id)
+        if unit_id and last_statuses.get(microbit_id) != status:
+            if update_unit_status(api_url, unit_id, status):
+                last_statuses[microbit_id] = status
+                print(f"[API] Status updated: {unit_id} -> {status}")
+        return True
+    return False
+
+
+def handle_mbit_message(line: str, microbit_to_unit: Dict[str, str],
+                        last_statuses: Dict[str, str], api_url: str) -> bool:
+    """Handle MBIT message and return True if handled."""
+    mbit_data = parse_mbit_message(line)
+    if mbit_data:
+        microbit_id, status_code = mbit_data
+        unit_id = microbit_to_unit.get(microbit_id)
+        if unit_id and last_statuses.get(microbit_id) != status_code:
+            if update_unit_status(api_url, unit_id, status_code):
+                last_statuses[microbit_id] = status_code
+                print(f"[API] MBIT status updated: {unit_id} -> {status_code}")
+        return True
+    return False
+
+
+def process_line(line: str, microbit_to_unit: Dict[str, str],
+                 last_statuses: Dict[str, str], api_url: str) -> None:
+    """Process a single received line."""
+    print(f"[RECV] {line}")
+    
+    if handle_gps_message(line, microbit_to_unit, api_url):
+        return
+    if handle_sta_message(line, microbit_to_unit, last_statuses, api_url):
+        return
+    handle_mbit_message(line, microbit_to_unit, last_statuses, api_url)
+
+
+def run_main_loop(ser: serial.Serial, api_url: str, 
+                  microbit_to_unit: Dict[str, str]) -> None:
+    """Run the main receiving loop."""
+    serial_buffer = ""
+    last_statuses: Dict[str, str] = {}
+    last_mapping_refresh = time.time()
+
+    while True:
+        # Refresh mapping periodically
+        if time.time() - last_mapping_refresh > 60:
+            microbit_to_unit.clear()
+            new_mapping, _ = load_microbit_cache(api_url)
+            microbit_to_unit.update(new_mapping)
+            last_mapping_refresh = time.time()
+
+        # Read serial data
+        if ser.in_waiting > 0:
+            data = ser.read(ser.in_waiting)
+            serial_buffer += data.decode('utf-8', errors='ignore')
+
+        # Process complete lines
+        while '\n' in serial_buffer:
+            line, serial_buffer = serial_buffer.split('\n', 1)
+            line = line.strip()
+            if line:
+                process_line(line, microbit_to_unit, last_statuses, api_url)
+
+        time.sleep(0.01)
+
+
+def main() -> None:
+    serial_port = get_env("SERIAL_PORT", "")
+    baud_rate = int(get_env("BAUD_RATE", "115200"))
+    api_url = get_env("API_URL", API_DEFAULT_URL)
+
+    print_config(api_url, baud_rate)
+
+    ser = setup_serial(serial_port, baud_rate)
+    if ser is None:
         return
 
-    # Load microbit to unit mapping
+    wait_for_api(api_url)
+
     print("[INFO] Chargement du mapping microbits -> unités...")
     microbit_to_unit, _ = load_microbit_cache(api_url)
     print(f"[INFO] {len(microbit_to_unit)} microbits mappés")
@@ -198,65 +294,8 @@ def main() -> None:
     print("\n[INFO] Bridge récepteur prêt. En écoute...")
     print("-" * 60)
 
-    serial_buffer = ""
-    last_statuses: Dict[str, str] = {}
-    last_mapping_refresh = time.time()
-
     try:
-        while True:
-            # Refresh mapping periodically
-            if time.time() - last_mapping_refresh > 60:
-                microbit_to_unit, _ = load_microbit_cache(api_url)
-                last_mapping_refresh = time.time()
-
-            # Read serial data
-            if ser.in_waiting > 0:
-                data = ser.read(ser.in_waiting)
-                serial_buffer += data.decode('utf-8', errors='ignore')
-
-            # Process complete lines
-            while '\n' in serial_buffer:
-                line, serial_buffer = serial_buffer.split('\n', 1)
-                line = line.strip()
-                if not line:
-                    continue
-
-                print(f"[RECV] {line}")
-
-                # Handle GPS message
-                gps_data = parse_gps_message(line)
-                if gps_data:
-                    microbit_id, lat, lon = gps_data
-                    unit_id = microbit_to_unit.get(microbit_id)
-                    if unit_id:
-                        if update_unit_location(api_url, unit_id, lat, lon):
-                            print(f"[API] Location updated: {unit_id}")
-                    continue
-
-                # Handle STA message
-                sta_data = parse_sta_message(line)
-                if sta_data:
-                    microbit_id, status = sta_data
-                    unit_id = microbit_to_unit.get(microbit_id)
-                    if unit_id and last_statuses.get(microbit_id) != status:
-                        if update_unit_status(api_url, unit_id, status):
-                            last_statuses[microbit_id] = status
-                            print(f"[API] Status updated: {unit_id} -> {status}")
-                    continue
-
-                # Handle MBIT message (button press from unit)
-                mbit_data = parse_mbit_message(line)
-                if mbit_data:
-                    microbit_id, status_code = mbit_data
-                    unit_id = microbit_to_unit.get(microbit_id)
-                    if unit_id and last_statuses.get(microbit_id) != status_code:
-                        if update_unit_status(api_url, unit_id, status_code):
-                            last_statuses[microbit_id] = status_code
-                            print(f"[API] MBIT status updated: {unit_id} -> {status_code}")
-                    continue
-
-            time.sleep(0.01)
-
+        run_main_loop(ser, api_url, microbit_to_unit)
     except KeyboardInterrupt:
         print("\n[INFO] Arrêt du bridge récepteur")
     finally:

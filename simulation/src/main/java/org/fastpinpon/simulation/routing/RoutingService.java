@@ -175,10 +175,14 @@ public final class RoutingService {
     /**
      * Legacy method for backward compatibility.
      * Returns waypoints extracted from the GeoJSON route.
+     * This method wraps calculateRoute() for existing code that expects waypoint lists.
      * 
-     * @deprecated Use calculateRoute() and saveUnitRoute() instead
+     * @param fromLat starting latitude
+     * @param fromLon starting longitude  
+     * @param toLat destination latitude
+     * @param toLon destination longitude
+     * @return list of waypoint coordinates as lat/lon pairs
      */
-    @Deprecated
     public List<double[]> getRoute(double fromLat, double fromLon, double toLat, double toLon) {
         RouteInfo route = calculateRoute(fromLat, fromLon, toLat, toLon);
         if (route == null) {
@@ -338,14 +342,29 @@ public final class RoutingService {
             String coordsStr = geoJson.substring(arrayStart + 1, arrayEnd + 1);
             
             // Parse each coordinate pair [lon, lat]
-            int pos = 0;
-            while (pos < coordsStr.length()) {
-                int pairStart = coordsStr.indexOf("[", pos);
-                if (pairStart == -1) break;
-                
-                int pairEnd = coordsStr.indexOf("]", pairStart);
-                if (pairEnd == -1) break;
-                
+            parseCoordinatePairs(coordsStr, waypoints);
+            
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "[Routing] Failed to parse GeoJSON: {0}", e.getMessage());
+        }
+        
+        return waypoints;
+    }
+    
+    /**
+     * Parse coordinate pairs from a JSON array string.
+     */
+    private void parseCoordinatePairs(String coordsStr, List<double[]> waypoints) {
+        int pos = 0;
+        boolean continueLoop = true;
+        
+        while (pos < coordsStr.length() && continueLoop) {
+            int pairStart = coordsStr.indexOf("[", pos);
+            int pairEnd = pairStart >= 0 ? coordsStr.indexOf("]", pairStart) : -1;
+            
+            if (pairStart == -1 || pairEnd == -1) {
+                continueLoop = false;
+            } else {
                 String pair = coordsStr.substring(pairStart + 1, pairEnd);
                 String[] parts = pair.split(",");
                 if (parts.length >= 2) {
@@ -353,15 +372,9 @@ public final class RoutingService {
                     double lat = Double.parseDouble(parts[1].trim());
                     waypoints.add(new double[]{lat, lon}); // Store as lat, lon
                 }
-                
                 pos = pairEnd + 1;
             }
-            
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "[Routing] Failed to parse GeoJSON: {0}", e.getMessage());
         }
-        
-        return waypoints;
     }
     
     /**
