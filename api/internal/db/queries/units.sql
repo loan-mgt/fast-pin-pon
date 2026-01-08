@@ -83,6 +83,15 @@ SELECT
 FROM units
 WHERE id = $1;
 
+-- name: DeleteUnitAssignments :exec
+DELETE FROM intervention_assignments WHERE unit_id = $1;
+
+-- name: DeleteUnitTelemetry :exec
+DELETE FROM unit_telemetry WHERE unit_id = $1;
+
+-- name: DeleteUnit :exec
+DELETE FROM units WHERE id = $1;
+
 -- name: UpdateUnitStatus :one
 UPDATE units
 SET

@@ -1,4 +1,4 @@
-import type { EventSummary, UnitSummary, UnitType } from '../types'
+import type { EventSummary, UnitSummary, UnitType, Building } from '../types'
 import type { CreateEventRequest, EventType } from '../types/eventTypes'
 
 type InterventionStatus = 'created' | 'on_site' | 'completed' | 'cancelled'
@@ -60,6 +60,14 @@ class FastPinPonService {
     const response = await fetch(`${this.API_BASE_URL}/unit-types`)
     if (!response.ok) {
       throw new Error(`Failed to fetch unit types: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+
+  async getBuildings(): Promise<Building[]> {
+    const response = await fetch(`${this.API_BASE_URL}/buildings`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch buildings: ${response.status} ${response.statusText}`)
     }
     return response.json()
   }
@@ -189,6 +197,48 @@ class FastPinPonService {
     if (!response.ok) {
       const text = await response.text().catch(() => '')
       throw new Error(`Failed to unassign unit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
+  async createUnit(
+    callSign: string,
+    unitTypeCode: string,
+    homeBase: string,
+    latitude: number,
+    longitude: number,
+    token?: string,
+  ): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/units`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.buildHeaders(token),
+      },
+      body: JSON.stringify({
+        call_sign: callSign,
+        unit_type_code: unitTypeCode,
+        home_base: homeBase,
+        status: 'available',
+        latitude,
+        longitude,
+      }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to create unit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
+  async deleteUnit(unitId: string, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/units/${unitId}`, {
+      method: 'DELETE',
+      headers: this.buildHeaders(token),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to delete unit: ${response.status} ${response.statusText} ${text}`)
     }
   }
 }

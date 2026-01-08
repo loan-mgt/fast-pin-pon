@@ -14,6 +14,7 @@ interface NavbarProps {
     onNavigate: (view: 'live' | 'dashboard') => void
     onLogout?: () => void
     userLabel?: string
+    onAddUnit?: () => void
 }
 
 export function Navbar({
@@ -26,6 +27,7 @@ export function Navbar({
     onNavigate,
     onLogout,
     userLabel,
+    onAddUnit,
 }: Readonly<NavbarProps>): JSX.Element {
     return (
         <nav className="bg-slate-950/90 border-slate-900/70 border-b">
@@ -34,6 +36,21 @@ export function Navbar({
                     <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Fast Pin Pon</p>
                     <p className="font-semibold text-white text-lg">{currentView === 'live' ? 'Live events' : 'Dashboard'}</p>
                 </div>
+
+                {currentView === 'dashboard' && onAddUnit && (
+                    <button
+                        type="button"
+                        onClick={onAddUnit}
+                        className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700/50 hover:border-cyan-500/30 px-3 py-1.5 rounded-lg text-slate-200 hover:text-white text-sm font-medium transition-all duration-150"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Nouvelle unité
+                    </button>
+                )}
+
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2 bg-slate-900/70 border border-slate-800 rounded-full px-1 py-1">
                         <button

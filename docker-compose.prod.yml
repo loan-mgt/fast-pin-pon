@@ -180,7 +180,7 @@ services:
       - internal-grafana
 
   prometheus:
-    image: prom/prometheus:latest
+    image: ghcr.io/loan-mgt/fast-pin-pon/infra/prometheus:latest
     container_name: fast-pin-pon-prometheus
     restart: unless-stopped
     volumes:

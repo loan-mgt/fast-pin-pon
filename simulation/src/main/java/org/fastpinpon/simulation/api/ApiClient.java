@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.OkHttpClient;
 import org.fastpinpon.simulation.model.Incident;
 import org.fastpinpon.simulation.model.IncidentType;
+import org.fastpinpon.simulation.model.BaseLocation;
 import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.Retrofit;
@@ -67,6 +68,50 @@ public final class ApiClient {
             this.latitude = latitude;
             this.longitude = longitude;
         }
+    }
+
+    /**
+     * Load all buildings (locations) from the API and return fire stations as base locations.
+     */
+    public List<BaseLocation> loadStations() {
+        List<BaseLocation> res = new ArrayList<>();
+        List<BuildingDto> dtos = execute(api.getBuildings(), "GET /v1/buildings");
+        if (dtos == null) {
+            return res;
+        }
+        for (BuildingDto b : dtos) {
+            BaseLocation station = toBaseLocation(b);
+            if (station == null) {
+                continue;
+            }
+            res.add(station);
+        }
+        return res;
+    }
+
+    private BaseLocation toBaseLocation(BuildingDto building) {
+        if (building == null || building.location == null) {
+            return null;
+        }
+        if (building.type != null && !"station".equalsIgnoreCase(building.type)) {
+            return null;
+        }
+        Double lat = building.location.getLatitude();
+        Double lon = building.location.getLongitude();
+        if (lat == null || lon == null) {
+            return null;
+        }
+        return new BaseLocation(resolveStationName(building), lat, lon);
+    }
+
+    private String resolveStationName(BuildingDto building) {
+        if (building.name != null) {
+            return building.name;
+        }
+        if (building.id != null) {
+            return building.id;
+        }
+        return "Station";
     }
 
     /**
@@ -349,6 +394,9 @@ public final class ApiClient {
         @GET("/v1/unit-types")
         Call<List<CodeDto>> getUnitTypes();
 
+        @GET("/v1/buildings")
+        Call<List<BuildingDto>> getBuildings();
+
         @POST("/v1/events")
         Call<IdDto> createEvent(@Body CreateEventRequest body);
 
@@ -427,6 +475,18 @@ public final class ApiClient {
         public LocationDto getLocation() {
             return location;
         }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static final class BuildingDto {
+        @JsonProperty("id")
+        private String id;
+        @JsonProperty("name")
+        private String name;
+        @JsonProperty("type")
+        private String type;
+        @JsonProperty("location")
+        private LocationDto location;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
