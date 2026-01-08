@@ -58,7 +58,7 @@ services:
         max-file: "3"
 
   incidentCreation:
-    image: ghcr.io/loan-mgt/fast-pin-pon/incidentCreation:main
+    image: ghcr.io/loan-mgt/fast-pin-pon/incidentcreation:main
     restart: unless-stopped
     container_name: fast-pin-pon-incident-creation
     depends_on:
