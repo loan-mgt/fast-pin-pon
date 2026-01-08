@@ -18,19 +18,24 @@ type CreateUnitRequest struct {
 	CallSign     string  `json:"call_sign" validate:"required"`
 	UnitTypeCode string  `json:"unit_type_code" validate:"required"`
 	HomeBase     *string `json:"home_base"`
-	Status       string  `json:"status" validate:"required,oneof=available under_way on_site unavailable offline"`
+	LocationID   *string `json:"location_id"`
+	Status       string  `json:"status" validate:"required,oneof=available available_hidden under_way on_site unavailable offline"`
 	Latitude     float64 `json:"latitude" validate:"required,latitude"`
 	Longitude    float64 `json:"longitude" validate:"required,longitude"`
 }
 
 type UpdateUnitStatusRequest struct {
-	Status string `json:"status" validate:"required,oneof=available under_way on_site unavailable offline"`
+	Status string `json:"status" validate:"required,oneof=available available_hidden under_way on_site unavailable offline"`
 }
 
 type UpdateUnitLocationRequest struct {
 	Latitude   float64    `json:"latitude" validate:"required,latitude"`
 	Longitude  float64    `json:"longitude" validate:"required,longitude"`
 	RecordedAt *time.Time `json:"recorded_at"`
+}
+
+type UpdateUnitStationRequest struct {
+	LocationID *string `json:"location_id"`
 }
 
 type AssignMicrobitRequest struct {
@@ -67,6 +72,7 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 			CallSign:     row.CallSign,
 			UnitTypeCode: row.UnitTypeCode,
 			HomeBase:     row.HomeBase,
+			LocationID:   row.LocationID,
 			Status:       row.Status,
 			MicrobitID:   row.MicrobitID,
 			Longitude:    row.Longitude,
@@ -102,10 +108,27 @@ func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().UTC()
 	lastContact := timestamptzFromPtr(&now)
 
+	// If no location_id is provided, find the nearest station
+	var locationID pgtype.UUID
+	if req.LocationID != nil && *req.LocationID != "" {
+		locationID = pgUUIDFromStringOptional(req.LocationID)
+	} else {
+		// Find the nearest station based on the unit's position
+		nearestStation, err := s.queries.GetNearestStation(r.Context(), db.GetNearestStationParams{
+			Longitude: req.Longitude,
+			Latitude:  req.Latitude,
+		})
+		if err == nil {
+			locationID = nearestStation.ID
+		}
+		// If no station found, locationID remains empty (valid)
+	}
+
 	params := db.CreateUnitParams{
 		CallSign:      req.CallSign,
 		UnitTypeCode:  req.UnitTypeCode,
 		HomeBase:      req.HomeBase,
+		LocationID:    locationID,
 		Status:        db.UnitStatus(req.Status),
 		Longitude:     req.Longitude,
 		Latitude:      req.Latitude,
@@ -209,6 +232,7 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -265,6 +289,62 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
+		Status:       row.Status,
+		MicrobitID:   row.MicrobitID,
+		Longitude:    row.Longitude,
+		Latitude:     row.Latitude,
+		LastContact:  row.LastContactAt,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}))
+}
+
+// handleUpdateUnitStation godoc
+// @Title Update unit station
+// @Description Updates the fire station (location) assignment for a unit.
+// @Resource Units
+// @Accept json
+// @Produce json
+// @Param unitID path string true "Unit ID"
+// @Param request body UpdateUnitStationRequest true "Station payload"
+// @Success 200 {object} UnitResponse
+// @Failure 400 {object} APIError
+// @Failure 404 {object} APIError
+// @Failure 500 {object} APIError
+// @Route /v1/units/{unitID}/station [patch]
+func (s *Server) handleUpdateUnitStation(w http.ResponseWriter, r *http.Request) {
+	unitID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	var req UpdateUnitStationRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
+		return
+	}
+
+	row, err := s.queries.UpdateUnitStation(r.Context(), db.UpdateUnitStationParams{
+		ID:         unitID,
+		LocationID: pgUUIDFromStringOptional(req.LocationID),
+	})
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, errUnitNotFound, nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to update unit station", err.Error())
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, mapUnitRow(unitRowData{
+		ID:           row.ID,
+		CallSign:     row.CallSign,
+		UnitTypeCode: row.UnitTypeCode,
+		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -332,6 +412,7 @@ type unitRowData struct {
 	CallSign       string
 	UnitTypeCode   string
 	HomeBase       *string
+	LocationID     pgtype.UUID
 	Status         db.UnitStatus
 	MicrobitID     *string
 	Longitude      float64
@@ -348,6 +429,7 @@ func mapUnitRow(data unitRowData) UnitResponse {
 		CallSign:       data.CallSign,
 		UnitTypeCode:   data.UnitTypeCode,
 		HomeBase:       optionalString(data.HomeBase),
+		LocationID:     uuidStringOptional(data.LocationID),
 		Status:         string(data.Status),
 		MicrobitID:     optionalString(data.MicrobitID),
 		Location:       GeoPoint{Latitude: data.Latitude, Longitude: data.Longitude},
@@ -364,6 +446,7 @@ func mapCreateUnitRow(row db.CreateUnitRow) UnitResponse {
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     optionalString(row.HomeBase),
+		LocationID:   uuidStringOptional(row.LocationID),
 		Status:       string(row.Status),
 		MicrobitID:   optionalString(row.MicrobitID),
 		Location: GeoPoint{
@@ -425,6 +508,7 @@ func (s *Server) handleAssignMicrobit(w http.ResponseWriter, r *http.Request) {
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -468,6 +552,7 @@ func (s *Server) handleUnassignMicrobit(w http.ResponseWriter, r *http.Request) 
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -510,6 +595,7 @@ func (s *Server) handleGetUnitByMicrobit(w http.ResponseWriter, r *http.Request)
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -578,6 +664,7 @@ func (s *Server) handleListUnitsNearby(w http.ResponseWriter, r *http.Request) {
 			CallSign:       row.CallSign,
 			UnitTypeCode:   row.UnitTypeCode,
 			HomeBase:       row.HomeBase,
+			LocationID:     row.LocationID,
 			Status:         row.Status,
 			MicrobitID:     row.MicrobitID,
 			Longitude:      row.Longitude,

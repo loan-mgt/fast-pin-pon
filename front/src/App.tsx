@@ -22,6 +22,7 @@ export function App() {
   const [events, setEvents] = useState<EventSummary[]>([])
   const [units, setUnits] = useState<UnitSummary[]>([])
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
   const [isSpinning, setIsSpinning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<string>('—')
@@ -183,6 +184,12 @@ export function App() {
     setSelectedEventId(eventId)
   }
 
+  const handleBuildingSelect = (buildingId: string) => {
+    // Navigate to dashboard with station filter
+    setSelectedStationId(buildingId)
+    setView('dashboard')
+  }
+
   const handleCloseDetail = () => {
     setSelectedEventId(null)
   }
@@ -215,7 +222,13 @@ export function App() {
 
       {view === 'dashboard' ? (
         <main className="flex flex-1 min-h-[calc(100vh-72px)]">
-          <DashboardPage units={units} onRefresh={refreshData} />
+          <DashboardPage 
+            units={units} 
+            buildings={buildings}
+            selectedStationId={selectedStationId}
+            onStationChange={setSelectedStationId}
+            onRefresh={refreshData} 
+          />
         </main>
       ) : (
         <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">
@@ -224,6 +237,7 @@ export function App() {
             units={units}
             buildings={buildings}
             onEventSelect={handleEventSelect}
+            onBuildingSelect={handleBuildingSelect}
             selectedEventId={selectedEventId}
             onCreateAtLocation={(coords) => {
               setPendingLocation(coords)

@@ -233,7 +233,7 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
                     <div className="space-y-1 min-w-0">
                       <p className="font-semibold text-white text-sm truncate leading-tight">{unit.call_sign}</p>
                       <p className="text-[0.75rem] text-slate-300 truncate leading-tight">
-                        {unit.unit_type_code} • {unit.home_base}
+                        {unit.unit_type_code}
                       </p>
                       <p className="text-[0.7rem] text-slate-400 truncate leading-tight">{unit.status}</p>
                     </div>

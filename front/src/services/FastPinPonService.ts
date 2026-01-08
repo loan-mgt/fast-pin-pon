@@ -2,7 +2,7 @@ import type { EventSummary, UnitSummary, UnitType, Building } from '../types'
 import type { CreateEventRequest, EventType } from '../types/eventTypes'
 
 type InterventionStatus = 'created' | 'on_site' | 'completed' | 'cancelled'
-type UnitStatus = 'available' | 'under_way' | 'on_site' | 'unavailable' | 'offline'
+type UnitStatus = 'available' | 'available_hidden' | 'under_way' | 'on_site' | 'unavailable' | 'offline'
 
 /**
  * Service to handle data fetching from the Fast Pin Pon API.
@@ -160,6 +160,22 @@ class FastPinPonService {
     }
   }
 
+  async updateUnitStation(unitId: string, locationId: string | null, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/units/${unitId}/station`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.buildHeaders(token),
+      },
+      body: JSON.stringify({ location_id: locationId }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to update unit station: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
   async getNearbyUnits(lat: number, lon: number, unitTypes?: string[], token?: string): Promise<UnitSummary[]> {
     const params = new URLSearchParams({ lat: String(lat), lon: String(lon) })
     if (unitTypes && unitTypes.length > 0) {
@@ -209,6 +225,7 @@ class FastPinPonService {
     latitude: number,
     longitude: number,
     token?: string,
+    locationId?: string,
   ): Promise<void> {
     const response = await fetch(`${this.API_BASE_URL}/units`, {
       method: 'POST',
@@ -220,6 +237,7 @@ class FastPinPonService {
         call_sign: callSign,
         unit_type_code: unitTypeCode,
         home_base: homeBase,
+        location_id: locationId,
         status: 'available',
         latitude,
         longitude,
@@ -242,6 +260,20 @@ class FastPinPonService {
       const text = await response.text().catch(() => '')
       throw new Error(`Failed to delete unit: ${response.status} ${response.statusText} ${text}`)
     }
+  }
+
+  /**
+   * Filter units by status - useful for excluding available_hidden from map display
+   */
+  getVisibleUnits(units: UnitSummary[]): UnitSummary[] {
+    return units.filter(unit => unit.status !== 'available_hidden')
+  }
+
+  /**
+   * Filter units by location (caserne)
+   */
+  getUnitsByLocation(units: UnitSummary[], locationId: string): UnitSummary[] {
+    return units.filter(unit => unit.location_id === locationId)
   }
 }
 
