@@ -103,6 +103,7 @@ services:
     image: ghcr.io/loan-mgt/fast-pin-pon/database:main
     container_name: fast-pin-pon-postgres
     restart: unless-stopped
+    shm_size: 256mb 
     environment:
       POSTGRES_DB: fastpinpon
       POSTGRES_USER: fastpinpon
@@ -160,6 +161,7 @@ services:
       MY_ADMIN_LNAME: ${MY_ADMIN_LNAME}
       PROXY_ADDRESS_FORWARDING: true
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
+      PASSWORD_USER: ${PASSWORD_USER}
     depends_on:
       - keycloakdb
     volumes:
@@ -237,10 +239,6 @@ services:
     image: ghcr.io/loan-mgt/fast-pin-pon/infra/prometheus:latest
     container_name: fast-pin-pon-prometheus
     restart: unless-stopped
-    volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - 9090:9090
     networks:
       - internal
       - internal-keycloak
