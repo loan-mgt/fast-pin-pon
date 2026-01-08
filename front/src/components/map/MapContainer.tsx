@@ -252,6 +252,7 @@ interface MapContainerProps {
     onEventSelect?: (eventId: string) => void
     selectedEventId?: string | null
     onCreateAtLocation?: (coords: { latitude: number; longitude: number }) => void
+    onMapReady?: (flyTo: (lng: number, lat: number, zoom?: number) => void) => void
 }
 
 export function MapContainer({
@@ -260,6 +261,7 @@ export function MapContainer({
     onEventSelect,
     selectedEventId,
     onCreateAtLocation,
+    onMapReady,
     buildings = [],
 }: Readonly<MapContainerProps>): JSX.Element {
     const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -295,7 +297,15 @@ export function MapContainer({
         })
 
         mapRef.current = map
-        map.on('load', () => map.resize())
+        map.on('load', () => {
+            map.resize()
+            // Expose flyTo function to parent component
+            if (onMapReady) {
+                onMapReady((lng: number, lat: number, zoom = 14) => {
+                    map.flyTo({ center: [lng, lat], zoom, duration: 1500, essential: true })
+                })
+            }
+        })
 
         if (onCreateAtLocation) {
             map.on('contextmenu', (e) => {
