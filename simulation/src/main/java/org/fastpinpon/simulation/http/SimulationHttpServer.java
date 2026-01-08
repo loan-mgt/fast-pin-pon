@@ -51,38 +51,55 @@ public final class SimulationHttpServer {
     }
 
     private void handleTick(HttpExchange exchange) throws IOException {
+        String clientIP = exchange.getRemoteAddress().toString();
+        LOG.log(Level.INFO, "[HTTP] <-- {0} {1} from {2}",
+                new Object[]{exchange.getRequestMethod(), "/tick", clientIP});
+        
         try {
             if (!"GET".equalsIgnoreCase(exchange.getRequestMethod()) && !"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                LOG.log(Level.WARNING, "[HTTP] --> 405 Method Not Allowed");
                 sendPlain(exchange, 405, "Method Not Allowed");
                 return;
             }
             Map<String, String> query = parseQuery(exchange.getRequestURI());
             int count = parsePositiveInt(query.get("count"), 1);
+            LOG.log(Level.INFO, "[HTTP] Processing {0} tick(s)...", count);
+            
             for (int i = 0; i < count; i++) {
                 engine.tick();
             }
-            writeSnapshots(exchange);
+            
+            List<VehicleSnapshot> snapshots = engine.snapshotVehicles();
+            LOG.log(Level.INFO, "[HTTP] --> 200 OK | {0} vehicles returned", snapshots.size());
+            writeSnapshots(exchange, snapshots);
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[SIM] /tick failed", e);
+            LOG.log(Level.WARNING, "[HTTP] --> 500 Error: {0}", e.getMessage());
             sendPlain(exchange, 500, "tick failed: " + e.getMessage());
         }
     }
 
     private void handleUnits(HttpExchange exchange) throws IOException {
+        String clientIP = exchange.getRemoteAddress().toString();
+        LOG.log(Level.INFO, "[HTTP] <-- {0} {1} from {2}",
+                new Object[]{exchange.getRequestMethod(), "/units", clientIP});
+        
         try {
             if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                LOG.log(Level.WARNING, "[HTTP] --> 405 Method Not Allowed");
                 sendPlain(exchange, 405, "Method Not Allowed");
                 return;
             }
-            writeSnapshots(exchange);
+            
+            List<VehicleSnapshot> snapshots = engine.snapshotVehicles();
+            LOG.log(Level.INFO, "[HTTP] --> 200 OK | {0} vehicles returned", snapshots.size());
+            writeSnapshots(exchange, snapshots);
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[SIM] /units failed", e);
+            LOG.log(Level.WARNING, "[HTTP] --> 500 Error: {0}", e.getMessage());
             sendPlain(exchange, 500, "units failed: " + e.getMessage());
         }
     }
 
-    private void writeSnapshots(HttpExchange exchange) throws IOException {
-        List<VehicleSnapshot> payload = engine.snapshotVehicles();
+    private void writeSnapshots(HttpExchange exchange, List<VehicleSnapshot> payload) throws IOException {
         byte[] body = MAPPER.writeValueAsBytes(payload);
         exchange.getResponseHeaders().set("Content-Type", "application/json");
         exchange.sendResponseHeaders(200, body.length);

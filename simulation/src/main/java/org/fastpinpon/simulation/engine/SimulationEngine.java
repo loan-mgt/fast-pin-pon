@@ -31,6 +31,7 @@ public final class SimulationEngine {
     private static final Logger LOG = Logger.getLogger(SimulationEngine.class.getName());
 
     private final ApiClient api;
+    private final String apiBaseUrl;
     private final Random random = new Random();
     private final List<Vehicle> vehicles = new ArrayList<>();
     private final DecisionEngine decisionEngine;
@@ -130,24 +131,27 @@ public final class SimulationEngine {
      * Create a simulation engine with the default random incident generator.
      * 
      * @param api the API client
+     * @param apiBaseUrl the API base URL for routing
      */
-    public SimulationEngine(ApiClient api) {
-        this(api, new IncidentGenerator());
+    public SimulationEngine(ApiClient api, String apiBaseUrl) {
+        this(api, apiBaseUrl, new IncidentGenerator());
     }
 
     /**
      * Create a simulation engine with a custom incident source.
      * 
      * @param api the API client
+     * @param apiBaseUrl the API base URL for routing
      * @param incidentSource the source of incidents
      */
-    public SimulationEngine(ApiClient api, IncidentSource incidentSource) {
+    public SimulationEngine(ApiClient api, String apiBaseUrl, IncidentSource incidentSource) {
         this.api = api;
+        this.apiBaseUrl = apiBaseUrl;
         // Load stations from API; fallback to defaults
         List<BaseLocation> stations = api.loadStations();
         this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases);
+        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl);
         if (incidentSource != null) {
             this.incidentSources.add(incidentSource);
         }
@@ -158,14 +162,16 @@ public final class SimulationEngine {
      * Use addIncidentSource() to add sources, or call processIncident() directly.
      * 
      * @param api the API client
+     * @param apiBaseUrl the API base URL for routing
      * @param noGenerator set to true to create without generator
      */
-    public SimulationEngine(ApiClient api, boolean noGenerator) {
+    public SimulationEngine(ApiClient api, String apiBaseUrl, boolean noGenerator) {
         this.api = api;
+        this.apiBaseUrl = apiBaseUrl;
         List<BaseLocation> stations = api.loadStations();
         this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases);
+        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl);
         if (!noGenerator) {
             this.incidentSources.add(new IncidentGenerator());
         }

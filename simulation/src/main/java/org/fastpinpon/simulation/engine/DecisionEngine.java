@@ -38,7 +38,7 @@ public final class DecisionEngine {
     private final ApiClient api;
     private final List<Incident> activeIncidents = new ArrayList<>();
     private final List<Vehicle> vehicles;
-    private final RoutingService routingService = new RoutingService();
+    private final RoutingService routingService;
     private final List<BaseLocation> bases;
 
     // Distance thresholds in METERS
@@ -105,10 +105,13 @@ public final class DecisionEngine {
      * 
      * @param api the API client for backend communication
      * @param vehicles the fleet of vehicles to manage
+     * @param bases the list of base locations
+     * @param apiBaseUrl the base URL of the API for routing
      */
-    public DecisionEngine(ApiClient api, List<Vehicle> vehicles, List<BaseLocation> bases) {
+    public DecisionEngine(ApiClient api, List<Vehicle> vehicles, List<BaseLocation> bases, String apiBaseUrl) {
         this.api = api;
         this.vehicles = vehicles;
+        this.routingService = new RoutingService(apiBaseUrl);
         if (bases != null && !bases.isEmpty()) {
             this.bases = new ArrayList<>(bases);
         } else {

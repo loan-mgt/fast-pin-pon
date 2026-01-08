@@ -31,7 +31,7 @@ func (s *Server) routes() http.Handler {
 	r.Route("/v1", func(v1 chi.Router) {
 		v1.Get("/event-types", s.handleListEventTypes)
 		v1.Get("/unit-types", s.handleListUnitTypes)
-			v1.Get("/buildings", s.handleListBuildings)
+		v1.Get("/buildings", s.handleListBuildings)
 
 		v1.Get("/events", s.handleListEvents)
 		v1.Post("/events", s.handleCreateEvent)
@@ -66,6 +66,14 @@ func (s *Server) routes() http.Handler {
 		v1.Get("/dispatch/pending", s.handleListPendingInterventions)
 		v1.Get("/interventions/{interventionID}/candidates", s.handleGetDispatchCandidates)
 		v1.Get("/interventions/{interventionID}/dispatch-info", s.handleGetInterventionDispatchInfo)
+
+		// Routing endpoints (pgRouting)
+		v1.Post("/routing/calculate", s.handleCalculateRoute)
+		v1.Get("/units/{unitID}/route", s.handleGetUnitRoute)
+		v1.Post("/units/{unitID}/route", s.handleSaveUnitRoute)
+		v1.Delete("/units/{unitID}/route", s.handleDeleteUnitRoute)
+		v1.Patch("/units/{unitID}/route/progress", s.handleUpdateRouteProgress)
+		v1.Get("/units/{unitID}/route/position", s.handleGetRoutePosition)
 
 	})
 

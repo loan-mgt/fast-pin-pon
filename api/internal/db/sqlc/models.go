@@ -318,6 +318,17 @@ type Unit struct {
 	MicrobitID    *string            `json:"microbit_id"`
 }
 
+type UnitRoute struct {
+	UnitID                   pgtype.UUID        `json:"unit_id"`
+	InterventionID           pgtype.UUID        `json:"intervention_id"`
+	RouteGeometry            interface{}        `json:"route_geometry"`
+	RouteLengthMeters        float64            `json:"route_length_meters"`
+	EstimatedDurationSeconds float64            `json:"estimated_duration_seconds"`
+	ProgressPercent          float64            `json:"progress_percent"`
+	CreatedAt                pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
+}
+
 type UnitTelemetry struct {
 	ID             int64              `json:"id"`
 	UnitID         pgtype.UUID        `json:"unit_id"`

@@ -30,7 +30,7 @@ public class SimulationApp {
         configureFileLogging();
         String apiBaseUrl = resolveApiBaseUrl();
         ApiClient api = new ApiClient(apiBaseUrl);
-        SimulationEngine engine = new SimulationEngine(api);
+        SimulationEngine engine = new SimulationEngine(api, apiBaseUrl);
 
         boolean autoTickEnabled = !envFlag(DISABLE_AUTO_TICK_ENV, false);
         boolean httpEnabled = envFlag(HTTP_ENABLED_ENV, true);
