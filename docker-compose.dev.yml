@@ -53,7 +53,7 @@ services:
     depends_on:
       - api
     environment:
-      - API_BASE_URL=http://api:8080
+      - API_BASE_URL=https://api.fast-pin-pon.4loop.org/
     ports:
       - "8090:8090"
 

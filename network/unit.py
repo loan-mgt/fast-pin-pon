@@ -1,6 +1,6 @@
-# micro:bit Unit Controller - Unidirectionnel
-# PC2: Reçoit données radio du relay, envoie via UART au bridge_receiver
-from microbit import display, Image, sleep, running_time, button_a, button_b
+# micro:bit Unit - UART to Radio (PC1)
+# Reçoit données du bridge_emitter via UART, transmet par radio au relay
+from microbit import display, Image, sleep, uart, running_time, button_a, button_b
 import radio
 
 # Radio configuration - MUST match relay.py
@@ -8,7 +8,6 @@ radio.config(channel=7, length=128, power=7)
 radio.on()
 
 # Constants
-SECRET_KEY = "FPP2024"
 MICROBIT_ID = "MB001"
 CODES = ["AVL", "UWY", "ONS", "UNA", "OFF"]
 
@@ -17,23 +16,6 @@ status_idx = 0
 last_active = 0
 last_send = 0
 cooldown_until = 0
-
-
-def crc8(d):
-    c = 0
-    for ch in d:
-        c = (c + ord(ch)) & 0xFF
-        c = ((c << 1) | (c >> 7)) & 0xFF
-    return c
-
-
-def sign(d, s):
-    x = SECRET_KEY + d + str(s)
-    r = 0
-    for i, ch in enumerate(x):
-        r = (r + ord(ch) * (i + 1)) & 0xFFFF
-    return r
-
 
 def get_img(i):
     if i == 0:
@@ -57,10 +39,10 @@ def show_status():
 
 
 def send_mbit_status():
-    """Send current status to bridge_receiver via UART (print)"""
+    """Send current status via radio to relay"""
     global last_send
     msg = "MBIT:{},{}".format(MICROBIT_ID, CODES[status_idx])
-    print(msg)
+    radio.send(msg)
     last_send = running_time()
 
 
@@ -76,52 +58,52 @@ def set_status(new_idx):
 
 
 # Startup
+display.show(Image.YES)
+sleep(500)
+
+# Initialize UART for USB serial
+uart.init(baudrate=115200, tx=None, rx=None)
+sleep(500)
+
 display.scroll(MICROBIT_ID, delay=80)
 sleep(300)
 show_status()
 send_mbit_status()
 
+raw_buffer = b""
+
 while True:
     now = running_time()
     
-    # === PART 1: Receive radio messages from relay ===
-    incoming = radio.receive()
-    while incoming:
-        # Try to parse signed packet
-        try:
-            parts = incoming.split("|")
-            if len(parts) == 4:
-                seq = int(parts[0])
-                data = parts[1]
-                crc_val = int(parts[2])
-                sig_val = int(parts[3])
+    # === PART 1: Read UART and forward to Radio ===
+    try:
+        if uart.any():
+            display.show(Image.DIAMOND)
+            chunk = uart.read(64)
+            if chunk:
+                raw_buffer += chunk
                 
-                # Verify signature
-                if crc8(data) == crc_val and sign(data, seq) == sig_val:
-                    # Handle GPS message - forward to UART
-                    if data.startswith("GPS:"):
-                        print(data)
-                        display.show(Image.ARROW_W)
+                # Process all complete lines
+                while b"\n" in raw_buffer:
+                    nl_pos = raw_buffer.find(b"\n")
+                    line_bytes = raw_buffer[:nl_pos]
+                    raw_buffer = raw_buffer[nl_pos + 1:]
                     
-                    # Handle STA message - forward to UART
-                    elif data.startswith("STA:"):
-                        print(data)
-                        
-                        # Apply status change locally if it's for THIS microbit
-                        payload = data[4:].split(",")
-                        if len(payload) >= 2:
-                            target_id = payload[0].strip()
-                            if target_id == MICROBIT_ID and now >= cooldown_until:
-                                new_status = payload[1].strip().upper()
-                                for i, code in enumerate(CODES):
-                                    if new_status.startswith(code):
-                                        if i != status_idx:
-                                            set_status(i)
-                                        break
-        except:
-            pass
-        
-        incoming = radio.receive()
+                    # Remove \r if present
+                    line_bytes = line_bytes.replace(b"\r", b"")
+                    if len(line_bytes) > 5 and len(line_bytes) < 120:
+                        try:
+                            line = ""
+                            for b in line_bytes:
+                                if 32 <= b < 127:
+                                    line += chr(b)
+                            if line and len(line) > 5:
+                                radio.send(line)
+                                display.show(Image.ARROW_E)
+                        except:
+                            pass
+    except:
+        pass
     
     # === PART 2: Button handling ===
     # A+B long press -> toggle OFF
@@ -143,7 +125,7 @@ while True:
     
     # Ignore during cooldown
     if now < cooldown_until:
-        sleep(50)
+        sleep(5)
         continue
     
     # Button A: set unavailable
@@ -165,4 +147,4 @@ while True:
     if now - last_send > 5000:
         send_mbit_status()
     
-    sleep(50)
+    sleep(5)
