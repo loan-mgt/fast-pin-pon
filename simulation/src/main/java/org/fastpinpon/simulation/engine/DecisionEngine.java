@@ -353,7 +353,7 @@ public final class DecisionEngine {
             
             // Calculate route once for the convoy leader (first vehicle from this base)
             Vehicle leader = convoy.get(0);
-            List<double[]> sharedRoute = routingService.getRoute(
+            List<double[]> sharedRoute = routingService.getWaypoints(
                     leader.getLat(), leader.getLon(),
                     incident.getLat(), incident.getLon()
             );
@@ -606,7 +606,7 @@ public final class DecisionEngine {
         if (homeBase == null) {
             return;
         }
-        List<double[]> returnRoute = routingService.getRoute(
+        List<double[]> returnRoute = routingService.getWaypoints(
                 v.getLat(), v.getLon(),
                 homeBase.lat, homeBase.lon
         );
@@ -824,7 +824,7 @@ public final class DecisionEngine {
         if (homeBase == null) {
             return;
         }
-        List<double[]> returnRoute = routingService.getRoute(
+        List<double[]> returnRoute = routingService.getWaypoints(
                 v.getLat(), v.getLon(),
                 homeBase.lat, homeBase.lon
         );

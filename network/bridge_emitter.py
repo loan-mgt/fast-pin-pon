@@ -196,6 +196,38 @@ def send_all_microbits(ser: serial.Serial, microbit_ids: List[str],
     print("[INFO] Envoi terminé")
 
 
+def debug_log_states(states: List[Dict], unit_to_microbit: Dict[str, str]) -> None:
+    """Log the first few states for debugging."""
+    print(f"[DEBUG] Simulateur: {len(states)} états reçus")
+    for s in states[:3]:
+        uid = s.get("unitId") or s.get("unit_id")
+        mb = unit_to_microbit.get(uid, "NON MAPPÉ")
+        print(f"  unit_id={uid} -> microbit={mb}")
+
+
+def handle_poll(ser: serial.Serial, simulator_url: str, unit_to_microbit: Dict[str, str], 
+                microbit_latest: Dict[str, Dict], microbit_ids: List[str], 
+                rotation_idx: int) -> int:
+    """Handle a single poll cycle from the simulator."""
+    states = fetch_simulator_tick(simulator_url, 1)
+    if states is None:
+        print("[DEBUG] Simulateur ne répond pas ou erreur")
+        return rotation_idx
+    
+    if not states:
+        print("[DEBUG] Simulateur a retourné 0 états")
+        return rotation_idx
+
+    if rotation_idx == 0:
+        debug_log_states(states, unit_to_microbit)
+    
+    for state in states:
+        process_state(state, unit_to_microbit, microbit_latest, microbit_ids)
+    
+    send_all_microbits(ser, microbit_ids, microbit_latest)
+    return rotation_idx
+
+
 def run_main_loop(ser: serial.Serial, simulator_url: str, poll_interval: float,
                   unit_to_microbit: Dict[str, str]) -> None:
     """Run the main polling loop."""
@@ -206,27 +238,10 @@ def run_main_loop(ser: serial.Serial, simulator_url: str, poll_interval: float,
 
     while True:
         now = time.time()
-
         if now - last_poll >= poll_interval:
-            states = fetch_simulator_tick(simulator_url, 1)
+            rotation_idx = handle_poll(ser, simulator_url, unit_to_microbit, 
+                                       microbit_latest, microbit_ids, rotation_idx)
             last_poll = now
-            
-            if states is None:
-                print("[DEBUG] Simulateur ne répond pas ou erreur")
-            elif len(states) == 0:
-                print("[DEBUG] Simulateur a retourné 0 états")
-            else:
-                if rotation_idx == 0:
-                    print(f"[DEBUG] Simulateur: {len(states)} états reçus")
-                    for s in states[:3]:
-                        uid = s.get("unitId") or s.get("unit_id")
-                        mb = unit_to_microbit.get(uid, "NON MAPPÉ")
-                        print(f"  unit_id={uid} -> microbit={mb}")
-                
-                for state in states:
-                    process_state(state, unit_to_microbit, microbit_latest, microbit_ids)
-                
-                send_all_microbits(ser, microbit_ids, microbit_latest)
 
         time.sleep(0.1)
 

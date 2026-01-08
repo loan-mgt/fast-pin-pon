@@ -173,9 +173,8 @@ public final class RoutingService {
     }
     
     /**
-     * Legacy method for backward compatibility.
+     * Legacy method for backward compatibility and internal waypoint extraction.
      * Returns waypoints extracted from the GeoJSON route.
-     * This method wraps calculateRoute() for existing code that expects waypoint lists.
      * 
      * @param fromLat starting latitude
      * @param fromLon starting longitude  
@@ -183,7 +182,7 @@ public final class RoutingService {
      * @param toLon destination longitude
      * @return list of waypoint coordinates as lat/lon pairs
      */
-    public List<double[]> getRoute(double fromLat, double fromLon, double toLat, double toLon) {
+    public List<double[]> getWaypoints(double fromLat, double fromLon, double toLat, double toLon) {
         RouteInfo route = calculateRoute(fromLat, fromLon, toLat, toLon);
         if (route == null) {
             return new ArrayList<>();

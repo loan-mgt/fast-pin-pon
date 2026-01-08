@@ -81,17 +81,25 @@ public final class SimulationEngine {
         private final String homeBase;
         private final Instant lastUpdate;
 
-        public VehicleSnapshot(String unitId, String callSign, double lat, double lon, String status,
-                               String incidentId, String unitTypeCode, String homeBase, Instant lastUpdate) {
-            this.unitId = unitId;
-            this.callSign = callSign;
-            this.lat = lat;
-            this.lon = lon;
-            this.status = status;
-            this.incidentId = incidentId;
-            this.unitTypeCode = unitTypeCode;
-            this.homeBase = homeBase;
-            this.lastUpdate = lastUpdate;
+        public VehicleSnapshot(Vehicle v) {
+            this.unitId = v.getUnitId();
+            this.callSign = v.getCallSign();
+            this.lat = v.getLat();
+            this.lon = v.getLon();
+            this.status = snapshotStatus(v.getEtat());
+            String idStr = null;
+            Incident inc = v.getCurrentIncident();
+            if (inc != null) {
+                if (inc.getId() != null) {
+                    idStr = inc.getId().toString();
+                } else {
+                    idStr = inc.getEventId();
+                }
+            }
+            this.incidentId = idStr;
+            this.unitTypeCode = v.getUnitTypeCode();
+            this.homeBase = v.getHomeBase();
+            this.lastUpdate = v.getLastUpdate();
         }
 
         public String getUnitId() {
@@ -275,26 +283,7 @@ public final class SimulationEngine {
     public synchronized List<VehicleSnapshot> snapshotVehicles() {
         List<VehicleSnapshot> snapshots = new ArrayList<>(vehicles.size());
         for (Vehicle v : vehicles) {
-            String incidentId = null;
-            Incident incident = v.getCurrentIncident();
-            if (incident != null) {
-                if (incident.getId() != null) {
-                    incidentId = incident.getId().toString();
-                } else if (incident.getEventId() != null) {
-                    incidentId = incident.getEventId();
-                }
-            }
-            snapshots.add(new VehicleSnapshot(
-                    v.getUnitId(),
-                    v.getCallSign(),
-                    v.getLat(),
-                    v.getLon(),
-                    snapshotStatus(v.getEtat()),
-                    incidentId,
-                    v.getUnitTypeCode(),
-                    v.getHomeBase(),
-                    v.getLastUpdate()
-            ));
+            snapshots.add(new VehicleSnapshot(v));
         }
         return snapshots;
     }
@@ -571,10 +560,10 @@ public final class SimulationEngine {
         }
     }
 
-    private String readableState(org.fastpinpon.simulation.model.VehicleState state) {
+    private static String readableState(org.fastpinpon.simulation.model.VehicleState state) {
         switch (state) {
             case DISPONIBLE:
-                return "available";
+                return STATUS_AVAILABLE;
             case EN_ROUTE:
                 return "under way";
             case SUR_PLACE:
@@ -586,7 +575,7 @@ public final class SimulationEngine {
         }
     }
 
-    private String snapshotStatus(org.fastpinpon.simulation.model.VehicleState state) {
+    private static String snapshotStatus(org.fastpinpon.simulation.model.VehicleState state) {
         switch (state) {
             case DISPONIBLE:
                 return STATUS_AVAILABLE;
