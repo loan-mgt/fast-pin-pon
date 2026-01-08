@@ -56,7 +56,7 @@ export function UnitPanel({ units }: Readonly<UnitPanelProps>): JSX.Element {
                       {unit.unit_type_code}
                     </span>
                   </div>
-                  <p className="text-slate-400 text-xs">{unit.home_base}</p>
+                  <p className="text-slate-400 text-xs">{unit.status}</p>
                 </article>
               ))}
             </div>

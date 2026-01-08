@@ -25,7 +25,6 @@ export type UnitSummary = {
     id: string
     call_sign: string
     unit_type_code: string
-    home_base: string
     location_id?: string
     status: string
     microbit_id?: string

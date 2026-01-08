@@ -450,7 +450,7 @@ export function MapContainer({
                         new maplibregl.Popup({ offset: 18, className: 'unit-popup' }).setHTML(
                             `<div style="font-family: system-ui, sans-serif;">
                                 <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${loc.unit.call_sign}</div>
-                                <div style="font-size: 12px; color: #666; margin-bottom: 6px;">${loc.unit.unit_type_code} • ${loc.unit.home_base}</div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 6px;">${loc.unit.unit_type_code}</div>
                                 <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; color: white; background-color: ${color};">${loc.unit.status.replace('_', ' ')}</div>
                             </div>`,
                         ),

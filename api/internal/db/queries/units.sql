@@ -314,3 +314,23 @@ INSERT INTO unit_telemetry (
     heading,
     speed_kmh,
     status_snapshot;
+
+-- name: UpdateUnitStation :one
+UPDATE units
+SET
+    location_id = sqlc.narg(location_id),
+    updated_at = NOW()
+WHERE id = sqlc.arg(id)
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    location_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at;

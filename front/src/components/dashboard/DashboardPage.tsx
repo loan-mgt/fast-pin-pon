@@ -4,8 +4,11 @@ import { useState, useMemo } from 'react'
 import type { UnitSummary, Building } from '../../types'
 import { Card } from '../ui/card'
 import { AssignMicrobitModal } from './AssignMicrobitModal'
+import { EditUnitModal } from './EditUnitModal'
 import { fastPinPonService } from '../../services/FastPinPonService'
 import { useAuth } from '../../auth/AuthProvider'
+
+type UnitStatus = 'available' | 'available_hidden' | 'under_way' | 'on_site' | 'unavailable' | 'offline'
 
 interface DashboardPageProps {
   units: UnitSummary[]
@@ -16,7 +19,7 @@ interface DashboardPageProps {
 }
 
 type SortDirection = 'asc' | 'desc'
-type SortKey = 'call_sign' | 'unit_type_code' | 'home_base' | 'status' | 'microbit_id' | 'last_contact_at'
+type SortKey = 'call_sign' | 'unit_type_code' | 'station' | 'status' | 'microbit_id' | 'last_contact_at'
 
 type SortRule = {
   key: SortKey
@@ -50,6 +53,7 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
   const [selectedUnitCallSign, setSelectedUnitCallSign] = useState<string | undefined>(undefined)
   const [selectedUnitMicrobitId, setSelectedUnitMicrobitId] = useState<string | undefined>(undefined)
+  const [editingUnit, setEditingUnit] = useState<UnitSummary | null>(null)
   const [sortRules, setSortRules] = useState<SortRule[]>([])
   const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null)
   const microbitPool = ['MB001', 'MB002', 'MB003', 'MB004', 'MB005', 'MB006', 'MB007', 'MB008', 'MB009', 'MB010']
@@ -75,6 +79,18 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
   const handleUnassign = async () => {
     if (!selectedUnitId) return
     await fastPinPonService.unassignMicrobit(selectedUnitId, token ?? undefined)
+    if (onRefresh) onRefresh()
+  }
+
+  const handleEditUnit = async (updates: { status?: UnitStatus; locationId?: string | null }) => {
+    if (!editingUnit) return
+
+    if (updates.status) {
+      await fastPinPonService.updateUnitStatus(editingUnit.id, updates.status, token ?? undefined)
+    }
+    if (updates.locationId !== undefined) {
+      await fastPinPonService.updateUnitStation(editingUnit.id, updates.locationId, token ?? undefined)
+    }
     if (onRefresh) onRefresh()
   }
 
@@ -109,14 +125,20 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
     })
   }
 
+  // Get station name from location_id for sorting
+  const getStationName = (locationId: string | undefined): string => {
+    if (!locationId) return ''
+    return buildings.find(b => b.id === locationId)?.name ?? ''
+  }
+
   const sortValue = (unit: UnitSummary, key: SortKey): string | number => {
     switch (key) {
       case 'call_sign':
         return unit.call_sign ?? ''
       case 'unit_type_code':
         return unit.unit_type_code ?? ''
-      case 'home_base':
-        return unit.home_base ?? ''
+      case 'station':
+        return getStationName(unit.location_id)
       case 'status':
         return normalizeStatus(unit.status)
       case 'microbit_id':
@@ -210,9 +232,9 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
                   Type
                   {renderSortIndicator('unit_type_code')}
                 </th>
-                <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('home_base')}>
-                  Base
-                  {renderSortIndicator('home_base')}
+                <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('station')}>
+                  Caserne
+                  {renderSortIndicator('station')}
                 </th>
                 <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('status')}>
                   Statut
@@ -227,14 +249,14 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
                   {renderSortIndicator('last_contact_at')}
                 </th>
                 <th className="px-2 py-2 text-center whitespace-nowrap">
-                  Suppr.
+                  Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-900/60">
               {sortedUnits.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-slate-400">
+                  <td colSpan={8} className="px-3 py-6 text-center text-slate-400">
                     Aucune unité disponible.
                   </td>
                 </tr>
@@ -242,6 +264,7 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
                 sortedUnits.map((unit) => {
                   const normalizedStatus = normalizeStatus(unit.status)
                   const pillClass = STATUS_COLORS[normalizedStatus] ?? STATUS_COLORS.offline
+                  const stationName = buildings.find(b => b.id === unit.location_id)?.name ?? '—'
 
                   return (
                     <tr
@@ -255,7 +278,9 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
                     >
                       <td className="px-3 py-2 font-semibold text-white">{unit.call_sign}</td>
                       <td className="px-3 py-2 text-slate-300">{unit.unit_type_code}</td>
-                      <td className="px-3 py-2 text-slate-300">{unit.home_base}</td>
+                      <td className="px-3 py-2 text-slate-300">
+                        {stationName}
+                      </td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold border rounded-full ${pillClass}`}>
                           <span className="inline-flex w-2 h-2 rounded-full bg-current" aria-hidden="true" />
@@ -264,27 +289,44 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
                       </td>
                       <td className="px-3 py-2 text-slate-300">{unit.microbit_id ?? '—'}</td>
                       <td className="px-3 py-2 text-slate-300 whitespace-nowrap">{formatDate(unit.last_contact_at)}</td>
-                      <td className="px-1 py-2 text-center w-16">
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteUnit(unit.id, e)}
-                          disabled={deletingUnitId === unit.id}
-                          className="p-1.5 rounded-md text-red-400/70 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 hover:scale-110 active:scale-95"
-                          aria-label={`Supprimer ${unit.call_sign}`}
-                          title="Supprimer"
-                        >
-                          {deletingUnitId === unit.id ? (
-                            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                              <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                      <td className="px-1 py-2 text-center w-24">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingUnit(unit)
+                            }}
+                            className="p-1.5 rounded-md text-cyan-400/70 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all duration-150 hover:scale-110 active:scale-95"
+                            aria-label={`Modifier ${unit.call_sign}`}
+                            title="Modifier"
+                          >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
-                          ) : (
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="18" y1="6" x2="6" y2="18" />
-                              <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                          )}
-                        </button>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteUnit(unit.id, e)}
+                            disabled={deletingUnitId === unit.id}
+                            className="p-1.5 rounded-md text-red-400/70 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 hover:scale-110 active:scale-95"
+                            aria-label={`Supprimer ${unit.call_sign}`}
+                            title="Supprimer"
+                          >
+                            {deletingUnitId === unit.id ? (
+                              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                                <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -307,6 +349,14 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
         microbitOptions={availableMicrobits}
         unitCallSign={selectedUnitCallSign}
         initialSelection={selectedUnitMicrobitId}
+      />
+
+      <EditUnitModal
+        isOpen={editingUnit !== null}
+        onClose={() => setEditingUnit(null)}
+        onSubmit={handleEditUnit}
+        unit={editingUnit}
+        buildings={buildings}
       />
     </div>
   )

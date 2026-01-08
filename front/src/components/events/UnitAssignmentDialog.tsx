@@ -162,7 +162,6 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
               <p className="font-bold text-white text-sm tracking-tight">{unit.call_sign}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="bg-sky-500/10 px-1.5 py-0.5 rounded font-bold text-[0.65rem] text-sky-400">{unit.unit_type_code}</span>
-                <span className="font-medium text-[0.65rem] text-slate-500">• {unit.home_base}</span>
               </div>
             </div>
           </div>

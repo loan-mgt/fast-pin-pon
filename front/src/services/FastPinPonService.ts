@@ -2,7 +2,7 @@ import type { EventSummary, UnitSummary, UnitType, Building } from '../types'
 import type { CreateEventRequest, EventType } from '../types/eventTypes'
 
 type InterventionStatus = 'created' | 'on_site' | 'completed' | 'cancelled'
-type UnitStatus = 'available' | 'under_way' | 'on_site' | 'unavailable' | 'offline'
+type UnitStatus = 'available' | 'available_hidden' | 'under_way' | 'on_site' | 'unavailable' | 'offline'
 
 /**
  * Service to handle data fetching from the Fast Pin Pon API.
@@ -157,6 +157,22 @@ class FastPinPonService {
     if (!response.ok) {
       const text = await response.text().catch(() => '')
       throw new Error(`Failed to update unit: ${response.status} ${response.statusText} ${text}`)
+    }
+  }
+
+  async updateUnitStation(unitId: string, locationId: string | null, token?: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE_URL}/units/${unitId}/station`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.buildHeaders(token),
+      },
+      body: JSON.stringify({ location_id: locationId }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`Failed to update unit station: ${response.status} ${response.statusText} ${text}`)
     }
   }
 
