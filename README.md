@@ -1,114 +1,215 @@
 # Fast pin pom
 
-A minimal project repository. This README contains a small project illustration and the recommended directory layout.
+## Useful Links
 
-## Illustration
+| Service | URL | Description |
+|---|---|---|
+| **Web UI** | https://fast-pin-pon.4loop.org/ | Main application interface |
+| **API** | https://api.fast-pin-pon.4loop.org/ | Main API Endpoint |
+| **Swagger UI** | https://loan-mgt.github.io/fast-pin-pon/swagger | API Contract & Documentation |
+| **Keycloak** | https://auth.fast-pin-pon.4loop.org/ | Identity Provider |
+| **Grafana** | https://dash.fast-pin-pon.4loop.org/ | Metrics Dashboard |
+| **SonarQube** | https://sonar.4loop.org/dashboard?id=fast-pin-pon | Code Quality Dashboard |
 
-![Doc illustration](doc/illustration.png)
 
-> 📄 Latest API contract: [Swagger UI](https://loan-mgt.github.io/fast-pin-pon/swagger) (auto-published from `main` via GitHub Pages)
->
-> ✅ Code quality dashboard: [SonarQube report](https://sonar.4loop.org/dashboard?id=fast-pin-pon)
+## Architecture
 
+```mermaid
+graph TD
+    subgraph Monitoring [Observability Stack]
+        Grafana
+        Prometheus
+        Loki
+    end
+
+    subgraph UI [User Interface]
+        Front[React Frontend]
+    end
+
+    subgraph Core [Core Backend]
+        API[Go API]
+        DB[(PostGIS)]
+        Auth[Keycloak]
+    end
+
+    subgraph Agents [Automated Agents]
+        Engine[Decision Engine Java]
+        Sim[Simulation Java]
+        Gen[Incident Generator]
+    end
+
+    subgraph Network [Radio Bridge Python]
+        BridgeE[Emitter]
+        BridgeR[Receiver]
+        Radio{{Micro:bit}}
+    end
+
+    %% Monitoring Connections
+    Prometheus -->|Scrape| API
+    Grafana -->|Query| Prometheus
+    Grafana -->|Query| Loki
+
+    %% UI Connections
+    Front -->|REST| API
+    Front -->|OIDC| Auth
+
+    %% Core Connections
+    API -->|SQL| DB
+    API -->|Verify Token| Auth
+
+    %% Agents Connections
+    Gen -->|POST /events| API
+    
+    API -->|Webhook| Engine
+    Engine -->|POST /assignments| API
+    
+    Sim -->|GET /units Positions| API
+    Sim -->|GET /routes Path| API
+    Sim -->|Telemetry| BridgeE
+
+    %% Network Connections
+    BridgeE -->|Serial| Radio
+    Radio -->|Serial| BridgeR
+    BridgeR -->|POST /telemetry| API
+```
 
 ## Project structure
 
-Please follow this file structure:
+The project is organized into microservices and components:
 
 ```
 .
-├─ .github/   # CI
-├─ infra/     # infra config
-├─ network/   # network definitions
-├─ api/       # API code
-└─ simu/      # simulators
+├── api/                # Main Backend (Go) - REST API, DB logic
+├── engine/             # Decision Engine (Java) - Resource optimization
+├── front/              # Frontend (React/Vite) - HQ Application
+├── incidentCreation/   # Load Generator (Java) - Creates random incidents
+├── network/            # Hardware Bridge (Python) - Radio/Serial communication
+├── simulation/         # World Simulation (Java) - Vehicle movements
+├── database/           # Database initialization & PostGIS config
+├── infra/              # Infrastructure (Keycloak, Grafana, Prom, etc.)
+└── .github/            # CI/CD workflows
 ```
 
 ## Components and Features
 
 ### Network (`network/`)
 
-**IoT and Radio Frequency Communication**
+**IoT and Radio Frequency Communication Bridge**
 
-- **Radio Network Infrastructure**
-  - Microbit gateway (emitter) connected to simulation via serial
-  - Microbit receiver (centralized) connected to datacenter
-  - Serial communication between microbits and host machines
+This module implements a physical radio bridge using **BBC Micro:bit v2** devices to process simulation data through a real "air gapped" radio link, simulating realistic field constraints (latency, packet loss, bandwidth).
 
-- **Communication Protocol**
-  - Support various message types (GPS coordinates, intervention status, etc.)
-  - Automatic periodic transmissions (e.g., GPS coordinates)
-  - On-demand transmissions (e.g., end of intervention)
-  - Reliable and robust communications (low sensitivity to packet loss, data coherence)
+#### Architecture Flow
 
-- **Security**
-  - Data integrity verification
-  - Message authenticity
-  - Confidentiality of transmitted data
-  - Encryption of radio communications
+1.  **Simulation Source**: The `simulation` service generates vehicle movements.
+2.  **Emitter Bridge (PC)** (`bridge_emitter.py`):
+    - Polls the simulation HTTP endpoint.
+    - Encapsulates data into a custom serial protocol (SEQ + CRC + Data).
+    - Sends data via USB Serial to the **Unit Micro:bit**.
+3.  **Unit Micro:bit** (`unit.py`):
+    - Receives serial data from the Emitter Bridge.
+    - Broadcasts the payload via **2.4GHz Radio**.
+    - Allows manual status updates via hardware buttons (A/B).
+4.  **Relay Micro:bit** (`relay.py`):
+    - Listens for radio packets on the specific channel.
+    - Relays received messages to the Receiver Bridge via USB Serial.
+5.  **Receiver Bridge (Server)** (`bridge_receiver.py`):
+    - Decodes the serial stream.
+    - Validates data formats (`GPS`, `STA`).
+    - Pushes updates to the Main API (`POST /v1/units/{id}/telemetry`).
+
+#### Protocol & Security
+
+- **Radio Channel**: 7 (Configurable)
+- **Status Codes**: Optimized 3-char codes (`AVL`=Available, `UWY`=Underway, `ONS`=OnSite) to save bandwidth.
+- **Packet Structure**: ASCII-based simple protocol (`TYPE:ID,PAYLOAD`).
+
+#### Usage
+
+```bash
+# Start Emitter (Sim -> Serial)
+SERIAL_PORT=/dev/ttyACM0 SIMULATOR_URL=http://localhost:8090 python3 bridge_emitter.py
+
+# Start Receiver (Serial -> API)
+SERIAL_PORT=/dev/ttyACM1 API_URL=http://localhost:8081 python3 bridge_receiver.py
+```
 
 ### API (`api/`)
 
 **Backend Services and REST API**
 
-- **HQ Application Backend**
-  - Real-time incident tracking
-  - Resource management (vehicles, personnel)
-  - Intervention coordination
-  - Decision-making engine for resource allocation (Java required)
+The core backend is a high-performance **Go** application serving the REST API. It handles business logic, persistence, and coordinates between the Decision Engine and the Frontend.
 
-- **Core Features**
-  - Incident declaration and management
-  - Intervention triggering and lifecycle
-  - Automatic resource allocation suggestions based on:
-    - Incident type
-    - Distance to event location
-    - Operational status (availability, functional state, resource gauges)
-  - Manual override capability for operators
+#### Tech Stack
 
-- **Data Integration**
-  - External data sources (optional enhancements):
-    - Weather events (critical weather conditions)
-    - Road traffic (resource allocation, delays)
-    - Incident history for post-analysis
+- **Language**: Go
+- **Router**: [`chi`](https://github.com/go-chi/chi) (Lightweight, idiomatic)
+- **Database Access**: [`pgx`](https://github.com/jackc/pgx) driver with [`sqlc`](https://sqlc.dev/) for type-safe, generated SQL code.
+- **Database**: PostgreSQL with **PostGIS** extension (spatial queries) and **pgRouting** (pathfinding).
+- **Observability**: Prometheus metrics (`/metrics`) and structured JSON logging (`zerolog`).
 
-- **Security & Authentication**
-  - Keycloak authentication server integration
-  - OWASP Top 10 best practices
-  - Secure/encrypted API exchanges
-  - Access control and restricted permissions
+#### Key Capability Domains
 
-- **Real-time Communication**
-  - Support for pull/push mechanisms (HTTP REST, SSE, WebSocket)
-  - Optimized refresh rate for real-time data
+1.  **Event & Intervention Management**:
+    - Full lifecycle management: Incident creation -> Intervention -> Assignments -> Resolution.
+    - Tracks status changes and audit logs (`/v1/events/{id}/logs`).
 
-### Simulation (`simu/`)
+2.  ** Fleet Management**:
+    - Real-time unit tracking (CRUD, status, location updates).
+    - Spatial queries: "Find units nearby" (`/v1/units/nearby`).
+    - Hardware linking: Associate units with Micro:bit IDs (`/v1/units/{id}/microbit`).
 
-**Incident and Vehicle Simulation System (Java required)**
+3.  **Routing**:
+    - Calculates optimal routes using **pgRouting**.
+    - Stores and tracks unit progression along calculated paths.
 
-- **Incident Simulation**
-  - Generate simulated incidents with:
-    - Incident type
-    - Location coordinates
-    - Severity level
-    - Timestamp
-  - Incident evolution over time
-  - Coherent transmission to HQ App
+### Simulation (`simulation/`)
 
-- **Vehicle Simulation**
-  - Simulate vehicles, their location, and movements
-  - GPS coordinate generation and updates
-  - Vehicle status simulation (availability, operational state)
-  - Terminal input simulation or test interface for operator input
+**Vehicle Physics & World State (Java)**
 
-- **Integration Modes**
-  - Option 1: Dedicated simulation interface for operator monitoring
-  - Option 2: Direct automated access to HQ App API (with clearly defined permissions)
-  - Modular architecture for easy switch between simulation and real-world data
+This component bridges the gap between the static database state and the "real world" movement of vehicles. It runs a game loop to update vehicle positions along their assigned routes.
 
-- **Testing & Validation**
-  - Represent external system states and state changes
-  - Validate end-to-end system functionality (capture, processing/decision, restitution)
+- **Mechanics**:
+  - Runs a **1 Hz Game Loop** (1 tick/second) using a `ScheduledExecutorService`.
+  - On each tick, it calculates the new position of every moving unit based on its speed and path.
+- **Interfaces**:
+  - **API Client**: Pushes updates to the Main API.
+  - **HTTP Server** (Port 8090): Exposes a `/tick` endpoint polled by the **Network Bridge** to fetch "physical" coordinates for radio transmission.
+- **Components**:
+  - `SimulationEngine`: Main logic coordinator.
+  - `RoutingService`: Interpolates positions along decoding Polyline paths.
+
+### Decision Engine (`engine/`)
+
+**Intelligent Dispatch System (Java)**
+
+The "Brain" of the operation. It assigns the most appropriate resource to each intervention using a multi-objective optimization algorithm.
+
+- **Trigger Modes**:
+  - **Webhook**: Immediate calculation when API notifies of a new intervention (`POST /dispatch/assign`).
+  - **Scheduler**: Periodically runs (every N seconds) to re-optimize pending interventions or reassign freed units.
+- **Scoring Algorithm** (Lower is better):
+    ```
+    Score = (w1 * TravelTime) 
+          + (w2 * CoveragePenalty) 
+          + (w3 * CapabilityBonus) 
+          + (w4 * PreemptionCost)
+    ```
+  - **Travel Time**: Estimated ETA from OSRM/pgRouting.
+  - **Coverage**: Penalties for leaving a fire station below minimum reserve capacity.
+  - **Preemption**: Can re-route units from low-priority tasks to high-priority emergencies (if `SeverityDelta > Threshold`).
+- **Configuration**: Weights and coefficients are loaded from `DispatchConfig` to tune behavior without recompilation.
+
+### Incident Generator (`incidentCreation/`)
+
+**Load & Chaos Generator (Java)**
+
+A standalone service designed to stimulate the system by generating random emergency events, acting as a "Chaos Monkey" or scenario player.
+
+- **Behavior**:
+  - Waits for API availability on startup (resilient boot).
+  - Generates random incidents (different types, severities, locations) at configurable intervals (Default: 60s).
+  - Simulates call-center operators entering data via the API (`POST /v1/events`).
+- **Use Case**: Used for load testing, demos, and ensuring the system always has active data flow during development.
 
 
 ### Keycloak Integration
@@ -144,109 +245,118 @@ erDiagram
   Personnel ||--o{ InterventionCrew : "assigned"
   Interventions ||--o{ InterventionCrew : "staffs"
 
+  DispatchConfig {
+    text key
+    numeric value
+    text description
+  }
+
+  Locations {
+    uuid id
+    text name
+    text type
+    geometry location
+  }
+
   EventTypes {
-    string ETY_code
-    string ETY_name
-    string ETY_description
-    int ETY_default_severity
-    json ETY_recommended_units
+    text code
+    text name
+    text description
+    integer default_severity
+    text[] recommended_unit_types
   }
 
   Events {
-    string EVT_id
-    string EVT_title
-    string EVT_description
-    string EVT_report_source
-    string EVT_address
-    float EVT_latitude
-    float EVT_longitude
-    int EVT_severity
-    string EVT_status
-    string EVT_ETY_code
-    datetime EVT_reported_at
-    datetime EVT_closed_at
+    uuid id
+    text title
+    text description
+    text report_source
+    text address
+    geometry location
+    integer severity
+    text event_type_code
+    datetime reported_at
+    datetime closed_at
   }
 
   EventLogs {
-    string EVL_id
-    string EVL_EVT_id
-    datetime EVL_datetime
-    string EVL_code
-    json EVL_payload
-    string EVL_actor
+    bigint id
+    uuid event_id
+    datetime created_at
+    text code
+    jsonb payload
+    text actor
   }
 
   Interventions {
-    string IVN_id
-    string IVN_EVT_id
-    string IVN_status
-    int IVN_priority
-    string IVN_decision_mode
-    string IVN_created_by
-    datetime IVN_created_at
-    datetime IVN_started_at
-    datetime IVN_completed_at
+    uuid id
+    uuid event_id
+    intervention_status status
+    integer priority
+    decision_mode decision_mode
+    text created_by
+    datetime created_at
+    datetime started_at
+    datetime completed_at
   }
 
   InterventionAssignments {
-    string IAS_id
-    string IAS_IVN_id
-    string IAS_UIT_id
-    string IAS_role
-    string IAS_status
-    datetime IAS_dispatched_at
-    datetime IAS_arrived_at
-    datetime IAS_released_at
+    uuid id
+    uuid intervention_id
+    uuid unit_id
+    text role
+    assignment_status status
+    datetime dispatched_at
+    datetime arrived_at
+    datetime released_at
   }
 
   UnitTypes {
-    string UTY_code
-    string UTY_name
-    string UTY_capabilities
-    int UTY_speed
-    int UTY_max_crew
-    string UTY_illustration
+    text code
+    text name
+    text capabilities
+    integer speed_kmh
+    integer max_crew
+    text illustration
   }
 
   Units {
-    string UIT_id
-    string UIT_call_sign
-    string UIT_UTY_code
-    string UIT_home_base
-    string UIT_status
-    float UIT_latitude
-    float UIT_longitude
-    datetime UIT_last_contact_at
+    uuid id
+    text call_sign
+    text unit_type_code
+    text home_base
+    unit_status status
+    geometry location
+    datetime last_contact_at
+    text microbit_id
   }
 
   UnitTelemetry {
-    string UTM_id
-    string UTM_UIT_id
-    datetime UTM_recorded_at
-    float UTM_latitude
-    float UTM_longitude
-    int UTM_heading
-    float UTM_speed
-    json UTM_status_snapshot
+    bigint id
+    uuid unit_id
+    datetime recorded_at
+    geometry location
+    integer heading
+    float speed_kmh
+    jsonb status_snapshot
   }
 
   Personnel {
-    string PRS_id
-    string PRS_name
-    string PRS_rank
-    string PRS_status
-    string PRS_home_base
-    string PRS_contact
+    uuid id
+    text full_name
+    text rank
+    text status
+    text home_base
+    text contact
   }
 
   InterventionCrew {
-    string IRC_id
-    string IRC_IVN_id
-    string IRC_PRS_id
-    string IRC_role
-    string IRC_status
+    uuid id
+    uuid intervention_id
+    uuid personnel_id
+    text role
+    text status
   }
 ```
-
 
 
