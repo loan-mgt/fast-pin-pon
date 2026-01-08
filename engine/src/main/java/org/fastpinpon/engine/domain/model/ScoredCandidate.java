@@ -112,8 +112,24 @@ public final class ScoredCandidate implements Comparable<ScoredCandidate> {
 
     @Override
     public int compareTo(ScoredCandidate other) {
-        // Lower score is better
-        return Double.compare(this.score, other.score);
+        int res = Double.compare(this.score, other.score);
+        if (res == 0) {
+            return this.unitId.compareTo(other.unitId);
+        }
+        return res;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ScoredCandidate that = (ScoredCandidate) o;
+        return Double.compare(that.score, score) == 0 && Objects.equals(unitId, that.unitId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(unitId, score);
     }
 
     @Override

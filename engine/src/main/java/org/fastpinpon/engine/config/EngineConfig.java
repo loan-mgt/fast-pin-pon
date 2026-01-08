@@ -11,6 +11,11 @@ public final class EngineConfig {
     
     private static final Logger LOG = Logger.getLogger(EngineConfig.class.getName());
 
+    public static final String DEFAULT_API_URL = "http://localhost:8081";
+    public static final int DEFAULT_CALLBACK_PORT = 8082;
+    public static final int DEFAULT_DISPATCH_INTERVAL = 30;
+    public static final String DEFAULT_LOG_FILE = "/app/logs/engine/engine.log";
+
     // API Configuration
     private final String apiBaseUrl;
     
@@ -39,11 +44,11 @@ public final class EngineConfig {
      */
     public static EngineConfig fromEnvironment() {
         return new Builder()
-                .apiBaseUrl(getEnv("API_BASE_URL", "http://localhost:8081"))
-                .callbackPort(getEnvInt("ENGINE_CALLBACK_PORT", 8082))
-                .dispatchIntervalSeconds(getEnvInt("DISPATCH_INTERVAL_SECONDS", 30))
+                .apiBaseUrl(getEnv("API_BASE_URL", DEFAULT_API_URL))
+                .callbackPort(getEnvInt("ENGINE_CALLBACK_PORT", DEFAULT_CALLBACK_PORT))
+                .dispatchIntervalSeconds(getEnvInt("DISPATCH_INTERVAL_SECONDS", DEFAULT_DISPATCH_INTERVAL))
                 .schedulerEnabled(getEnvBoolean("DISPATCH_SCHEDULER_ENABLED", true))
-                .logFilePath(getEnv("ENGINE_LOG_FILE", "/app/logs/engine/engine.log"))
+                .logFilePath(getEnv("ENGINE_LOG_FILE", DEFAULT_LOG_FILE))
                 .fileLoggingEnabled(getEnvBoolean("ENGINE_FILE_LOGGING_ENABLED", true))
                 .build();
     }
@@ -119,11 +124,11 @@ public final class EngineConfig {
      * Builder for EngineConfig.
      */
     public static final class Builder {
-        private String apiBaseUrl = "http://localhost:8081";
-        private int callbackPort = 8082;
-        private int dispatchIntervalSeconds = 30;
+        private String apiBaseUrl = DEFAULT_API_URL;
+        private int callbackPort = DEFAULT_CALLBACK_PORT;
+        private int dispatchIntervalSeconds = DEFAULT_DISPATCH_INTERVAL;
         private boolean schedulerEnabled = true;
-        private String logFilePath = "/app/logs/engine/engine.log";
+        private String logFilePath = DEFAULT_LOG_FILE;
         private boolean fileLoggingEnabled = true;
 
         public Builder apiBaseUrl(String apiBaseUrl) {

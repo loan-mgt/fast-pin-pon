@@ -33,16 +33,16 @@ func (q *Queries) BatchUpdateDispatchConfig(ctx context.Context, arg BatchUpdate
 }
 
 const getBaseMinReserve = `-- name: GetBaseMinReserve :one
-SELECT COALESCE(value, 1)::int AS min_reserve
+SELECT COALESCE(value, 1)::int AS minReserve
 FROM dispatch_config
 WHERE key = 'min_reserve_per_base'
 `
 
 func (q *Queries) GetBaseMinReserve(ctx context.Context) (int32, error) {
 	row := q.db.QueryRow(ctx, getBaseMinReserve)
-	var min_reserve int32
-	err := row.Scan(&min_reserve)
-	return min_reserve, err
+	var minreserve int32
+	err := row.Scan(&minreserve)
+	return minreserve, err
 }
 
 const getDispatchConfigValue = `-- name: GetDispatchConfigValue :one

@@ -38,13 +38,14 @@ public final class Main {
     public static void main(String[] args) {
         try {
             new Main().run();
-        } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Engine startup failed", e);
+        } catch (InterruptedException e) {
+            LOG.log(Level.SEVERE, "Engine interrupted", e);
+            Thread.currentThread().interrupt();
             System.exit(1);
         }
     }
 
-    private void run() throws Exception {
+    private void run() throws InterruptedException {
         LOG.info("=== Fast Pin Pon Decision Engine ===");
 
         // Load configuration

@@ -262,6 +262,15 @@ type InterventionCrew struct {
 	ReleasedAt     pgtype.Timestamptz `json:"released_at"`
 }
 
+type Location struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	Type      string             `json:"type"`
+	Location  interface{}        `json:"location"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Personnel struct {
 	ID        pgtype.UUID        `json:"id"`
 	FullName  string             `json:"full_name"`

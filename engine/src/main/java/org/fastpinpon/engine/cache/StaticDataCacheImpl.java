@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 public final class StaticDataCacheImpl implements StaticDataCache {
 
     private static final Logger LOG = Logger.getLogger(StaticDataCacheImpl.class.getName());
+    private static final String LOADED_PREFIX = "Loaded ";
 
     private final DispatchApiClient apiClient;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
@@ -55,7 +56,7 @@ public final class StaticDataCacheImpl implements StaticDataCache {
                         configMap.put(item.getKey(), item.getValue());
                     }
                     this.config = DispatchConfig.fromMap(configMap);
-                    LOG.info(() -> "Loaded " + configMap.size() + " config values");
+                    LOG.info(() -> LOADED_PREFIX + configMap.size() + " config values");
                 }
 
                 // Parse unit types
@@ -65,7 +66,7 @@ public final class StaticDataCacheImpl implements StaticDataCache {
                         utMap.put(ut.getCode(), ut);
                     }
                     this.unitTypes = Collections.unmodifiableMap(utMap);
-                    LOG.info(() -> "Loaded " + utMap.size() + " unit types");
+                    LOG.info(() -> LOADED_PREFIX + utMap.size() + " unit types");
                 }
 
                 // Parse event types
@@ -75,7 +76,7 @@ public final class StaticDataCacheImpl implements StaticDataCache {
                         etMap.put(et.getCode(), et);
                     }
                     this.eventTypes = Collections.unmodifiableMap(etMap);
-                    LOG.info(() -> "Loaded " + etMap.size() + " event types");
+                    LOG.info(() -> LOADED_PREFIX + etMap.size() + " event types");
                 }
 
                 // Parse bases
@@ -85,7 +86,7 @@ public final class StaticDataCacheImpl implements StaticDataCache {
                         baseMap.put(base.getName(), base);
                     }
                     this.bases = Collections.unmodifiableMap(baseMap);
-                    LOG.info(() -> "Loaded " + baseMap.size() + " bases");
+                    LOG.info(() -> LOADED_PREFIX + baseMap.size() + " bases");
                 }
 
                 this.initialized = true;

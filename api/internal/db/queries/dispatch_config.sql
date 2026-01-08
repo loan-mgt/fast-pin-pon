@@ -57,6 +57,6 @@ GROUP BY home_base
 ORDER BY home_base;
 
 -- name: GetBaseMinReserve :one
-SELECT COALESCE(value, 1)::int AS min_reserve
+SELECT COALESCE(value, 1)::int AS minReserve
 FROM dispatch_config
 WHERE key = 'min_reserve_per_base';

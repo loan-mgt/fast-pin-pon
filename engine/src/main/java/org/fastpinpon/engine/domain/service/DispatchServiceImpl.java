@@ -1,7 +1,6 @@
 package org.fastpinpon.engine.domain.service;
 
 import org.fastpinpon.engine.api.DispatchApiClient;
-import org.fastpinpon.engine.api.dto.CandidateDto;
 import org.fastpinpon.engine.api.dto.CandidatesResponseDto;
 import org.fastpinpon.engine.api.dto.PendingInterventionsDto;
 import org.fastpinpon.engine.cache.StaticDataCache;
@@ -67,27 +66,9 @@ public final class DispatchServiceImpl implements DispatchService {
             List<ScoredCandidate> dispatched = new ArrayList<>();
             for (int i = 0; i < unitsToDispatch; i++) {
                 ScoredCandidate candidate = scoredCandidates.get(i);
-                
-                try {
-                    // Handle preemption if necessary
-                    if (candidate.requiresPreemption()) {
-                        LOG.info(() -> String.format("Preempting %s from intervention %s",
-                                candidate.getCallSign(), candidate.getCurrentInterventionId()));
-                        apiClient.releaseAssignment(candidate.getCurrentAssignmentId());
-                    }
-
-                    // Create new assignment
-                    String role = determineRole(candidate, i);
-                    String assignmentId = apiClient.assignUnit(interventionId, candidate.getUnitId(), role);
-                    
-                    if (assignmentId != null) {
-                        LOG.info(() -> String.format("Dispatched %s to intervention %s (score=%.2f, ETA=%.1fs)",
-                                candidate.getCallSign(), interventionId, candidate.getScore(), candidate.getTravelTimeSeconds()));
-                        dispatched.add(candidate);
-                    }
-
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to dispatch " + candidate.getCallSign(), e);
+                ScoredCandidate result = assignCandidate(interventionId, candidate, i);
+                if (result != null) {
+                    dispatched.add(result);
                 }
             }
 
@@ -97,9 +78,33 @@ public final class DispatchServiceImpl implements DispatchService {
             return dispatched;
 
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Error dispatching for intervention: " + interventionId, e);
+            LOG.log(Level.SEVERE, e, () -> "Error dispatching for intervention: " + interventionId);
             return Collections.emptyList();
         }
+    }
+
+    private ScoredCandidate assignCandidate(String interventionId, ScoredCandidate candidate, int position) {
+        try {
+            // Handle preemption if necessary
+            if (candidate.requiresPreemption()) {
+                LOG.info(() -> String.format("Preempting %s from intervention %s",
+                        candidate.getCallSign(), candidate.getCurrentInterventionId()));
+                apiClient.releaseAssignment(candidate.getCurrentAssignmentId());
+            }
+
+            // Create new assignment
+            String role = determineRole(position);
+            String assignmentId = apiClient.assignUnit(interventionId, candidate.getUnitId(), role);
+
+            if (assignmentId != null) {
+                LOG.info(() -> String.format("Dispatched %s to intervention %s (score=%.2f, ETA=%.1fs)",
+                        candidate.getCallSign(), interventionId, candidate.getScore(), candidate.getTravelTimeSeconds()));
+                return candidate;
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, e, () -> "Failed to dispatch " + candidate.getCallSign());
+        }
+        return null;
     }
 
     @Override
@@ -130,7 +135,7 @@ public final class DispatchServiceImpl implements DispatchService {
             return totalDispatched;
 
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Error in periodic dispatch", e);
+            LOG.log(Level.SEVERE, e, () -> "Error in periodic dispatch");
             return 0;
         }
     }
@@ -138,7 +143,7 @@ public final class DispatchServiceImpl implements DispatchService {
     /**
      * Determine the role for a dispatched unit based on position.
      */
-    private String determineRole(ScoredCandidate candidate, int position) {
+    private String determineRole(int position) {
         if (position == 0) {
             return "lead";
         }

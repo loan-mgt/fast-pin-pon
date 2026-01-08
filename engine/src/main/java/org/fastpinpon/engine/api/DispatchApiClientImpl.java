@@ -94,7 +94,7 @@ public final class DispatchApiClientImpl implements DispatchApiClient {
                     description, response.code(), response.message()));
             return null;
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[API] " + description + " error", e);
+            LOG.log(Level.WARNING, e, () -> "[API] " + description + " error");
             return null;
         }
     }
@@ -110,7 +110,7 @@ public final class DispatchApiClientImpl implements DispatchApiClient {
                         description, response.code(), response.message()));
             }
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[API] " + description + " error", e);
+            LOG.log(Level.WARNING, e, () -> "[API] " + description + " error");
         }
     }
 
