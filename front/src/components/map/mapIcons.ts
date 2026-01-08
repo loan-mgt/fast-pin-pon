@@ -457,7 +457,7 @@ const BUILDING_ICON_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2
   <rect x="47" y="55" width="6" height="10" fill="#9146FF"/>
 </svg>`
 
-const BUILDING_SIZE = 24
+const BUILDING_SIZE = 33
 
 export function createBuildingMarkerElement(): HTMLDivElement {
   const wrapper = document.createElement('div')

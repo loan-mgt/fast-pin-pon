@@ -126,6 +126,31 @@ func uuidString(u pgtype.UUID) string {
 	return id.String()
 }
 
+func uuidStringOptional(u pgtype.UUID) string {
+	if !u.Valid {
+		return ""
+	}
+	raw := u.Bytes
+	id, err := uuid.FromBytes(raw[:])
+	if err != nil {
+		return ""
+	}
+	return id.String()
+}
+
+func pgUUIDFromStringOptional(value *string) pgtype.UUID {
+	if value == nil || *value == "" {
+		return pgtype.UUID{}
+	}
+	parsed, err := uuid.Parse(strings.TrimSpace(*value))
+	if err != nil {
+		return pgtype.UUID{}
+	}
+	var arr [16]byte
+	copy(arr[:], parsed[:])
+	return pgtype.UUID{Bytes: arr, Valid: true}
+}
+
 func timestamptzFromPtr(t *time.Time) pgtype.Timestamptz {
 	if t == nil {
 		return pgtype.Timestamptz{}

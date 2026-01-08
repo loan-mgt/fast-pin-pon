@@ -209,6 +209,7 @@ class FastPinPonService {
     latitude: number,
     longitude: number,
     token?: string,
+    locationId?: string,
   ): Promise<void> {
     const response = await fetch(`${this.API_BASE_URL}/units`, {
       method: 'POST',
@@ -220,6 +221,7 @@ class FastPinPonService {
         call_sign: callSign,
         unit_type_code: unitTypeCode,
         home_base: homeBase,
+        location_id: locationId,
         status: 'available',
         latitude,
         longitude,
@@ -242,6 +244,20 @@ class FastPinPonService {
       const text = await response.text().catch(() => '')
       throw new Error(`Failed to delete unit: ${response.status} ${response.statusText} ${text}`)
     }
+  }
+
+  /**
+   * Filter units by status - useful for excluding available_hidden from map display
+   */
+  getVisibleUnits(units: UnitSummary[]): UnitSummary[] {
+    return units.filter(unit => unit.status !== 'available_hidden')
+  }
+
+  /**
+   * Filter units by location (caserne)
+   */
+  getUnitsByLocation(units: UnitSummary[], locationId: string): UnitSummary[] {
+    return units.filter(unit => unit.location_id === locationId)
   }
 }
 

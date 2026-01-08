@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
-import type { UnitSummary } from '../../types'
+import type { UnitSummary, Building } from '../../types'
 import { Card } from '../ui/card'
 import { AssignMicrobitModal } from './AssignMicrobitModal'
 import { fastPinPonService } from '../../services/FastPinPonService'
@@ -9,6 +9,9 @@ import { useAuth } from '../../auth/AuthProvider'
 
 interface DashboardPageProps {
   units: UnitSummary[]
+  buildings?: Building[]
+  selectedStationId?: string | null
+  onStationChange?: (stationId: string | null) => void
   onRefresh?: () => void
 }
 
@@ -22,9 +25,12 @@ type SortRule = {
 
 const STATUS_COLORS: Record<string, string> = {
   available: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
+  available_hidden: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/30',
   en_route: 'bg-blue-500/15 text-blue-200 border-blue-300/30',
+  under_way: 'bg-blue-500/15 text-blue-200 border-blue-300/30',
   on_site: 'bg-amber-500/15 text-amber-200 border-amber-300/30',
   maintenance: 'bg-purple-500/15 text-purple-200 border-purple-300/30',
+  unavailable: 'bg-purple-500/15 text-purple-200 border-purple-300/30',
   offline: 'bg-slate-600/20 text-slate-200 border-slate-300/20',
 }
 
@@ -39,7 +45,7 @@ const formatDate = (iso: string) => {
   })}`
 }
 
-export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>): JSX.Element {
+export function DashboardPage({ units, buildings = [], selectedStationId, onStationChange, onRefresh }: Readonly<DashboardPageProps>): JSX.Element {
   const { token } = useAuth()
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
   const [selectedUnitCallSign, setSelectedUnitCallSign] = useState<string | undefined>(undefined)
@@ -122,9 +128,21 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
     }
   }
 
+  // Filter units by selected station
+  const filteredUnits = useMemo(() => {
+    if (!selectedStationId) return units
+    return units.filter(unit => unit.location_id === selectedStationId)
+  }, [units, selectedStationId])
+
+  // Get selected station name for display
+  const selectedStation = useMemo(() => {
+    if (!selectedStationId) return null
+    return buildings.find(b => b.id === selectedStationId) ?? null
+  }, [buildings, selectedStationId])
+
   const sortedUnits = (() => {
-    if (sortRules.length === 0) return units
-    return [...units]
+    if (sortRules.length === 0) return filteredUnits
+    return [...filteredUnits]
       .map((unit, idx) => ({ unit, idx }))
       .sort((a, b) => {
         for (const rule of sortRules) {
@@ -146,6 +164,39 @@ export function DashboardPage({ units, onRefresh }: Readonly<DashboardPageProps>
 
   return (
     <div className="flex flex-col gap-4 flex-1 pt-0 px-6 py-6 bg-slate-950 text-slate-100">
+      {/* Station filter bar */}
+      <div className="flex items-center gap-4">
+        <label htmlFor="station-filter" className="text-sm text-slate-400">
+          Caserne :
+        </label>
+        <select
+          id="station-filter"
+          value={selectedStationId ?? ''}
+          onChange={(e) => onStationChange?.(e.target.value || null)}
+          className="px-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+        >
+          <option value="">Toutes les casernes</option>
+          {buildings.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+        {selectedStation && (
+          <button
+            type="button"
+            onClick={() => onStationChange?.(null)}
+            className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300 transition-colors"
+          >
+            Effacer le filtre
+          </button>
+        )}
+        <span className="ml-auto text-sm text-slate-400">
+          {sortedUnits.length} unité{sortedUnits.length !== 1 ? 's' : ''}
+          {selectedStation && ` dans ${selectedStation.name}`}
+        </span>
+      </div>
+
       <Card className="w-full">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left text-slate-200">

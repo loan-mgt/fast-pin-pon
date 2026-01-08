@@ -18,13 +18,14 @@ type CreateUnitRequest struct {
 	CallSign     string  `json:"call_sign" validate:"required"`
 	UnitTypeCode string  `json:"unit_type_code" validate:"required"`
 	HomeBase     *string `json:"home_base"`
-	Status       string  `json:"status" validate:"required,oneof=available under_way on_site unavailable offline"`
+	LocationID   *string `json:"location_id"`
+	Status       string  `json:"status" validate:"required,oneof=available available_hidden under_way on_site unavailable offline"`
 	Latitude     float64 `json:"latitude" validate:"required,latitude"`
 	Longitude    float64 `json:"longitude" validate:"required,longitude"`
 }
 
 type UpdateUnitStatusRequest struct {
-	Status string `json:"status" validate:"required,oneof=available under_way on_site unavailable offline"`
+	Status string `json:"status" validate:"required,oneof=available available_hidden under_way on_site unavailable offline"`
 }
 
 type UpdateUnitLocationRequest struct {
@@ -67,6 +68,7 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 			CallSign:     row.CallSign,
 			UnitTypeCode: row.UnitTypeCode,
 			HomeBase:     row.HomeBase,
+			LocationID:   row.LocationID,
 			Status:       row.Status,
 			MicrobitID:   row.MicrobitID,
 			Longitude:    row.Longitude,
@@ -106,6 +108,7 @@ func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
 		CallSign:      req.CallSign,
 		UnitTypeCode:  req.UnitTypeCode,
 		HomeBase:      req.HomeBase,
+		LocationID:    pgUUIDFromStringOptional(req.LocationID),
 		Status:        db.UnitStatus(req.Status),
 		Longitude:     req.Longitude,
 		Latitude:      req.Latitude,
@@ -204,6 +207,7 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -260,6 +264,7 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -327,6 +332,7 @@ type unitRowData struct {
 	CallSign       string
 	UnitTypeCode   string
 	HomeBase       *string
+	LocationID     pgtype.UUID
 	Status         db.UnitStatus
 	MicrobitID     *string
 	Longitude      float64
@@ -343,6 +349,7 @@ func mapUnitRow(data unitRowData) UnitResponse {
 		CallSign:       data.CallSign,
 		UnitTypeCode:   data.UnitTypeCode,
 		HomeBase:       optionalString(data.HomeBase),
+		LocationID:     uuidStringOptional(data.LocationID),
 		Status:         string(data.Status),
 		MicrobitID:     optionalString(data.MicrobitID),
 		Location:       GeoPoint{Latitude: data.Latitude, Longitude: data.Longitude},
@@ -359,6 +366,7 @@ func mapCreateUnitRow(row db.CreateUnitRow) UnitResponse {
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     optionalString(row.HomeBase),
+		LocationID:   uuidStringOptional(row.LocationID),
 		Status:       string(row.Status),
 		MicrobitID:   optionalString(row.MicrobitID),
 		Location: GeoPoint{
@@ -420,6 +428,7 @@ func (s *Server) handleAssignMicrobit(w http.ResponseWriter, r *http.Request) {
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -463,6 +472,7 @@ func (s *Server) handleUnassignMicrobit(w http.ResponseWriter, r *http.Request) 
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -505,6 +515,7 @@ func (s *Server) handleGetUnitByMicrobit(w http.ResponseWriter, r *http.Request)
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
 		HomeBase:     row.HomeBase,
+		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
 		Longitude:    row.Longitude,
@@ -573,6 +584,7 @@ func (s *Server) handleListUnitsNearby(w http.ResponseWriter, r *http.Request) {
 			CallSign:       row.CallSign,
 			UnitTypeCode:   row.UnitTypeCode,
 			HomeBase:       row.HomeBase,
+			LocationID:     row.LocationID,
 			Status:         row.Status,
 			MicrobitID:     row.MicrobitID,
 			Longitude:      row.Longitude,

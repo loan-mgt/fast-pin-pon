@@ -146,6 +146,7 @@ SELECT
     u.home_base,
     u.status,
     u.microbit_id,
+    u.location_id,
     (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     u.last_contact_at,
