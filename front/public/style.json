@@ -48,7 +48,9 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "tiles": ["__TILE_URL__"],
+      "tiles": [
+        "__TILE_URL__"
+      ],
       "minzoom": 0,
       "maxzoom": 14
     }
@@ -715,6 +717,49 @@
             ]
           ]
         }
+      }
+    },
+    {
+      "id": "housenumber",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "housenumber",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ]
+      ],
+      "layout": {
+        "text-field": "{housenumber}",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": {
+          "stops": [
+            [
+              17,
+              9
+            ],
+            [
+              18,
+              16
+            ],
+            [
+              20,
+              20
+            ]
+          ]
+        },
+        "visibility": "visible"
+      },
+      "paint": {
+        "text-color": "#000",
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 1
       }
     },
     {
@@ -2585,59 +2630,6 @@
             [
               20,
               22
-            ]
-          ]
-        }
-      }
-    },
-    {
-      "id": "highway-path",
-      "type": "line",
-      "metadata": {
-        "mapbox:group": "1444849345966.4436"
-      },
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "LineString"
-        ],
-        [
-          "!in",
-          "brunnel",
-          "bridge",
-          "tunnel"
-        ],
-        [
-          "==",
-          "class",
-          "path"
-        ],
-        [
-          "!=",
-          "subclass",
-          "steps"
-        ]
-      ],
-      "paint": {
-        "line-color": "#cba",
-        "line-dasharray": [
-          1.5,
-          0.75
-        ],
-        "line-width": {
-          "base": 1.2,
-          "stops": [
-            [
-              15,
-              1.2
-            ],
-            [
-              20,
-              4
             ]
           ]
         }
@@ -4852,7 +4844,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 16,
+      "minzoom": 20,
       "filter": [
         "all",
         [
@@ -4906,7 +4898,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 15,
+      "minzoom": 17,
       "filter": [
         "all",
         [

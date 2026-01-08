@@ -1,0 +1,24 @@
+<settings>
+  <mirrors>
+    <mirror>
+      <id>central</id>
+      <name>Maven Central Mirror</name>
+      <url>https://repo1.maven.org/maven2</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>retry-config</id>
+      <properties>
+        <aether.connector.connectTimeout>30000</aether.connector.connectTimeout>
+        <aether.connector.requestTimeout>30000</aether.connector.requestTimeout>
+        <maven.wagon.http.retryHandler.count>3</maven.wagon.http.retryHandler.count>
+        <maven.wagon.http.retryHandler.class>default</maven.wagon.http.retryHandler.class>
+      </properties>
+    </profile>
+  </profiles>
+  <activeProfiles>
+    <activeProfile>retry-config</activeProfile>
+  </activeProfiles>
+</settings>

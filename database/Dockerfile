@@ -11,6 +11,9 @@ LABEL maintainer="PostGIS Project - https://postgis.net" \
 ENV POSTGIS_VERSION=3.6.1
 ENV POSTGIS_SHA256=849391e75488a749663fbc8d63b846d063d387d286c04dea062820476f84c8f6
 
+ENV PGROUTING_VERSION=3.8.0
+ENV PGROUTING_SHA256=b8a5f0472934fdf7cda3fb4754d01945378d920cdaddc01f378617ddbb9c447f
+
 RUN set -eux \
     && apk add --no-cache --virtual .fetch-deps \
         ca-certificates \
@@ -27,6 +30,16 @@ RUN set -eux \
         --strip-components 1 \
     && rm postgis.tar.gz \
     \
+    && wget -O pgrouting.tar.gz "https://github.com/pgRouting/pgrouting/archive/v${PGROUTING_VERSION}.tar.gz" \
+    && echo "${PGROUTING_SHA256} *pgrouting.tar.gz" | sha256sum -c - \
+    && mkdir -p /usr/src/pgrouting \
+    && tar \
+        --extract \
+        --file pgrouting.tar.gz \
+        --directory /usr/src/pgrouting \
+        --strip-components 1 \
+    && rm pgrouting.tar.gz \
+    \
     && apk add --no-cache --virtual .build-deps \
         \
         gdal-dev \
@@ -42,6 +55,8 @@ RUN set -eux \
         \
         autoconf \
         automake \
+        boost-dev \
+        cmake \
         cunit-dev \
         file \
         g++ \
@@ -65,6 +80,13 @@ RUN set -eux \
     && make -j$(nproc) \
     && make install \
     \
+    && cd /usr/src/pgrouting \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j$(nproc) \
+    && make install \
+    \
 # This section is for refreshing the proj data for the regression tests.
 # It serves as a workaround for an issue documented at https://trac.osgeo.org/postgis/ticket/5316
 # This increases the Docker image size by about 1 MB.
@@ -77,10 +99,11 @@ RUN set -eux \
     && chown -R postgres:postgres /tempdb \
     && su postgres -c 'pg_ctl -D /tempdb init' \
     && su postgres -c 'pg_ctl -D /tempdb -c -l /tmp/logfile -o '-F' start ' \
-    && cd regress \
+    && cd /usr/src/postgis/regress \
     && make -j$(nproc) check RUNTESTFLAGS="--extension --verbose" PGUSER=postgres \
     \
     && su postgres -c 'psql    -c "CREATE EXTENSION IF NOT EXISTS postgis;"' \
+    && su postgres -c 'psql    -c "CREATE EXTENSION IF NOT EXISTS pgrouting;"' \
     && su postgres -c 'psql    -c "CREATE EXTENSION IF NOT EXISTS postgis_raster;"' \
     && su postgres -c 'psql    -c "CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;"' \
     && su postgres -c 'psql    -c "CREATE EXTENSION IF NOT EXISTS fuzzystrmatch; --needed for postgis_tiger_geocoder "' \
@@ -90,6 +113,7 @@ RUN set -eux \
     && su postgres -c 'psql    -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"' \
     && su postgres -c 'psql -t -c "SELECT version();"'              >> /_pgis_full_version.txt \
     && su postgres -c 'psql -t -c "SELECT PostGIS_Full_Version();"' >> /_pgis_full_version.txt \
+    && su postgres -c 'psql -t -c "SELECT * FROM pgr_version();"' >> /_pgis_full_version.txt \
     && su postgres -c 'psql -t -c "\dx"' >> /_pgis_full_version.txt \
     \
     && su postgres -c 'pg_ctl -D /tempdb --mode=immediate stop' \
@@ -104,6 +128,7 @@ RUN set -eux \
         proj \
         sfcgal \
         \
+        boost-libs \
         json-c \
         libstdc++ \
         pcre2 \
@@ -115,6 +140,7 @@ RUN set -eux \
 # clean
     && cd / \
     && rm -rf /usr/src/postgis \
+    && rm -rf /usr/src/pgrouting \
     && apk del .fetch-deps .build-deps \
 # At the end of the build, we print the collected information
 # from the '/_pgis_full_version.txt' file. This is for experimental and internal purposes.

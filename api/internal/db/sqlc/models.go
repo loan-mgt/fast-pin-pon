@@ -186,6 +186,15 @@ func (ns NullUnitStatus) Value() (driver.Value, error) {
 	return string(ns.UnitStatus), nil
 }
 
+type DispatchConfig struct {
+	Key         string             `json:"key"`
+	Value       pgtype.Numeric     `json:"value"`
+	Description string             `json:"description"`
+	MinValue    pgtype.Numeric     `json:"min_value"`
+	MaxValue    pgtype.Numeric     `json:"max_value"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Event struct {
 	ID            pgtype.UUID        `json:"id"`
 	Title         string             `json:"title"`
@@ -253,6 +262,15 @@ type InterventionCrew struct {
 	ReleasedAt     pgtype.Timestamptz `json:"released_at"`
 }
 
+type Location struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	Type      string             `json:"type"`
+	Location  interface{}        `json:"location"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Personnel struct {
 	ID        pgtype.UUID        `json:"id"`
 	FullName  string             `json:"full_name"`
@@ -262,6 +280,29 @@ type Personnel struct {
 	Contact   *string            `json:"contact"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type RoutingWay struct {
+	Gid          int32       `json:"gid"`
+	Class        *string     `json:"class"`
+	Oneway       *int32      `json:"oneway"`
+	Brunnel      *string     `json:"brunnel"`
+	Toll         *bool       `json:"toll"`
+	LengthM      *float64    `json:"length_m"`
+	CostS        *float64    `json:"cost_s"`
+	ReverseCostS *float64    `json:"reverse_cost_s"`
+	Source       *int32      `json:"source"`
+	Target       *int32      `json:"target"`
+	Geom         interface{} `json:"geom"`
+}
+
+type RoutingWaysVerticesPgr struct {
+	ID      int64       `json:"id"`
+	Cnt     *int32      `json:"cnt"`
+	Chk     *int32      `json:"chk"`
+	Ein     *int32      `json:"ein"`
+	Eout    *int32      `json:"eout"`
+	TheGeom interface{} `json:"the_geom"`
 }
 
 type Unit struct {

@@ -9,12 +9,13 @@ import (
 // Config centralises every runtime setting so the rest of the codebase can remain deterministic
 // and easy to test. All fields can be overridden using environment variables.
 type Config struct {
-	AppName  string         `env:"APP_NAME" envDefault:"fast-pin-pon-api"`
-	Env      string         `env:"APP_ENV" envDefault:"development"`
-	LogLevel string         `env:"LOG_LEVEL" envDefault:"info"`
-	LogFile  string         `env:"LOG_FILE" envDefault:"logs/api.log"`
-	HTTP     HTTPConfig     `envPrefix:"HTTP_"`
-	Database DatabaseConfig `envPrefix:"DB_"`
+	AppName   string         `env:"APP_NAME" envDefault:"fast-pin-pon-api"`
+	Env       string         `env:"APP_ENV" envDefault:"development"`
+	LogLevel  string         `env:"LOG_LEVEL" envDefault:"info"`
+	LogFile   string         `env:"LOG_FILE" envDefault:"logs/api.log"`
+	EngineURL string         `env:"ENGINE_CALLBACK_URL" envDefault:"http://engine:8081"`
+	HTTP      HTTPConfig     `envPrefix:"HTTP_"`
+	Database  DatabaseConfig `envPrefix:"DB_"`
 }
 
 // HTTPConfig controls the HTTP server behaviour.
