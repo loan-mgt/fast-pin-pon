@@ -1,0 +1,320 @@
+package server
+
+import (
+	"net/http"
+	"strconv"
+
+	db "fast/pin/internal/db/sqlc"
+)
+
+// Error message constants
+const errRouteNotFound = "route not found for unit"
+
+// =============================================================================
+// Request/Response DTOs for Routing
+// =============================================================================
+
+// CalculateRouteRequest is the request body for route calculation
+type CalculateRouteRequest struct {
+	FromLat float64 `json:"from_lat" validate:"required,latitude"`
+	FromLon float64 `json:"from_lon" validate:"required,longitude"`
+	ToLat   float64 `json:"to_lat" validate:"required,latitude"`
+	ToLon   float64 `json:"to_lon" validate:"required,longitude"`
+}
+
+// CalculateRouteResponse is the response from route calculation
+type CalculateRouteResponse struct {
+	RouteGeoJSON             string  `json:"route_geojson"`
+	RouteLengthMeters        float64 `json:"route_length_meters"`
+	EstimatedDurationSeconds float64 `json:"estimated_duration_seconds"`
+}
+
+// SaveUnitRouteRequest saves a calculated route for a unit
+type SaveUnitRouteRequest struct {
+	InterventionID           *string `json:"intervention_id"`
+	RouteGeoJSON             string  `json:"route_geojson" validate:"required"`
+	RouteLengthMeters        float64 `json:"route_length_meters" validate:"required,gte=0"`
+	EstimatedDurationSeconds float64 `json:"estimated_duration_seconds" validate:"required,gte=0"`
+}
+
+// UnitRouteResponse is the response for unit route queries
+type UnitRouteResponse struct {
+	UnitID                   string   `json:"unit_id"`
+	InterventionID           *string  `json:"intervention_id,omitempty"`
+	RouteGeoJSON             string   `json:"route_geojson"`
+	RouteLengthMeters        float64  `json:"route_length_meters"`
+	EstimatedDurationSeconds float64  `json:"estimated_duration_seconds"`
+	ProgressPercent          float64  `json:"progress_percent"`
+	CurrentLat               *float64 `json:"current_lat,omitempty"`
+	CurrentLon               *float64 `json:"current_lon,omitempty"`
+	RemainingMeters          *float64 `json:"remaining_meters,omitempty"`
+	RemainingSeconds         *float64 `json:"remaining_seconds,omitempty"`
+}
+
+// UpdateProgressRequest updates the progress percentage
+type UpdateProgressRequest struct {
+	ProgressPercent float64 `json:"progress_percent" validate:"required,gte=0,lte=100"`
+}
+
+// UpdateProgressResponse returns the new position after progress update
+type UpdateProgressResponse struct {
+	UnitID           string  `json:"unit_id"`
+	ProgressPercent  float64 `json:"progress_percent"`
+	CurrentLat       float64 `json:"current_lat"`
+	CurrentLon       float64 `json:"current_lon"`
+	RemainingMeters  float64 `json:"remaining_meters"`
+	RemainingSeconds float64 `json:"remaining_seconds"`
+}
+
+// PositionResponse is a simple lat/lon response
+type PositionResponse struct {
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
+}
+
+// =============================================================================
+// Route Calculation (Raw SQL for pgRouting)
+// =============================================================================
+
+const calculateRouteSQL = `
+WITH 
+start_vertex AS (
+    SELECT id FROM routing_ways_vertices_pgr
+    ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)
+    LIMIT 1
+),
+end_vertex AS (
+    SELECT id FROM routing_ways_vertices_pgr
+    ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint($3, $4), 4326)
+    LIMIT 1
+),
+route_segments AS (
+    SELECT 
+        rw.geom,
+        rw.length_m,
+        rw.cost_s,
+        path.seq
+    FROM pgr_dijkstra(
+        'SELECT gid AS id, source, target, cost_s AS cost, reverse_cost_s AS reverse_cost FROM routing_ways',
+        (SELECT id FROM start_vertex),
+        (SELECT id FROM end_vertex),
+        directed := true
+    ) AS path
+    JOIN routing_ways rw ON rw.gid = path.edge
+    WHERE path.edge > 0
+)
+SELECT 
+    COALESCE(ST_AsGeoJSON(ST_MakeLine(geom ORDER BY seq))::text, '') AS route_geojson,
+    COALESCE(SUM(length_m), 0)::double precision AS route_length_meters,
+    COALESCE(SUM(cost_s), 0)::double precision AS estimated_duration_seconds
+FROM route_segments
+`
+
+// =============================================================================
+// Handlers
+// =============================================================================
+
+// handleCalculateRoute calculates a route between two points using pgRouting
+func (s *Server) handleCalculateRoute(w http.ResponseWriter, r *http.Request) {
+	var req CalculateRouteRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
+		return
+	}
+
+	var result CalculateRouteResponse
+	err := s.pool.QueryRow(r.Context(), calculateRouteSQL, req.FromLon, req.FromLat, req.ToLon, req.ToLat).
+		Scan(&result.RouteGeoJSON, &result.RouteLengthMeters, &result.EstimatedDurationSeconds)
+
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to calculate route", err.Error())
+		return
+	}
+
+	// Check if route was found (empty geojson means no route)
+	if result.RouteGeoJSON == "" || result.RouteLengthMeters == 0 {
+		s.writeError(w, http.StatusNotFound, "no route found between points", nil)
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, result)
+}
+
+// handleGetUnitRoute gets the stored route for a unit with current interpolated position
+func (s *Server) handleGetUnitRoute(w http.ResponseWriter, r *http.Request) {
+	unitUUID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	route, err := s.queries.GetUnitRoute(r.Context(), unitUUID)
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, errRouteNotFound, nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to get route", err.Error())
+		return
+	}
+
+	resp := UnitRouteResponse{
+		UnitID:                   uuidString(route.UnitID),
+		RouteGeoJSON:             route.RouteGeojson,
+		RouteLengthMeters:        route.RouteLengthMeters,
+		EstimatedDurationSeconds: route.EstimatedDurationSeconds,
+		ProgressPercent:          route.ProgressPercent,
+		CurrentLat:               &route.CurrentLat,
+		CurrentLon:               &route.CurrentLon,
+		RemainingMeters:          &route.RemainingMeters,
+		RemainingSeconds:         &route.RemainingSeconds,
+	}
+
+	if route.InterventionID.Valid {
+		id := uuidString(route.InterventionID)
+		resp.InterventionID = &id
+	}
+
+	s.writeJSON(w, http.StatusOK, resp)
+}
+
+// handleSaveUnitRoute saves a calculated route for a unit
+func (s *Server) handleSaveUnitRoute(w http.ResponseWriter, r *http.Request) {
+	unitUUID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	var req SaveUnitRouteRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
+		return
+	}
+
+	params := db.SaveUnitRouteParams{
+		UnitID:                   unitUUID,
+		RouteGeojson:             req.RouteGeoJSON,
+		RouteLengthMeters:        req.RouteLengthMeters,
+		EstimatedDurationSeconds: req.EstimatedDurationSeconds,
+	}
+
+	if req.InterventionID != nil {
+		intUUID, err := pgUUIDFromString(*req.InterventionID)
+		if err == nil {
+			params.InterventionID = intUUID
+		}
+	}
+
+	route, err := s.queries.SaveUnitRoute(r.Context(), params)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to save route", err.Error())
+		return
+	}
+
+	resp := UnitRouteResponse{
+		UnitID:                   uuidString(route.UnitID),
+		RouteGeoJSON:             route.RouteGeojson,
+		RouteLengthMeters:        route.RouteLengthMeters,
+		EstimatedDurationSeconds: route.EstimatedDurationSeconds,
+		ProgressPercent:          route.ProgressPercent,
+	}
+
+	if route.InterventionID.Valid {
+		id := uuidString(route.InterventionID)
+		resp.InterventionID = &id
+	}
+
+	s.writeJSON(w, http.StatusCreated, resp)
+}
+
+// handleUpdateRouteProgress updates the progress percentage and returns new position
+func (s *Server) handleUpdateRouteProgress(w http.ResponseWriter, r *http.Request) {
+	unitUUID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	var req UpdateProgressRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
+		return
+	}
+
+	result, err := s.queries.UpdateRouteProgress(r.Context(), db.UpdateRouteProgressParams{
+		ProgressPercent: req.ProgressPercent,
+		UnitID:          unitUUID,
+	})
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, errRouteNotFound, nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to update progress", err.Error())
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, UpdateProgressResponse{
+		UnitID:           uuidString(result.UnitID),
+		ProgressPercent:  result.ProgressPercent,
+		CurrentLat:       result.CurrentLat,
+		CurrentLon:       result.CurrentLon,
+		RemainingMeters:  result.RemainingMeters,
+		RemainingSeconds: result.RemainingSeconds,
+	})
+}
+
+// handleDeleteUnitRoute deletes the route for a unit
+func (s *Server) handleDeleteUnitRoute(w http.ResponseWriter, r *http.Request) {
+	unitUUID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	err = s.queries.DeleteUnitRoute(r.Context(), unitUUID)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to delete route", err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleGetRoutePosition gets the interpolated position at a specific progress percentage
+func (s *Server) handleGetRoutePosition(w http.ResponseWriter, r *http.Request) {
+	unitUUID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	progressStr := r.URL.Query().Get("progress")
+	var progress float64
+	if progressStr != "" {
+		progress, err = strconv.ParseFloat(progressStr, 64)
+		if err != nil {
+			s.writeError(w, http.StatusBadRequest, "invalid progress value", err.Error())
+			return
+		}
+	}
+
+	pos, err := s.queries.GetRoutePosition(r.Context(), db.GetRoutePositionParams{
+		ProgressPercent: progress,
+		UnitID:          unitUUID,
+	})
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, errRouteNotFound, nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to get position", err.Error())
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, PositionResponse{
+		Lat: pos.Lat,
+		Lon: pos.Lon,
+	})
+}

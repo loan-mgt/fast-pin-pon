@@ -57,6 +57,11 @@ public final class SimulationEngine {
     private static final String BASE_CONFLUENCE = "Lyon Confluence";
     private static final String BASE_PART_DIEU = "Lyon Part-Dieu";
     private static final String BASE_CUSSET = "Cusset";
+    
+    // Status constants
+    private static final String STATUS_AVAILABLE = "available";
+    private static final String STATUS_UNDER_WAY = "under_way";
+    private static final String STATUS_ON_SITE = "on_site";
 
         private static final BaseLocation[] DEFAULT_BASES = new BaseLocation[]{
             new BaseLocation(BASE_VILLEURBANNE, 45.766180, 4.878770),
@@ -65,28 +70,114 @@ public final class SimulationEngine {
             new BaseLocation(BASE_CUSSET, 45.76623, 4.89534),
     };
 
+    public static final class VehicleSnapshot {
+        private final String unitId;
+        private final String callSign;
+        private final double lat;
+        private final double lon;
+        private final String status;
+        private final String incidentId;
+        private final String unitTypeCode;
+        private final String homeBase;
+        private final Instant lastUpdate;
+
+        public VehicleSnapshot(Vehicle v) {
+            this.unitId = v.getUnitId();
+            this.callSign = v.getCallSign();
+            this.lat = v.getLat();
+            this.lon = v.getLon();
+            this.status = snapshotStatus(v.getEtat());
+            String idStr = null;
+            Incident inc = v.getCurrentIncident();
+            if (inc != null) {
+                if (inc.getId() != null) {
+                    idStr = inc.getId().toString();
+                } else {
+                    idStr = inc.getEventId();
+                }
+            }
+            this.incidentId = idStr;
+            this.unitTypeCode = v.getUnitTypeCode();
+            this.homeBase = v.getHomeBase();
+            this.lastUpdate = v.getLastUpdate();
+        }
+
+        public String getUnitId() {
+            return unitId;
+        }
+
+        public String getCallSign() {
+            return callSign;
+        }
+
+        public double getLat() {
+            return lat;
+        }
+
+        public double getLon() {
+            return lon;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public String getIncidentId() {
+            return incidentId;
+        }
+
+        public String getUnitTypeCode() {
+            return unitTypeCode;
+        }
+
+        public String getHomeBase() {
+            return homeBase;
+        }
+
+        public Instant getLastUpdate() {
+            return lastUpdate;
+        }
+
+        private static String snapshotStatus(org.fastpinpon.simulation.model.VehicleState state) {
+            switch (state) {
+                case DISPONIBLE:
+                    return STATUS_AVAILABLE;
+                case EN_ROUTE:
+                    return STATUS_UNDER_WAY;
+                case SUR_PLACE:
+                    return STATUS_ON_SITE;
+                case RETOUR:
+                    return STATUS_UNDER_WAY;
+                default:
+                    return STATUS_AVAILABLE;
+            }
+        }
+    }
+
     /**
      * Create a simulation engine with the default random incident generator.
      * 
      * @param api the API client
+     * @param apiBaseUrl the API base URL for routing
      */
-    public SimulationEngine(ApiClient api) {
-        this(api, new IncidentGenerator());
+    public SimulationEngine(ApiClient api, String apiBaseUrl) {
+        this(api, apiBaseUrl, new IncidentGenerator());
     }
 
     /**
      * Create a simulation engine with a custom incident source.
      * 
      * @param api the API client
+     * @param apiBaseUrl the API base URL for routing
      * @param incidentSource the source of incidents
      */
-    public SimulationEngine(ApiClient api, IncidentSource incidentSource) {
+    public SimulationEngine(ApiClient api, String apiBaseUrl, IncidentSource incidentSource) {
         this.api = api;
         // Load stations from API; fallback to defaults
         List<BaseLocation> stations = api.loadStations();
         this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases);
+        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl);
         if (incidentSource != null) {
             this.incidentSources.add(incidentSource);
         }
@@ -97,14 +188,15 @@ public final class SimulationEngine {
      * Use addIncidentSource() to add sources, or call processIncident() directly.
      * 
      * @param api the API client
+     * @param apiBaseUrl the API base URL for routing
      * @param noGenerator set to true to create without generator
      */
-    public SimulationEngine(ApiClient api, boolean noGenerator) {
+    public SimulationEngine(ApiClient api, String apiBaseUrl, boolean noGenerator) {
         this.api = api;
         List<BaseLocation> stations = api.loadStations();
         this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases);
+        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl);
         if (!noGenerator) {
             this.incidentSources.add(new IncidentGenerator());
         }
@@ -197,6 +289,18 @@ public final class SimulationEngine {
      */
     public List<Vehicle> getVehicles() {
         return new ArrayList<>(vehicles);
+    }
+
+    /**
+     * Snapshot current vehicle telemetry for external consumers (e.g., bridge).
+     * The simulation engine remains the single source of movement; consumers only read.
+     */
+    public synchronized List<VehicleSnapshot> snapshotVehicles() {
+        List<VehicleSnapshot> snapshots = new ArrayList<>(vehicles.size());
+        for (Vehicle v : vehicles) {
+            snapshots.add(new VehicleSnapshot(v));
+        }
+        return snapshots;
     }
 
     // =========================================================================
@@ -471,10 +575,10 @@ public final class SimulationEngine {
         }
     }
 
-    private String readableState(org.fastpinpon.simulation.model.VehicleState state) {
+    private static String readableState(org.fastpinpon.simulation.model.VehicleState state) {
         switch (state) {
             case DISPONIBLE:
-                return "available";
+                return STATUS_AVAILABLE;
             case EN_ROUTE:
                 return "under way";
             case SUR_PLACE:
@@ -485,6 +589,8 @@ public final class SimulationEngine {
                 return "unknown";
         }
     }
+
+
 
     private String nearestBaseName(double lat, double lon) {
         String name = BASE_PART_DIEU;

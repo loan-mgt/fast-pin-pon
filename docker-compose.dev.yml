@@ -54,6 +54,8 @@ services:
       - api
     environment:
       - API_BASE_URL=http://api:8080
+    ports:
+      - "8090:8090"
 
   incidentCreation:
     extends:
