@@ -214,7 +214,7 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
           </button>
         )}
         <span className="ml-auto text-sm text-slate-400">
-          {sortedUnits.length} unité{sortedUnits.length !== 1 ? 's' : ''}
+          {sortedUnits.length} unité{sortedUnits.length === 1 ? '' : 's'}
           {selectedStation && ` dans ${selectedStation.name}`}
         </span>
       </div>

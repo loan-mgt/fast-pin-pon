@@ -126,17 +126,9 @@ func uuidString(u pgtype.UUID) string {
 	return id.String()
 }
 
-func uuidStringOptional(u pgtype.UUID) string {
-	if !u.Valid {
-		return ""
-	}
-	raw := u.Bytes
-	id, err := uuid.FromBytes(raw[:])
-	if err != nil {
-		return ""
-	}
-	return id.String()
-}
+// uuidStringOptional is an alias for uuidString, kept for semantic clarity
+// when the caller wants to emphasize the value may be empty.
+var uuidStringOptional = uuidString
 
 func pgUUIDFromStringOptional(value *string) pgtype.UUID {
 	if value == nil || *value == "" {
