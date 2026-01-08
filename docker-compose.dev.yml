@@ -21,7 +21,6 @@ services:
       file: docker-compose.prod.yml
       service: postgres
     container_name: fast-pin-pon-postgres
-    shm_size: 256mb 
     ports:
       - "5432:5432"
 
@@ -106,7 +105,6 @@ services:
     environment:
       - KC_HOSTNAME=localhost
       - KC_HOSTNAME_PORT=8082
-      - PASSWORD_USER=${PASSWORD_USER}
 
   keycloakdb:
     extends:
