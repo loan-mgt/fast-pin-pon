@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -428,9 +427,9 @@ func numericToFloat64(n pgtype.Numeric) (float64, error) {
 
 // notifyEngineRefresh sends a refresh signal to the decision engine.
 func (s *Server) notifyEngineRefresh(ctx context.Context) {
-	engineURL := os.Getenv("ENGINE_CALLBACK_URL")
+	engineURL := s.cfg.EngineURL
 	if engineURL == "" {
-		s.log.Debug().Msg("ENGINE_CALLBACK_URL not set, skipping engine refresh notification")
+		s.log.Debug().Msg("Engine URL not set, skipping engine refresh notification")
 		return
 	}
 
@@ -458,9 +457,9 @@ func (s *Server) notifyEngineRefresh(ctx context.Context) {
 
 // notifyEngineDispatch sends a dispatch trigger to the decision engine.
 func (s *Server) notifyEngineDispatch(ctx context.Context, interventionID string) {
-	engineURL := os.Getenv("ENGINE_CALLBACK_URL")
+	engineURL := s.cfg.EngineURL
 	if engineURL == "" {
-		s.log.Debug().Msg("ENGINE_CALLBACK_URL not set, skipping engine dispatch notification")
+		s.log.Debug().Msg("Engine URL not set, skipping engine dispatch notification")
 		return
 	}
 

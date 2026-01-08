@@ -13,6 +13,7 @@ type Config struct {
 	Env      string         `env:"APP_ENV" envDefault:"development"`
 	LogLevel string         `env:"LOG_LEVEL" envDefault:"info"`
 	LogFile  string         `env:"LOG_FILE" envDefault:"logs/api.log"`
+	EngineURL string        `env:"ENGINE_CALLBACK_URL" envDefault:"http://engine:8081"`
 	HTTP     HTTPConfig     `envPrefix:"HTTP_"`
 	Database DatabaseConfig `envPrefix:"DB_"`
 }

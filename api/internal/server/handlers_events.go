@@ -176,6 +176,7 @@ func splitCSV(s string) []string {
 // @Accept json
 // @Produce json
 // @Param auto_intervention query boolean false "Automatically create an intervention for this event"
+// @Param decision_mode query string false "Decision mode for the auto-created intervention" Enums(auto_suggested, manual) default(auto_suggested)
 // @Param request body CreateEventRequest true "Event payload"
 // @Success 201 {object} EventSummaryResponse
 // @Failure 400 {object} APIError
@@ -207,16 +208,24 @@ func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 
 	// Auto-create intervention if requested via query param
 	if r.URL.Query().Get("auto_intervention") == "true" {
-		_, err := s.queries.CreateIntervention(r.Context(), db.CreateInterventionParams{
+		decisionMode := db.DecisionModeAutoSuggested
+		if dm := r.URL.Query().Get("decision_mode"); dm != "" {
+			decisionMode = db.DecisionMode(dm)
+		}
+
+		intervention, err := s.queries.CreateIntervention(r.Context(), db.CreateInterventionParams{
 			EventID:      row.ID,
 			Status:       db.InterventionStatusCreated,
 			Priority:     row.Severity,
-			DecisionMode: db.DecisionModeManual,
+			DecisionMode: decisionMode,
 		})
 		if err != nil {
 			s.log.Error().Err(err).Msg("failed to auto-create intervention")
 			// We don't fail the event creation, but maybe we should return a different status
 			// or include it in the response. For now, just log the error.
+		} else {
+			// Trigger engine dispatch
+			s.notifyEngineDispatch(r.Context(), uuidString(intervention.ID))
 		}
 	}
 
