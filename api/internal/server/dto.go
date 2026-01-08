@@ -107,6 +107,7 @@ type UnitResponse struct {
 	CallSign       string     `json:"call_sign"`
 	UnitTypeCode   string     `json:"unit_type_code"`
 	HomeBase       string     `json:"home_base,omitempty"`
+	LocationID     string     `json:"location_id,omitempty"`
 	Status         string     `json:"status"`
 	MicrobitID     string     `json:"microbit_id,omitempty"`
 	Location       GeoPoint   `json:"location"`

@@ -126,6 +126,23 @@ func uuidString(u pgtype.UUID) string {
 	return id.String()
 }
 
+// uuidStringOptional is an alias for uuidString, kept for semantic clarity
+// when the caller wants to emphasize the value may be empty.
+var uuidStringOptional = uuidString
+
+func pgUUIDFromStringOptional(value *string) pgtype.UUID {
+	if value == nil || *value == "" {
+		return pgtype.UUID{}
+	}
+	parsed, err := uuid.Parse(strings.TrimSpace(*value))
+	if err != nil {
+		return pgtype.UUID{}
+	}
+	var arr [16]byte
+	copy(arr[:], parsed[:])
+	return pgtype.UUID{Bytes: arr, Valid: true}
+}
+
 func timestamptzFromPtr(t *time.Time) pgtype.Timestamptz {
 	if t == nil {
 		return pgtype.Timestamptz{}

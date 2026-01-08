@@ -102,6 +102,8 @@ function buildUnitEventMaps(events: EventSummary[]): {
 
 function getUnitLocations(units: UnitSummary[]): UnitLocation[] {
     return units
+        // Exclude units with status 'available_hidden' from map display
+        .filter((unit) => unit.status !== 'available_hidden')
         .filter((unit) => unit.location?.longitude && unit.location?.latitude)
         .filter((unit) => unit.location.longitude !== 0 && unit.location.latitude !== 0)
         .map((unit) => ({
@@ -250,6 +252,7 @@ interface MapContainerProps {
     units: UnitSummary[]
     buildings?: Building[]
     onEventSelect?: (eventId: string) => void
+    onBuildingSelect?: (buildingId: string) => void
     selectedEventId?: string | null
     onCreateAtLocation?: (coords: { latitude: number; longitude: number }) => void
     onMapReady?: (flyTo: (lng: number, lat: number, zoom?: number) => void) => void
@@ -259,6 +262,7 @@ export function MapContainer({
     events,
     units,
     onEventSelect,
+    onBuildingSelect,
     selectedEventId,
     onCreateAtLocation,
     onMapReady,
@@ -365,13 +369,23 @@ export function MapContainer({
         for (const b of buildings) {
             if (!b.location?.longitude || !b.location?.latitude) continue
             const el = createBuildingMarkerElement()
+            
+            // Add click handler to navigate to dashboard with station filter
+            el.addEventListener('click', () => onBuildingSelect?.(b.id))
+            el.style.cursor = 'pointer'
+            
             const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
                 .setLngLat([b.location.longitude, b.location.latitude])
-                .setPopup(new maplibregl.Popup({ offset: 18 }).setText(b.name))
+                .setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(
+                    `<div style="font-family: system-ui, sans-serif;">
+                        <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${b.name}</div>
+                        <div style="font-size: 12px; color: #666;">Cliquer pour voir les unités</div>
+                    </div>`
+                ))
                 .addTo(map)
             buildingMarkersRef.current.push(marker)
         }
-    }, [buildings])
+    }, [buildings, onBuildingSelect])
 
     // Effect for unit markers and connection lines
     useEffect(() => {
@@ -436,7 +450,7 @@ export function MapContainer({
                         new maplibregl.Popup({ offset: 18, className: 'unit-popup' }).setHTML(
                             `<div style="font-family: system-ui, sans-serif;">
                                 <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${loc.unit.call_sign}</div>
-                                <div style="font-size: 12px; color: #666; margin-bottom: 6px;">${loc.unit.unit_type_code} • ${loc.unit.home_base}</div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 6px;">${loc.unit.unit_type_code}</div>
                                 <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; color: white; background-color: ${color};">${loc.unit.status.replace('_', ' ')}</div>
                             </div>`,
                         ),

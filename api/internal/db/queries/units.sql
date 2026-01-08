@@ -6,12 +6,49 @@ SELECT
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
     created_at,
     updated_at
 FROM units
+ORDER BY call_sign;
+
+-- name: ListUnitsByLocation :many
+SELECT
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    location_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at
+FROM units
+WHERE location_id = $1
+ORDER BY call_sign;
+
+-- name: ListVisibleUnits :many
+SELECT
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    location_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at
+FROM units
+WHERE status != 'available_hidden'
 ORDER BY call_sign;
 
 -- name: ListAvailableUnitsNearby :many
@@ -22,6 +59,7 @@ SELECT
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -40,6 +78,7 @@ INSERT INTO units (
     home_base,
     status,
     location,
+    location_id,
     last_contact_at
 ) VALUES (
     sqlc.arg(call_sign),
@@ -53,6 +92,7 @@ INSERT INTO units (
         ),
         4326
     )::geography,
+    sqlc.narg(location_id),
     sqlc.arg(last_contact_at)
 ) RETURNING
     id,
@@ -61,6 +101,7 @@ INSERT INTO units (
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -75,6 +116,7 @@ SELECT
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -105,6 +147,7 @@ RETURNING
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -131,6 +174,7 @@ RETURNING
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -150,6 +194,7 @@ RETURNING
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -169,6 +214,7 @@ RETURNING
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -183,6 +229,7 @@ SELECT
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -205,6 +252,7 @@ RETURNING
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -231,6 +279,7 @@ RETURNING
     home_base,
     status,
     microbit_id,
+    location_id,
     (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
     last_contact_at,
@@ -265,3 +314,23 @@ INSERT INTO unit_telemetry (
     heading,
     speed_kmh,
     status_snapshot;
+
+-- name: UpdateUnitStation :one
+UPDATE units
+SET
+    location_id = sqlc.narg(location_id),
+    updated_at = NOW()
+WHERE id = sqlc.arg(id)
+RETURNING
+    id,
+    call_sign,
+    unit_type_code,
+    home_base,
+    status,
+    microbit_id,
+    location_id,
+    (COALESCE(ST_X(location::geometry)::double precision, 0::double precision))::double precision AS longitude,
+    (COALESCE(ST_Y(location::geometry)::double precision, 0::double precision))::double precision AS latitude,
+    last_contact_at,
+    created_at,
+    updated_at;
