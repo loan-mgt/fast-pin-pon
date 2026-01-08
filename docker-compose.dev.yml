@@ -50,6 +50,21 @@ services:
     environment:
       - API_BASE_URL=http://api:8080
 
+  incidentCreation:
+    extends:
+      file: docker-compose.prod.yml
+      service: incidentCreation
+    image: fast-pin-pon-incident-creation-dev
+    container_name: fast-pin-pon-incident-creation
+    build:
+      context: ./incidentCreation
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    environment:
+      - API_BASE_URL=http://api:8080
+      - INCIDENT_INTERVAL_SECONDS=60
+
   maptiler-server:
     extends:
       file: docker-compose.prod.yml

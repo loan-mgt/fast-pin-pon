@@ -45,6 +45,26 @@ services:
       - API_BASE_URL=http://api:8080
     volumes:
       - logs:/app/logs:rw
+
+  incidentCreation:
+    image: ghcr.io/loan-mgt/fast-pin-pon/incidentCreation:main
+    container_name: fast-pin-pon-incidentCreation
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - API_BASE_URL=http://api:8080
+      - INCIDENT_INTERVAL_SECONDS=60
+    volumes:
+      - logs:/app/logs:rw
+    networks:
+      - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
+
   postgres:
     image: ghcr.io/loan-mgt/fast-pin-pon/db:main
     container_name: fast-pin-pon-postgres
