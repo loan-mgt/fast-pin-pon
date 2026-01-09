@@ -405,6 +405,8 @@ func mapEventSummary(row db.ListEventsRow, assignedUnits []UnitResponse) EventSu
 		ReportedAt:         row.ReportedAt.Time,
 		UpdatedAt:          row.UpdatedAt.Time,
 		ClosedAt:           timestamptzPtr(row.ClosedAt),
+		StartedAt:          timestamptzPtr(row.InterventionStartedAt),
+		CompletedAt:        timestamptzPtr(row.InterventionCompletedAt),
 		AssignedUnits:      assignedUnits,
 	}
 }

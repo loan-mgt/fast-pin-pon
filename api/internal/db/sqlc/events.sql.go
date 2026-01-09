@@ -281,7 +281,9 @@ SELECT
     e.updated_at,
     e.closed_at,
     i.id AS intervention_id,
-    i.status AS intervention_status
+    i.status AS intervention_status,
+    i.started_at AS intervention_started_at,
+    i.completed_at AS intervention_completed_at
 FROM events e
 JOIN event_types et ON et.code = e.event_type_code
 LEFT JOIN interventions i ON i.event_id = e.id
@@ -295,22 +297,24 @@ type ListEventsParams struct {
 }
 
 type ListEventsRow struct {
-	ID                 pgtype.UUID            `json:"id"`
-	Title              string                 `json:"title"`
-	Description        *string                `json:"description"`
-	ReportSource       *string                `json:"report_source"`
-	Address            *string                `json:"address"`
-	Longitude          float64                `json:"longitude"`
-	Latitude           float64                `json:"latitude"`
-	Severity           int32                  `json:"severity"`
-	EventTypeCode      string                 `json:"event_type_code"`
-	EventTypeName      string                 `json:"event_type_name"`
-	DefaultSeverity    int32                  `json:"default_severity"`
-	ReportedAt         pgtype.Timestamptz     `json:"reported_at"`
-	UpdatedAt          pgtype.Timestamptz     `json:"updated_at"`
-	ClosedAt           pgtype.Timestamptz     `json:"closed_at"`
-	InterventionID     pgtype.UUID            `json:"intervention_id"`
-	InterventionStatus NullInterventionStatus `json:"intervention_status"`
+	ID                       pgtype.UUID            `json:"id"`
+	Title                    string                 `json:"title"`
+	Description              *string                `json:"description"`
+	ReportSource             *string                `json:"report_source"`
+	Address                  *string                `json:"address"`
+	Longitude                float64                `json:"longitude"`
+	Latitude                 float64                `json:"latitude"`
+	Severity                 int32                  `json:"severity"`
+	EventTypeCode            string                 `json:"event_type_code"`
+	EventTypeName            string                 `json:"event_type_name"`
+	DefaultSeverity          int32                  `json:"default_severity"`
+	ReportedAt               pgtype.Timestamptz     `json:"reported_at"`
+	UpdatedAt                pgtype.Timestamptz     `json:"updated_at"`
+	ClosedAt                 pgtype.Timestamptz     `json:"closed_at"`
+	InterventionID           pgtype.UUID            `json:"intervention_id"`
+	InterventionStatus       NullInterventionStatus `json:"intervention_status"`
+	InterventionStartedAt    pgtype.Timestamptz     `json:"intervention_started_at"`
+	InterventionCompletedAt  pgtype.Timestamptz     `json:"intervention_completed_at"`
 }
 
 func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]ListEventsRow, error) {
@@ -339,6 +343,8 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]ListE
 			&i.ClosedAt,
 			&i.InterventionID,
 			&i.InterventionStatus,
+			&i.InterventionStartedAt,
+			&i.InterventionCompletedAt,
 		); err != nil {
 			return nil, err
 		}

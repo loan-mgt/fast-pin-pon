@@ -39,6 +39,8 @@ type EventSummaryResponse struct {
 	ReportedAt         time.Time      `json:"reported_at"`
 	UpdatedAt          time.Time      `json:"updated_at"`
 	ClosedAt           *time.Time     `json:"closed_at,omitempty"`
+	StartedAt          *time.Time     `json:"started_at,omitempty"`
+	CompletedAt        *time.Time     `json:"completed_at,omitempty"`
 	AssignedUnits      []UnitResponse `json:"assigned_units,omitempty"`
 }
 
