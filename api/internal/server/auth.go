@@ -22,6 +22,15 @@ const (
 	UserContextKey contextKey = "user"
 )
 
+// RBAC Role constants
+const (
+	RoleAPIAccess   = "api-access"
+	RoleManageRealm = "manage-realm"
+	RoleManageEvents = "manage-events"
+	RoleIT          = "it"
+	RoleSuperieur   = "superieur"
+)
+
 // UserClaims represents the JWT claims from Keycloak.
 type UserClaims struct {
 	jwt.RegisteredClaims
