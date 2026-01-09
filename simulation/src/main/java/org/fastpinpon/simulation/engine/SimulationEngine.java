@@ -48,6 +48,9 @@ public final class SimulationEngine {
     // Used to distinguish arrival behavior (Hidden vs On Site)
     private final Set<String> movingAvailableUnits = ConcurrentHashMap.newKeySet();
 
+    // Track units for which a repair request has been triggered to avoid duplicates
+    private final Set<String> repairRequests = ConcurrentHashMap.newKeySet();
+
     private List<ApiClient.UnitInfo> cachedUnits = new ArrayList<>();
 
     private long lastTickTime = System.currentTimeMillis();
@@ -198,6 +201,7 @@ public final class SimulationEngine {
         toRemove.forEach(id -> {
             vehicleStates.remove(id);
             movingAvailableUnits.remove(id);
+            repairRequests.remove(id);
         });
     }
 
@@ -209,8 +213,12 @@ public final class SimulationEngine {
             ApiClient.UnitRouteInfo route = api.getUnitRoute(unit.id);
             if (route == null) {
                 LOG.log(Level.FINE, "[ENGINE] No route found for unit {0}", unit.id);
+                maybeTriggerRepair(unit);
                 return;
             }
+
+            // Clear any pending repair flag once a route is present again
+            repairRequests.remove(unit.id);
 
             VehicleState state = new VehicleState(
                     unit.id,
@@ -424,6 +432,21 @@ public final class SimulationEngine {
         } catch (Exception e) {
             LOG.log(Level.WARNING, "[ENGINE] Failed to complete intervention {0}: {1}", 
                     new Object[]{interventionId, e.getMessage()});
+        }
+    }
+
+    /**
+     * Trigger a single repair request for a unit that is missing a route.
+     */
+    private void maybeTriggerRepair(UnitInfo unit) {
+        boolean shouldRepair = STATUS_UNDER_WAY.equals(unit.status) || STATUS_AVAILABLE.equals(unit.status);
+        if (!shouldRepair) {
+            return;
+        }
+
+        if (repairRequests.add(unit.id)) {
+            LOG.log(Level.INFO, "[ENGINE] Triggering route repair for unit {0}", unit.id);
+            api.triggerRouteRepair(unit.id);
         }
     }
 

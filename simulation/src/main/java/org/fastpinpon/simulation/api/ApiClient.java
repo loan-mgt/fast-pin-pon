@@ -273,6 +273,17 @@ public final class ApiClient {
     }
 
     /**
+     * Trigger server-side route repair for a unit.
+     * @param unitId unit identifier
+     */
+    public void triggerRouteRepair(String unitId) {
+        if (unitId == null || unitId.trim().isEmpty()) {
+            return;
+        }
+        executeVoid(api.repairUnitRoute(unitId), "POST /v1/units/{id}/route/repair");
+    }
+
+    /**
      * Get the stored route for a unit.
      * @param unitId unit identifier
      * @return route info or null if not found
@@ -535,6 +546,9 @@ public final class ApiClient {
 
         @PATCH("/v1/units/{unitID}/route/progress")
         Call<ProgressResponseDto> updateRouteProgress(@Path("unitID") String unitId, @Body ProgressRequest body);
+
+        @POST("/v1/units/{unitID}/route/repair")
+        Call<Void> repairUnitRoute(@Path("unitID") String unitId);
 
         @GET("/v1/interventions/{interventionId}")
         Call<InterventionDetailDto> getIntervention(@Path("interventionId") String interventionId);

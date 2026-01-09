@@ -21,6 +21,53 @@ func (q *Queries) DeleteUnitRoute(ctx context.Context, unitID pgtype.UUID) error
 	return err
 }
 
+const getActiveRouteRepairData = `-- name: GetActiveRouteRepairData :one
+SELECT
+        ia.intervention_id,
+        u.id AS unit_id,
+        COALESCE(ST_X(u.location::geometry), 0)::float8 AS unit_lon,
+        COALESCE(ST_Y(u.location::geometry), 0)::float8 AS unit_lat,
+        e.id AS event_id,
+        ST_X(e.location::geometry)::float8 AS event_lon,
+        ST_Y(e.location::geometry)::float8 AS event_lat
+FROM intervention_assignments ia
+JOIN interventions i ON i.id = ia.intervention_id
+JOIN events e ON e.id = i.event_id
+JOIN units u ON u.id = ia.unit_id
+WHERE ia.unit_id = $1
+    AND ia.released_at IS NULL
+    AND ia.status IN ('dispatched', 'arrived')
+ORDER BY ia.dispatched_at DESC
+LIMIT 1
+`
+
+type GetActiveRouteRepairDataRow struct {
+	InterventionID pgtype.UUID `json:"intervention_id"`
+	UnitID         pgtype.UUID `json:"unit_id"`
+	UnitLon        float64     `json:"unit_lon"`
+	UnitLat        float64     `json:"unit_lat"`
+	EventID        pgtype.UUID `json:"event_id"`
+	EventLon       float64     `json:"event_lon"`
+	EventLat       float64     `json:"event_lat"`
+}
+
+// Finds the latest active assignment for a unit to repair a missing route
+// Returns both the intervention id and coordinates needed for routing
+func (q *Queries) GetActiveRouteRepairData(ctx context.Context, unitID pgtype.UUID) (GetActiveRouteRepairDataRow, error) {
+	row := q.db.QueryRow(ctx, getActiveRouteRepairData, unitID)
+	var i GetActiveRouteRepairDataRow
+	err := row.Scan(
+		&i.InterventionID,
+		&i.UnitID,
+		&i.UnitLon,
+		&i.UnitLat,
+		&i.EventID,
+		&i.EventLon,
+		&i.EventLat,
+	)
+	return i, err
+}
+
 const getRouteCalculationData = `-- name: GetRouteCalculationData :one
 SELECT
     u.id AS unit_id,

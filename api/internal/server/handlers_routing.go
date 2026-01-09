@@ -317,6 +317,71 @@ func (s *Server) handleDeleteUnitRoute(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleRepairUnitRoute attempts to rebuild a missing route for a unit.
+// If the unit is under_way with an active intervention, it recalculates that route.
+// Otherwise it marks the unit available and calculates a return-to-station route.
+func (s *Server) handleRepairUnitRoute(w http.ResponseWriter, r *http.Request) {
+	unitUUID, err := s.parseUUIDParam(r, "unitID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
+		return
+	}
+
+	key := uuidString(unitUUID)
+	if key == "" {
+		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, "invalid uuid")
+		return
+	}
+
+	if _, loaded := s.repairLocks.LoadOrStore(key, struct{}{}); loaded {
+		s.writeError(w, http.StatusConflict, "route repair already in progress", nil)
+		return
+	}
+	defer s.repairLocks.Delete(key)
+
+	unit, err := s.queries.GetUnit(r.Context(), unitUUID)
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, errUnitNotFound, nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to load unit", err.Error())
+		return
+	}
+
+	if unit.Status == db.UnitStatusUnderWay {
+		data, err := s.queries.GetActiveRouteRepairData(r.Context(), unitUUID)
+		if err != nil {
+			if !isNotFound(err) {
+				s.writeError(w, http.StatusInternalServerError, "failed to fetch route context", err.Error())
+				return
+			}
+		} else {
+			go s.repairRouteToEvent(context.Background(), data)
+			s.writeJSON(w, http.StatusAccepted, map[string]string{
+				"status": "repair_started",
+				"mode":   "intervention",
+			})
+			return
+		}
+	}
+
+	// Fallback: ensure unit is available and rebuild route to station.
+	if _, err := s.queries.UpdateUnitStatus(r.Context(), db.UpdateUnitStatusParams{
+		ID:     unitUUID,
+		Status: db.UnitStatusAvailable,
+	}); err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to update unit status", err.Error())
+		return
+	}
+
+	go s.calculateAndSaveRouteToStation(context.Background(), unitUUID)
+	s.writeJSON(w, http.StatusAccepted, map[string]string{
+		"status": "repair_started",
+		"mode":   "return_to_station",
+	})
+}
+
 // handleGetRoutePosition gets the interpolated position at a specific progress percentage
 func (s *Server) handleGetRoutePosition(w http.ResponseWriter, r *http.Request) {
 	unitUUID, err := s.parseUUIDParam(r, "unitID")
@@ -511,4 +576,60 @@ func (s *Server) calculateAndSaveRouteToStation(ctx context.Context, unitID pgty
 		Float64("duration_s", routeResult.EstimatedDurationSeconds).
 		Dur("elapsed_ms", elapsed).
 		Msg("route calculation completed for return to station")
+}
+
+// repairRouteToEvent recalculates and stores a route for an active intervention.
+func (s *Server) repairRouteToEvent(ctx context.Context, data db.GetActiveRouteRepairDataRow) {
+	startTime := time.Now()
+
+	var routeResult struct {
+		RouteGeoJSON             string  `db:"route_geojson"`
+		RouteLengthMeters        float64 `db:"route_length_meters"`
+		EstimatedDurationSeconds float64 `db:"estimated_duration_seconds"`
+	}
+
+	err := s.pool.QueryRow(ctx, calculateRouteSQL, data.UnitLon, data.UnitLat, data.EventLon, data.EventLat).
+		Scan(&routeResult.RouteGeoJSON, &routeResult.RouteLengthMeters, &routeResult.EstimatedDurationSeconds)
+
+	if err != nil {
+		s.log.Error().Err(err).
+			Str("unit_id", uuidString(data.UnitID)).
+			Str("intervention_id", uuidString(data.InterventionID)).
+			Msg("failed to calculate route during repair")
+		return
+	}
+
+	if routeResult.RouteGeoJSON == "" || routeResult.RouteLengthMeters == 0 {
+		s.log.Warn().
+			Str("unit_id", uuidString(data.UnitID)).
+			Str("intervention_id", uuidString(data.InterventionID)).
+			Dur("elapsed_ms", time.Since(startTime)).
+			Msg("no route found during repair")
+		return
+	}
+
+	_, err = s.queries.SaveUnitRoute(ctx, db.SaveUnitRouteParams{
+		UnitID:                   data.UnitID,
+		InterventionID:           data.InterventionID,
+		RouteGeojson:             routeResult.RouteGeoJSON,
+		RouteLengthMeters:        routeResult.RouteLengthMeters,
+		EstimatedDurationSeconds: routeResult.EstimatedDurationSeconds,
+	})
+
+	if err != nil {
+		s.log.Error().Err(err).
+			Str("unit_id", uuidString(data.UnitID)).
+			Str("intervention_id", uuidString(data.InterventionID)).
+			Dur("elapsed_ms", time.Since(startTime)).
+			Msg("failed to save repaired route")
+		return
+	}
+
+	s.log.Info().
+		Str("unit_id", uuidString(data.UnitID)).
+		Str("intervention_id", uuidString(data.InterventionID)).
+		Float64("length_m", routeResult.RouteLengthMeters).
+		Float64("duration_s", routeResult.EstimatedDurationSeconds).
+		Dur("elapsed_ms", time.Since(startTime)).
+		Msg("route repair completed")
 }

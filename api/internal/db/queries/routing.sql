@@ -110,3 +110,24 @@ SELECT
 FROM units u
 JOIN locations l ON l.id = u.location_id
 WHERE u.id = sqlc.arg(unit_id);
+
+-- name: GetActiveRouteRepairData :one
+-- Finds the latest active assignment for a unit to repair a missing route
+-- Returns both the intervention id and coordinates needed for routing
+SELECT
+        ia.intervention_id,
+        u.id AS unit_id,
+        COALESCE(ST_X(u.location::geometry), 0)::float8 AS unit_lon,
+        COALESCE(ST_Y(u.location::geometry), 0)::float8 AS unit_lat,
+        e.id AS event_id,
+        ST_X(e.location::geometry)::float8 AS event_lon,
+        ST_Y(e.location::geometry)::float8 AS event_lat
+FROM intervention_assignments ia
+JOIN interventions i ON i.id = ia.intervention_id
+JOIN events e ON e.id = i.event_id
+JOIN units u ON u.id = ia.unit_id
+WHERE ia.unit_id = sqlc.arg(unit_id)
+    AND ia.released_at IS NULL
+    AND ia.status IN ('dispatched', 'arrived')
+ORDER BY ia.dispatched_at DESC
+LIMIT 1;

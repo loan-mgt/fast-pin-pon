@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	"fast/pin/internal/config"
@@ -23,6 +24,8 @@ type Server struct {
 	queries   *db.Queries
 	validate  *validator.Validate
 	startedAt time.Time
+	// repairLocks prevents concurrent repair attempts for the same unit
+	repairLocks sync.Map
 }
 
 // New instantiates the HTTP server, runs DB migrations and prepares shared dependencies.

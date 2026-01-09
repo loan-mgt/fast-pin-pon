@@ -74,6 +74,7 @@ func (s *Server) routes() http.Handler {
 		v1.Get("/units/{unitID}/route", s.handleGetUnitRoute)
 		v1.Post("/units/{unitID}/route", s.handleSaveUnitRoute)
 		v1.Delete("/units/{unitID}/route", s.handleDeleteUnitRoute)
+		v1.Post("/units/{unitID}/route/repair", s.handleRepairUnitRoute)
 		v1.Patch("/units/{unitID}/route/progress", s.handleUpdateRouteProgress)
 		v1.Get("/units/{unitID}/route/position", s.handleGetRoutePosition)
 
