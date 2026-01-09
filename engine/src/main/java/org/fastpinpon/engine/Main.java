@@ -51,7 +51,7 @@ public final class Main {
         log.info("Configuration loaded: {}", config);
 
         // API client
-        DispatchApiClient apiClient = new DispatchApiClientImpl(config.getApiBaseUrl());
+        DispatchApiClient apiClient = new DispatchApiClientImpl(config);
         log.info("API client configured for: {}", config.getApiBaseUrl());
 
         // Create cache and load static data
