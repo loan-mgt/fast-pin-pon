@@ -57,6 +57,19 @@ def normalize_status(status: str) -> str:
     return status.lower()
 
 
+def extract_payload(message: str) -> str:
+    """Extract payload from packet format: seq|data|crc|sign
+    
+    Returns the data portion (e.g. 'GPS:MB001,45.76,4.89')
+    If message doesn't match packet format, returns original message.
+    """
+    parts = message.split("|")
+    if len(parts) >= 2:
+        # Format is: seq|data|crc|sign - we want parts[1]
+        return parts[1]
+    return message
+
+
 def parse_gps_message(message: str) -> Optional[Tuple[str, float, float]]:
     """Parse GPS:microbit_id,lat,lon"""
     try:
@@ -237,11 +250,14 @@ def process_line(line: str, microbit_to_unit: Dict[str, str],
     """Process a single received line."""
     print(f"[RECV] {line}")
     
-    if handle_gps_message(line, microbit_to_unit, api_url):
+    # Extract payload from packet format (seq|data|crc|sign)
+    payload = extract_payload(line)
+    
+    if handle_gps_message(payload, microbit_to_unit, api_url):
         return
-    if handle_sta_message(line, microbit_to_unit, last_statuses, api_url):
+    if handle_sta_message(payload, microbit_to_unit, last_statuses, api_url):
         return
-    handle_mbit_message(line, microbit_to_unit, last_statuses, api_url)
+    handle_mbit_message(payload, microbit_to_unit, last_statuses, api_url)
 
 
 def run_main_loop(ser: serial.Serial, api_url: str, 
