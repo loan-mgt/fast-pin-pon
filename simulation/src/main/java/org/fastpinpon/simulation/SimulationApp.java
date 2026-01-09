@@ -27,9 +27,18 @@ public class SimulationApp {
     private static final String DEFAULT_LOG_FILE = "/app/logs/simulation/simulation.log";
 
     public static void main(String[] args) {
+        Logger log = Logger.getLogger(SimulationApp.class.getName());
         configureFileLogging();
         String apiBaseUrl = resolveApiBaseUrl();
         ApiClient api = new ApiClient(apiBaseUrl);
+        
+        // Check API connectivity before proceeding
+        if (!api.isHealthy()) {
+            log.severe("[SIM] API is not reachable at " + apiBaseUrl + ". Exiting to allow restart.");
+            System.exit(1);
+        }
+        log.info("[SIM] API connectivity check passed: " + apiBaseUrl);
+        
         SimulationEngine engine = new SimulationEngine(api, apiBaseUrl);
 
         boolean autoTickEnabled = !envFlag(DISABLE_AUTO_TICK_ENV, false);

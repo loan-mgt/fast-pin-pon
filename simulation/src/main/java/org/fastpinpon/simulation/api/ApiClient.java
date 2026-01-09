@@ -71,6 +71,20 @@ public final class ApiClient {
     }
 
     /**
+     * Check if the API is reachable.
+     * @return true if the API responds successfully
+     */
+    public boolean isHealthy() {
+        try {
+            List<UnitDto> result = execute(api.getUnits(), "GET /v1/units (health check)");
+            return result != null;
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "[API] Health check failed: {0}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Load all buildings (locations) from the API and return fire stations as base locations.
      */
     public List<BaseLocation> loadStations() {
