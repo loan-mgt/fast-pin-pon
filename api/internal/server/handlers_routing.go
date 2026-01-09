@@ -1,10 +1,14 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	db "fast/pin/internal/db/sqlc"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Error message constants
@@ -78,13 +82,38 @@ type PositionResponse struct {
 
 const calculateRouteSQL = `
 WITH 
+-- Only consider vertices in the main connected component (component with most vertices)
+main_component AS (
+    SELECT component FROM (
+        SELECT source AS node FROM routing_ways
+        UNION
+        SELECT target FROM routing_ways
+    ) nodes
+    JOIN (
+        SELECT node, component FROM pgr_connectedComponents(
+            'SELECT gid AS id, source, target, cost_s AS cost FROM routing_ways WHERE cost_s > 0'
+        )
+    ) cc ON cc.node = nodes.node
+    GROUP BY component
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+),
+connected_vertices AS (
+    SELECT v.id, v.the_geom
+    FROM routing_ways_vertices_pgr v
+    JOIN (
+        SELECT node FROM pgr_connectedComponents(
+            'SELECT gid AS id, source, target, cost_s AS cost FROM routing_ways WHERE cost_s > 0'
+        ) WHERE component = (SELECT component FROM main_component)
+    ) cc ON cc.node = v.id
+),
 start_vertex AS (
-    SELECT id FROM routing_ways_vertices_pgr
+    SELECT id FROM connected_vertices
     ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)
     LIMIT 1
 ),
 end_vertex AS (
-    SELECT id FROM routing_ways_vertices_pgr
+    SELECT id FROM connected_vertices
     ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint($3, $4), 4326)
     LIMIT 1
 ),
@@ -317,4 +346,86 @@ func (s *Server) handleGetRoutePosition(w http.ResponseWriter, r *http.Request) 
 		Lat: pos.Lat,
 		Lon: pos.Lon,
 	})
+}
+
+// calculateAndSaveRouteForAssignment calculates a route from unit to event location and saves it.
+// Called asynchronously when a unit is assigned to an intervention.
+func (s *Server) calculateAndSaveRouteForAssignment(ctx context.Context, interventionID, unitID pgtype.UUID) {
+	startTime := time.Now()
+	s.log.Info().
+		Str("unit_id", uuidString(unitID)).
+		Str("intervention_id", uuidString(interventionID)).
+		Msg("starting route calculation for assignment")
+
+	// 1. Get all route calculation data in a single query (unit position + event destination)
+	data, err := s.queries.GetRouteCalculationData(ctx, db.GetRouteCalculationDataParams{
+		UnitID:         unitID,
+		InterventionID: interventionID,
+	})
+	if err != nil {
+		s.log.Error().Err(err).
+			Str("intervention_id", uuidString(interventionID)).
+			Str("unit_id", uuidString(unitID)).
+			Dur("elapsed_ms", time.Since(startTime)).
+			Msg("failed to get route calculation data")
+		return
+	}
+
+	// 2. Calculate the route using pgRouting
+	var routeResult struct {
+		RouteGeoJSON             string  `db:"route_geojson"`
+		RouteLengthMeters        float64 `db:"route_length_meters"`
+		EstimatedDurationSeconds float64 `db:"estimated_duration_seconds"`
+	}
+
+	err = s.pool.QueryRow(ctx, calculateRouteSQL, data.UnitLon, data.UnitLat, data.EventLon, data.EventLat).
+		Scan(&routeResult.RouteGeoJSON, &routeResult.RouteLengthMeters, &routeResult.EstimatedDurationSeconds)
+
+	if err != nil {
+		s.log.Error().Err(err).
+			Str("unit_id", uuidString(unitID)).
+			Float64("from_lat", data.UnitLat).
+			Float64("from_lon", data.UnitLon).
+			Float64("to_lat", data.EventLat).
+			Float64("to_lon", data.EventLon).
+			Dur("elapsed_ms", time.Since(startTime)).
+			Msg("failed to calculate route")
+		return
+	}
+
+	// Check if route was found
+	if routeResult.RouteGeoJSON == "" || routeResult.RouteLengthMeters == 0 {
+		s.log.Warn().
+			Str("unit_id", uuidString(unitID)).
+			Str("intervention_id", uuidString(interventionID)).
+			Dur("elapsed_ms", time.Since(startTime)).
+			Msg("no route found between unit and event location")
+		return
+	}
+
+	// 3. Save the route for the unit
+	_, err = s.queries.SaveUnitRoute(ctx, db.SaveUnitRouteParams{
+		UnitID:                   unitID,
+		InterventionID:           interventionID,
+		RouteGeojson:             routeResult.RouteGeoJSON,
+		RouteLengthMeters:        routeResult.RouteLengthMeters,
+		EstimatedDurationSeconds: routeResult.EstimatedDurationSeconds,
+	})
+
+	if err != nil {
+		s.log.Error().Err(err).
+			Str("unit_id", uuidString(unitID)).
+			Dur("elapsed_ms", time.Since(startTime)).
+			Msg("failed to save route")
+		return
+	}
+
+	elapsed := time.Since(startTime)
+	s.log.Info().
+		Str("unit_id", uuidString(unitID)).
+		Str("intervention_id", uuidString(interventionID)).
+		Float64("length_m", routeResult.RouteLengthMeters).
+		Float64("duration_s", routeResult.EstimatedDurationSeconds).
+		Dur("elapsed_ms", elapsed).
+		Msg("route calculation completed for assignment")
 }

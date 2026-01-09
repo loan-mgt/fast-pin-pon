@@ -56,16 +56,17 @@ public class SimulationApp {
         }
 
         ScheduledExecutorService scheduler = null;
+        final long tickIntervalMs = 3000; // 3 seconds between ticks
         if (autoTickEnabled) {
             scheduler = Executors.newSingleThreadScheduledExecutor();
-            // Tick every 1 second for smooth, real-time vehicle movement
+            // Tick every 3 seconds - engine uses delta time for smooth movement
             scheduler.scheduleAtFixedRate(() -> {
                 try {
-                    engine.tick();
+                    engine.tick(tickIntervalMs / 1000.0); // Pass delta in seconds
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-            }, 0, 1, TimeUnit.SECONDS);
+            }, 0, tickIntervalMs, TimeUnit.MILLISECONDS);
         }
 
         ScheduledExecutorService finalScheduler = scheduler;

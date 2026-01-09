@@ -21,6 +21,50 @@ func (q *Queries) DeleteUnitRoute(ctx context.Context, unitID pgtype.UUID) error
 	return err
 }
 
+const getRouteCalculationData = `-- name: GetRouteCalculationData :one
+SELECT
+    u.id AS unit_id,
+    (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS unit_lon,
+    (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS unit_lat,
+    e.id AS event_id,
+    ST_X(e.location::geometry)::double precision AS event_lon,
+    ST_Y(e.location::geometry)::double precision AS event_lat
+FROM interventions i
+JOIN events e ON e.id = i.event_id
+JOIN units u ON u.id = $1
+WHERE i.id = $2
+`
+
+type GetRouteCalculationDataParams struct {
+	UnitID         pgtype.UUID `json:"unit_id"`
+	InterventionID pgtype.UUID `json:"intervention_id"`
+}
+
+type GetRouteCalculationDataRow struct {
+	UnitID   pgtype.UUID `json:"unit_id"`
+	UnitLon  float64     `json:"unit_lon"`
+	UnitLat  float64     `json:"unit_lat"`
+	EventID  pgtype.UUID `json:"event_id"`
+	EventLon float64     `json:"event_lon"`
+	EventLat float64     `json:"event_lat"`
+}
+
+// Gets all data needed to calculate a route for an assignment (unit position + event destination)
+// Single query instead of 3 separate queries
+func (q *Queries) GetRouteCalculationData(ctx context.Context, arg GetRouteCalculationDataParams) (GetRouteCalculationDataRow, error) {
+	row := q.db.QueryRow(ctx, getRouteCalculationData, arg.UnitID, arg.InterventionID)
+	var i GetRouteCalculationDataRow
+	err := row.Scan(
+		&i.UnitID,
+		&i.UnitLon,
+		&i.UnitLat,
+		&i.EventID,
+		&i.EventLon,
+		&i.EventLat,
+	)
+	return i, err
+}
+
 const getRoutePosition = `-- name: GetRoutePosition :one
 SELECT
     ST_X(ST_LineInterpolatePoint(route_geometry, LEAST($1::double precision / 100.0, 1.0)))::double precision AS lon,

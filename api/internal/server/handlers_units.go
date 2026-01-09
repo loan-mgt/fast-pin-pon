@@ -222,8 +222,9 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Auto-delete route when unit status changes to something other than under_way or on_site
-	if req.Status != "under_way" && req.Status != "on_site" {
+	// Auto-delete route when unit status changes to something other than under_way
+	// (route is deleted when unit arrives on_site or becomes available/unavailable/offline)
+	if req.Status != "under_way" {
 		_ = s.queries.DeleteUnitRoute(r.Context(), unitID) // Ignore error - route may not exist
 	}
 

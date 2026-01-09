@@ -4,9 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.OkHttpClient;
-import org.fastpinpon.simulation.model.Incident;
-import org.fastpinpon.simulation.model.IncidentType;
-import org.fastpinpon.simulation.model.BaseLocation;
 import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.Retrofit;
@@ -65,6 +62,71 @@ public final class ApiClient {
             this.homeBase = homeBase;
             this.unitTypeCode = unitTypeCode;
             this.status = status;
+            this.latitude = latitude;
+            this.longitude = longitude;
+        }
+    }
+
+    public static final class UnitRouteInfo {
+        public final String unitId;
+        public final String interventionId;
+        public final double routeLengthMeters;
+        public final double estimatedDurationSeconds;
+        public final double progressPercent;
+        public final Double currentLat;
+        public final Double currentLon;
+
+        public UnitRouteInfo(String unitId, String interventionId, double routeLengthMeters,
+                             double estimatedDurationSeconds, double progressPercent,
+                             Double currentLat, Double currentLon) {
+            this.unitId = unitId;
+            this.interventionId = interventionId;
+            this.routeLengthMeters = routeLengthMeters;
+            this.estimatedDurationSeconds = estimatedDurationSeconds;
+            this.progressPercent = progressPercent;
+            this.currentLat = currentLat;
+            this.currentLon = currentLon;
+        }
+    }
+
+    public static final class ProgressUpdateResult {
+        public final String unitId;
+        public final double progressPercent;
+        public final double currentLat;
+        public final double currentLon;
+        public final double remainingMeters;
+        public final double remainingSeconds;
+
+        public ProgressUpdateResult(String unitId, double progressPercent, double currentLat,
+                                    double currentLon, double remainingMeters, double remainingSeconds) {
+            this.unitId = unitId;
+            this.progressPercent = progressPercent;
+            this.currentLat = currentLat;
+            this.currentLon = currentLon;
+            this.remainingMeters = remainingMeters;
+            this.remainingSeconds = remainingSeconds;
+        }
+    }
+
+    public static final class AssignmentInfo {
+        public final String id;
+        public final String unitId;
+        public final String status;
+
+        public AssignmentInfo(String id, String unitId, String status) {
+            this.id = id;
+            this.unitId = unitId;
+            this.status = status;
+        }
+    }
+
+    public static final class BaseLocation {
+        public final String name;
+        public final double latitude;
+        public final double longitude;
+
+        public BaseLocation(String name, double latitude, double longitude) {
+            this.name = name;
             this.latitude = latitude;
             this.longitude = longitude;
         }
@@ -164,54 +226,6 @@ public final class ApiClient {
     }
 
     /**
-     * Create an event from raw parameters.
-     * @param type incident type
-     * @param number incident sequence number
-     * @param lat latitude
-     * @param lon longitude
-     * @param severity gravity/severity level
-     * @return created event id or null on failure
-     */
-    public String createEvent(IncidentType type, int number, double lat, double lon, int severity) {
-        String typeCode = pickEventType();
-        if (typeCode == null) {
-            LOG.warning("[API] No event type code available; cannot create event.");
-            return null;
-        }
-        String title = "SIM-" + type + "-" + number;
-        CreateEventRequest payload = new CreateEventRequest(title, typeCode, lat, lon, severity, "simulation");
-        IdDto created = execute(api.createEvent(payload), "POST /v1/events");
-        if (created != null && created.getId() != null) {
-            LOG.log(Level.INFO, "[API] Event created (id={0})", created.getId());
-            return created.getId();
-        }
-        return null;
-    }
-
-    /**
-     * Create an intervention linked to an event.
-     * @param eventId event identifier
-     * @param priority intervention priority
-     * @return created intervention id or null
-     */
-    public String createIntervention(String eventId, int priority) {
-        IdDto created = execute(api.createIntervention(new CreateInterventionRequest(eventId, priority, "auto_suggested")), "POST /v1/interventions");
-        return created == null ? null : created.getId();
-    }
-
-    /**
-     * Assign a unit to an intervention.
-     * @param interventionId intervention identifier
-     * @param unitId unit identifier
-     * @param role assignment role
-     * @return assignment id or null
-     */
-    public String assignUnit(String interventionId, String unitId, String role) {
-        IdDto created = execute(api.assignUnit(interventionId, new AssignUnitRequest(unitId, role)), "POST /v1/interventions/{id}/assignments");
-        return created == null ? null : created.getId();
-    }
-
-    /**
      * Update an assignment status.
      * @param assignmentId assignment identifier
      * @param status new status value
@@ -238,18 +252,6 @@ public final class ApiClient {
     }
 
     /**
-     * Send a heartbeat log for an event.
-     * @param eventId event identifier
-     */
-    public void logHeartbeat(String eventId) {
-        if (eventId == null) {
-            return;
-        }
-        HeartbeatRequest payload = new HeartbeatRequest("simulator", "heartbeat");
-        executeVoid(api.logEvent(eventId, payload), "POST /v1/events/{id}/logs", payload);
-    }
-
-    /**
      * Update a unit status.
      * @param unitId unit identifier
      * @param status new status value
@@ -260,6 +262,94 @@ public final class ApiClient {
         }
         StatusRequest payload = new StatusRequest(status);
         executeVoid(api.updateUnitStatus(unitId, payload), "PATCH /v1/units/{id}/status", payload);
+    }
+
+    /**
+     * Get the stored route for a unit.
+     * @param unitId unit identifier
+     * @return route info or null if not found
+     */
+    public UnitRouteInfo getUnitRoute(String unitId) {
+        if (unitId == null || unitId.trim().isEmpty()) {
+            return null;
+        }
+        // 404 is expected when route hasn't been calculated yet
+        UnitRouteDto dto = execute(api.getUnitRoute(unitId), "GET /v1/units/{id}/route", true);
+        if (dto == null) {
+            return null;
+        }
+        return new UnitRouteInfo(
+                dto.unitId,
+                dto.interventionId,
+                dto.routeLengthMeters,
+                dto.estimatedDurationSeconds,
+                dto.progressPercent,
+                dto.currentLat,
+                dto.currentLon
+        );
+    }
+
+    /**
+     * Update route progress and get interpolated position.
+     * @param unitId unit identifier
+     * @param progressPercent new progress (0-100)
+     * @return progress update result with new position
+     */
+    public ProgressUpdateResult updateRouteProgress(String unitId, double progressPercent) {
+        if (unitId == null || unitId.trim().isEmpty()) {
+            return null;
+        }
+        ProgressRequest payload = new ProgressRequest(progressPercent);
+        ProgressResponseDto dto = execute(api.updateRouteProgress(unitId, payload), "PATCH /v1/units/{id}/route/progress");
+        if (dto == null) {
+            return null;
+        }
+        return new ProgressUpdateResult(
+                dto.unitId,
+                dto.progressPercent,
+                dto.currentLat,
+                dto.currentLon,
+                dto.remainingMeters,
+                dto.remainingSeconds
+        );
+    }
+
+    /**
+     * Get all assignments for an intervention.
+     * @param interventionId intervention identifier
+     * @return list of assignments
+     */
+    public List<AssignmentInfo> getInterventionAssignments(String interventionId) {
+        if (interventionId == null || interventionId.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        InterventionDetailDto dto = execute(api.getIntervention(interventionId), "GET /v1/interventions/{id}");
+        if (dto == null || dto.assignments == null) {
+            return new ArrayList<>();
+        }
+        List<AssignmentInfo> result = new ArrayList<>();
+        for (AssignmentDto a : dto.assignments) {
+            result.add(new AssignmentInfo(a.id, a.unitId, a.status));
+        }
+        return result;
+    }
+
+    /**
+     * Update assignment status by finding the assignment for a unit in an intervention.
+     * @param interventionId intervention identifier
+     * @param unitId unit identifier
+     * @param status new status
+     */
+    public void updateAssignmentStatusByUnit(String interventionId, String unitId, String status) {
+        List<AssignmentInfo> assignments = getInterventionAssignments(interventionId);
+        for (AssignmentInfo a : assignments) {
+            if (unitId.equals(a.unitId)) {
+                updateAssignmentStatus(a.id, status);
+                return;
+            }
+        }
+        LOG.log(Level.WARNING, "[API] No assignment found for unit {0} in intervention {1}",
+                new Object[]{unitId, interventionId});
     }
 
     /**
@@ -284,23 +374,7 @@ public final class ApiClient {
         return unitTypeCodes.get(random.nextInt(unitTypeCodes.size()));
     }
 
-    /**
-     * Create a unit.
-     * @param callSign unit call sign
-     * @param unitTypeCode unit type code
-     * @param homeBase home base label
-     * @param lat latitude
-     * @param lon longitude
-     * @return created unit info or null
-     */
-    public UnitInfo createUnit(String callSign, String unitTypeCode, String homeBase, double lat, double lon) {
-        CreateUnitRequest payload = new CreateUnitRequest(callSign, unitTypeCode, homeBase, "available", lat, lon);
-        IdDto created = execute(api.createUnit(payload), "POST /v1/units");
-        if (created == null || created.id == null) {
-            return null;
-        }
-        return new UnitInfo(created.id, callSign, homeBase, unitTypeCode, "available", lat, lon);
-    }
+
 
     // ---- helpers ----
 
@@ -336,10 +410,19 @@ public final class ApiClient {
     }
 
     private <T> T execute(Call<T> call, String action) {
+        return execute(call, action, false);
+    }
+
+    private <T> T execute(Call<T> call, String action, boolean expect404) {
         try {
             Response<T> resp = call.execute();
             if (!resp.isSuccessful()) {
-                LOG.log(Level.SEVERE, "[API] {0} -> {1} body={2}", new Object[]{action, resp.code(), errorBody(resp)});
+                // Only log at SEVERE if it's not an expected 404
+                if (resp.code() == 404 && expect404) {
+                    LOG.log(Level.FINE, "[API] {0} -> 404 (expected, no data)", action);
+                } else {
+                    LOG.log(Level.SEVERE, "[API] {0} -> {1} body={2}", new Object[]{action, resp.code(), errorBody(resp)});
+                }
                 return null;
             }
             return resp.body();
@@ -437,6 +520,15 @@ public final class ApiClient {
 
         @POST("/v1/events/{eventId}/logs")
         Call<Void> logEvent(@Path("eventId") String eventId, @Body HeartbeatRequest body);
+
+        @GET("/v1/units/{unitID}/route")
+        Call<UnitRouteDto> getUnitRoute(@Path("unitID") String unitId);
+
+        @PATCH("/v1/units/{unitID}/route/progress")
+        Call<ProgressResponseDto> updateRouteProgress(@Path("unitID") String unitId, @Body ProgressRequest body);
+
+        @GET("/v1/interventions/{interventionId}")
+        Call<InterventionDetailDto> getIntervention(@Path("interventionId") String interventionId);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -654,6 +746,69 @@ public final class ApiClient {
             this.code = code;
             this.payload = new ArrayList<>();
         }
+    }
+
+    private static final class ProgressRequest {
+        @JsonProperty("progress_percent")
+        public final double progressPercent;
+
+        ProgressRequest(double progressPercent) {
+            this.progressPercent = progressPercent;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static final class UnitRouteDto {
+        @JsonProperty("unit_id")
+        String unitId;
+        @JsonProperty("intervention_id")
+        String interventionId;
+        @JsonProperty("route_length_meters")
+        double routeLengthMeters;
+        @JsonProperty("estimated_duration_seconds")
+        double estimatedDurationSeconds;
+        @JsonProperty("progress_percent")
+        double progressPercent;
+        @JsonProperty("current_lat")
+        Double currentLat;
+        @JsonProperty("current_lon")
+        Double currentLon;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static final class ProgressResponseDto {
+        @JsonProperty("unit_id")
+        String unitId;
+        @JsonProperty("progress_percent")
+        double progressPercent;
+        @JsonProperty("current_lat")
+        double currentLat;
+        @JsonProperty("current_lon")
+        double currentLon;
+        @JsonProperty("remaining_meters")
+        double remainingMeters;
+        @JsonProperty("remaining_seconds")
+        double remainingSeconds;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static final class InterventionDetailDto {
+        @JsonProperty("id")
+        String id;
+        @JsonProperty("status")
+        String status;
+        @JsonProperty("assignments")
+        List<AssignmentDto> assignments;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static final class AssignmentDto {
+        @JsonProperty("id")
+        String id;
+        @JsonProperty("unit_id")
+        String unitId;
+        @JsonProperty("status")
+        String status;
     }
 
     private static String nvl(String v, String d) {

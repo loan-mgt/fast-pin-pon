@@ -301,6 +301,9 @@ func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) 
 		// We don't fail the whole request because the assignment was created
 	}
 
+	// Calculate and save route for the unit
+	go s.calculateAndSaveRouteForAssignment(context.Background(), interventionID, unitID)
+
 	s.writeJSON(w, http.StatusCreated, mapAssignment(row))
 }
 

@@ -54,7 +54,7 @@ services:
         condition: service_healthy
     restart: on-failure
     environment:
-      - API_BASE_URL=https://api.fast-pin-pon.4loop.org
+      - API_BASE_URL=http://api:8080
       - SIMULATION_UPDATING_ENABLED=false
     ports:
       - "8090:8090"
@@ -69,11 +69,16 @@ services:
       context: ./incidentCreation
       dockerfile: Dockerfile
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
       - INCIDENT_INTERVAL_SECONDS=60
+
   engine:
+    extends:
+      file: docker-compose.prod.yml
+      service: engine
     image: fast-pin-pon-engine-dev
     container_name: fast-pin-pon-engine
     build:

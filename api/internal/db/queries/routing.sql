@@ -76,3 +76,18 @@ SELECT
     ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST(sqlc.arg(progress_percent)::double precision / 100.0, 1.0)))::double precision AS lat
 FROM unit_routes
 WHERE unit_id = sqlc.arg(unit_id);
+
+-- name: GetRouteCalculationData :one
+-- Gets all data needed to calculate a route for an assignment (unit position + event destination)
+-- Single query instead of 3 separate queries
+SELECT
+    u.id AS unit_id,
+    (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS unit_lon,
+    (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS unit_lat,
+    e.id AS event_id,
+    ST_X(e.location::geometry)::double precision AS event_lon,
+    ST_Y(e.location::geometry)::double precision AS event_lat
+FROM interventions i
+JOIN events e ON e.id = i.event_id
+JOIN units u ON u.id = sqlc.arg(unit_id)
+WHERE i.id = sqlc.arg(intervention_id);
