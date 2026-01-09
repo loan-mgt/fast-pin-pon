@@ -75,10 +75,17 @@ public final class ApiClient {
         public final double progressPercent;
         public final Double currentLat;
         public final Double currentLon;
+        public final Integer severity;
 
-        public UnitRouteInfo(String unitId, String interventionId, double routeLengthMeters,
-                             double estimatedDurationSeconds, double progressPercent,
-                             Double currentLat, Double currentLon) {
+        @com.fasterxml.jackson.annotation.JsonCreator
+        public UnitRouteInfo(@JsonProperty("unit_id") String unitId, 
+                             @JsonProperty("intervention_id") String interventionId, 
+                             @JsonProperty("route_length_meters") double routeLengthMeters,
+                             @JsonProperty("estimated_duration_seconds") double estimatedDurationSeconds, 
+                             @JsonProperty("progress_percent") double progressPercent,
+                             @JsonProperty("current_lat") Double currentLat, 
+                             @JsonProperty("current_lon") Double currentLon,
+                             @JsonProperty("severity") Integer severity) {
             this.unitId = unitId;
             this.interventionId = interventionId;
             this.routeLengthMeters = routeLengthMeters;
@@ -86,6 +93,7 @@ public final class ApiClient {
             this.progressPercent = progressPercent;
             this.currentLat = currentLat;
             this.currentLon = currentLon;
+            this.severity = severity;
         }
     }
 
@@ -285,7 +293,8 @@ public final class ApiClient {
                 dto.estimatedDurationSeconds,
                 dto.progressPercent,
                 dto.currentLat,
-                dto.currentLon
+                dto.currentLon,
+                dto.severity
         );
     }
 
@@ -773,6 +782,8 @@ public final class ApiClient {
         Double currentLat;
         @JsonProperty("current_lon")
         Double currentLon;
+        @JsonProperty("severity")
+        Integer severity;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

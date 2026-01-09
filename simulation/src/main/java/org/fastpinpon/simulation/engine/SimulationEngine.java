@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -34,20 +35,18 @@ public final class SimulationEngine {
     private static final String STATUS_AVAILABLE = "available";
     private static final String STATUS_AVAILABLE_HIDDEN = "available_hidden";
     
-    private static final long COMPLETION_DELAY_MS = 30_000; // 30 seconds
+    // private static final long COMPLETION_DELAY_MS = 30_000; // Removed in favor of probabilistic completion
 
     private final ApiClient api;
     private final String apiBaseUrl;
     private final boolean updatingEnabled;
     private final Map<String, VehicleState> vehicleStates = new ConcurrentHashMap<>();
+    private final Random random = new Random();
     
     // Track units that are moving while "available" (Returning to station)
     // Used to distinguish arrival behavior (Hidden vs On Site)
     private final Set<String> movingAvailableUnits = ConcurrentHashMap.newKeySet();
 
-    // Track interventions waiting for completion (interventionId -> first arrived timestamp)
-    private final Map<String, Instant> interventionCompletionTimers = new ConcurrentHashMap<>();
-    
     private List<ApiClient.UnitInfo> cachedUnits = new ArrayList<>();
 
     private long lastTickTime = System.currentTimeMillis();
@@ -82,8 +81,8 @@ public final class SimulationEngine {
             // 2. Update progress for all tracked vehicles
             updateVehicleProgress(deltaSeconds);
 
-            // 3. Check for intervention completions (30s delay)
-            checkInterventionCompletions();
+            // 3. Check for intervention completions (probabilistic)
+            checkInterventionCompletions(deltaSeconds);
 
         } catch (Exception e) {
             LOG.log(Level.WARNING, "[ENGINE] Tick error: {0}", e.getMessage());
@@ -98,11 +97,13 @@ public final class SimulationEngine {
         List<ApiClient.UnitInfo> units = api.loadUnits();
         this.cachedUnits = units;
         
+        Map<String, String> latestStatusMap = new HashMap<>();
         Set<String> currentTrackedIds = new HashSet<>();
         long underWayCount = 0;
         long availableCount = 0;
 
         for (UnitInfo unit : units) {
+            latestStatusMap.put(unit.id, unit.status);
             boolean isUnderWay = STATUS_UNDER_WAY.equals(unit.status);
             boolean isAvailable = STATUS_AVAILABLE.equals(unit.status);
 
@@ -134,20 +135,22 @@ public final class SimulationEngine {
         for (String unitId : vehicleStates.keySet()) {
             if (!currentTrackedIds.contains(unitId)) {
                 VehicleState state = vehicleStates.get(unitId);
+                String currentStatus = latestStatusMap.get(unitId);
                 
-                // Only remove arrived vehicles if their intervention is NOT waiting for completion
+                // Only keep tracking if it is ON_SITE (intervention active) and has arrived
+                // This allows us to run completion logic
+                if (state.hasArrived() && STATUS_ON_SITE.equals(currentStatus) && state.getInterventionId() != null) {
+                    continue;
+                }
+                
+                // Otherwise remove (arrived return trip, or cancelled externally)
+                toRemove.add(unitId);
                 if (state.hasArrived()) {
-                    // Keep tracking if intervention completion timer is active (only for under_way / intervention units)
-                    if (state.getInterventionId() != null && 
-                        interventionCompletionTimers.containsKey(state.getInterventionId())) {
-                        continue;
-                    }
-                    toRemove.add(unitId);
-                    LOG.log(Level.INFO, "[ENGINE] Removing arrived vehicle {0}", unitId);
+                    LOG.log(Level.INFO, "[ENGINE] Removing arrived vehicle {0} (Status: {1})", 
+                        new Object[]{unitId, currentStatus});
                 } else {
-                    // Unit changed status externally (e.g. cancelled) - stop tracking
-                    toRemove.add(unitId);
-                    LOG.log(Level.INFO, "[ENGINE] Vehicle {0} no longer moving, removing", unitId);
+                    LOG.log(Level.INFO, "[ENGINE] Vehicle {0} no longer moving (Status: {1}), removing", 
+                        new Object[]{unitId, currentStatus});
                 }
             }
         }
@@ -177,7 +180,8 @@ public final class SimulationEngine {
                     route.routeLengthMeters,
                     route.progressPercent,
                     route.currentLat != null ? route.currentLat : (unit.latitude != null ? unit.latitude : 0),
-                    route.currentLon != null ? route.currentLon : (unit.longitude != null ? unit.longitude : 0)
+                    route.currentLon != null ? route.currentLon : (unit.longitude != null ? unit.longitude : 0),
+                    route.severity
             );
 
             vehicleStates.put(unit.id, state);
@@ -279,20 +283,13 @@ public final class SimulationEngine {
             if (updatingEnabled) {
                 api.updateAssignmentStatusByUnit(state.getInterventionId(), state.getUnitId(), "arrived");
             }
-            
-            // Start or update completion timer for this intervention
-            interventionCompletionTimers.putIfAbsent(state.getInterventionId(), Instant.now());
         }
     }
 
     /**
-     * Check if any interventions are ready for completion (30s after all units arrived).
+     * Check if any interventions should complete based on random chance, severity, and unit count.
      */
-    private void checkInterventionCompletions() {
-        if (interventionCompletionTimers.isEmpty()) {
-            return;
-        }
-
+    private void checkInterventionCompletions(double deltaSeconds) {
         // Group arrived vehicles by intervention (exclude return trips)
         Map<String, List<VehicleState>> byIntervention = new HashMap<>();
         for (VehicleState state : vehicleStates.values()) {
@@ -303,27 +300,73 @@ public final class SimulationEngine {
         }
 
         Set<String> toComplete = new HashSet<>();
-        Instant now = Instant.now();
 
-        for (Map.Entry<String, Instant> entry : interventionCompletionTimers.entrySet()) {
+        for (Map.Entry<String, List<VehicleState>> entry : byIntervention.entrySet()) {
             String interventionId = entry.getKey();
-            Instant timerStart = entry.getValue();
-
-            List<VehicleState> arrivedForIntervention = byIntervention.getOrDefault(interventionId, List.of());
+            List<VehicleState> arrivedUnits = entry.getValue();
             
             // Check if there are still vehicles in transit for this intervention
-            // (Exclude vehicles that are marked as 'available' return trips)
-            boolean hasVehiclesInTransit = vehicleStates.values().stream()
+             boolean hasVehiclesInTransit = vehicleStates.values().stream()
                     .filter(s -> !movingAvailableUnits.contains(s.getUnitId())) // Only count under_way units
                     .anyMatch(s -> interventionId.equals(s.getInterventionId()) && !s.hasArrived());
-
-            if (hasVehiclesInTransit) {
-                interventionCompletionTimers.put(interventionId, now); // Reset timer
+            
+            if (hasVehiclesInTransit || arrivedUnits.isEmpty()) {
                 continue;
             }
 
-            long elapsedMs = now.toEpochMilli() - timerStart.toEpochMilli();
-            if (elapsedMs >= COMPLETION_DELAY_MS && !arrivedForIntervention.isEmpty()) {
+            // Logic for completion
+            // Use severity from one of the units (they should all have same intervention -> same severity)
+            // If severity is missing, default to 3 (medium)
+            int severity = arrivedUnits.stream()
+                .map(VehicleState::getSeverity)
+                .filter(s -> s != null)
+                .findFirst()
+                .orElse(3);
+            
+            int unitCount = arrivedUnits.size();
+
+            // Metric: High metric = Harder to solve (Low Probability)
+            // Wait, logic derived was: High Metric = Higher Chance?
+            // Re-derivation:
+            // Sev 3, Unit 1 => P_1s = 0.023.
+            // Target P_1s increases with Units, Decreases with Severity.
+            
+            // Let's use direct Probability Score:
+            // Base Score = 2.3 (Percent)
+            // + (Units - 1) * 3.0  => More units increase chance drastically
+            // - (Severity - 3) * 1.5 => Higher severity reduces chance
+            
+            // Re-calib: Sev 3, Unit 1 -> 2.3%
+            // Sev 3, Unit 4 -> 2.3 + 9 = 11.3% -> Median ~6s.
+            // Sev 5, Unit 1 -> 2.3 - 3 = -0.7% -> Impossible (good).
+            
+            double baseProbPerc = 2.3;
+            double prob1s = baseProbPerc 
+                          + (unitCount - 1) * 2.2 
+                          - (severity - 3) * 2.2;
+            
+            // Clamp prob1s
+            if (prob1s < 0.1) prob1s = 0.1; // Minimum chance to avoid infinite loops, or 0? 
+            if (prob1s > 99.0) prob1s = 99.0;
+            
+            // Convert to probability per tick
+            double p1s = prob1s / 100.0;
+            double pTick = 1.0 - Math.pow(1.0 - p1s, deltaSeconds);
+            
+            // Threshold for random roll [0, 100]
+            // We want Event if Roll < pTick * 100
+            // OR Roll > Threshold where Threshold = 100 * (1 - pTick)
+            
+            double threshold = 100.0 * (1.0 - pTick);
+            double roll = random.nextDouble() * 100.0;
+            
+            if (LOG.isLoggable(Level.FINE)) {
+                LOG.fine(String.format("[ENGINE] Intv %s (Sev %d, Units %d): Roll %.2f vs Threshold %.2f (P_tick %.4f)", 
+                    interventionId, severity, unitCount, roll, threshold, pTick));
+            }
+
+            if (roll > threshold) {
+                LOG.info(String.format("[ENGINE] Probabilistic completion for %s: Roll %.2f > Threshold %.2f", interventionId, roll, threshold));
                 toComplete.add(interventionId);
             }
         }
@@ -336,11 +379,11 @@ public final class SimulationEngine {
 
     private void completeIntervention(String interventionId) {
         try {
-            LOG.log(Level.INFO, "[ENGINE] Completing intervention {0} after 30s delay", interventionId);
+            LOG.log(Level.INFO, "[ENGINE] Completing intervention {0} (Probabilistic)", interventionId);
             if (updatingEnabled) {
                 api.updateInterventionStatus(interventionId, "completed");
             }
-            interventionCompletionTimers.remove(interventionId);
+            // interventionCompletionTimers.remove(interventionId); // Removed
             
             // Remove all vehicles for this intervention from tracking
             vehicleStates.entrySet().removeIf(e -> interventionId.equals(e.getValue().getInterventionId()));

@@ -12,6 +12,7 @@ public final class VehicleState {
     private final double estimatedDurationSeconds;
     private final double routeLengthMeters;
     private final Instant startedAt;
+    private final Integer severity;
 
     private double progressPercent;
     private double currentLat;
@@ -20,7 +21,8 @@ public final class VehicleState {
 
     public VehicleState(String unitId, String interventionId, String assignmentId,
                         double estimatedDurationSeconds, double routeLengthMeters,
-                        double initialProgressPercent, double initialLat, double initialLon) {
+                        double initialProgressPercent, double initialLat, double initialLon,
+                        Integer severity) {
         this.unitId = unitId;
         this.interventionId = interventionId;
         this.assignmentId = assignmentId;
@@ -31,6 +33,11 @@ public final class VehicleState {
         this.currentLat = initialLat;
         this.currentLon = initialLon;
         this.arrivedAt = null;
+        this.severity = severity;
+    }
+
+    public Integer getSeverity() {
+        return severity;
     }
 
     public String getUnitId() {

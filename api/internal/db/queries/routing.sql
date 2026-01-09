@@ -33,22 +33,25 @@ RETURNING
 -- name: GetUnitRoute :one
 -- Gets a unit's route with current position interpolated from progress
 SELECT 
-    unit_id,
-    intervention_id,
-    ST_AsGeoJSON(route_geometry)::text AS route_geojson,
-    route_length_meters,
-    estimated_duration_seconds,
-    progress_percent,
+    ur.unit_id,
+    ur.intervention_id,
+    ST_AsGeoJSON(ur.route_geometry)::text AS route_geojson,
+    ur.route_length_meters,
+    ur.estimated_duration_seconds,
+    ur.progress_percent,
     -- Current position interpolated along the route
-    ST_X(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lat,
+    ST_X(ST_LineInterpolatePoint(ur.route_geometry, ur.progress_percent / 100.0))::float8 AS current_lon,
+    ST_Y(ST_LineInterpolatePoint(ur.route_geometry, ur.progress_percent / 100.0))::float8 AS current_lat,
     -- Remaining distance and time
-    (route_length_meters * (1.0 - progress_percent / 100.0))::float8 AS remaining_meters,
-    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::float8 AS remaining_seconds,
-    created_at,
-    updated_at
-FROM unit_routes
-WHERE unit_id = sqlc.arg(unit_id);
+    (ur.route_length_meters * (1.0 - ur.progress_percent / 100.0))::float8 AS remaining_meters,
+    (ur.estimated_duration_seconds * (1.0 - ur.progress_percent / 100.0))::float8 AS remaining_seconds,
+    ur.created_at,
+    ur.updated_at,
+    e.severity
+FROM unit_routes ur
+LEFT JOIN interventions i ON ur.intervention_id = i.id
+LEFT JOIN events e ON i.event_id = e.id
+WHERE ur.unit_id = sqlc.arg(unit_id);
 
 -- name: UpdateRouteProgress :one
 -- Updates the progress percentage and returns the new interpolated position
