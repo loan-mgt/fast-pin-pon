@@ -10,7 +10,6 @@
     background-color: #0f172a;
     color: #e2e8f0;
     height: 100%;
-    overflow: hidden;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -23,7 +22,6 @@
 
 #root {
   height: 100%;
-  overflow: hidden;
 }
 
 /* Animation for event markers pulse effect */

@@ -207,7 +207,7 @@ export function App() {
     ? `${profile.firstName} ${profile.lastName ?? ''}`.trim()
     : profile?.username ?? profile?.email ?? 'Utilisateur'
   return (
-    <div className="flex flex-col bg-slate-950 min-h-screen text-slate-100">
+    <div className={`flex flex-col bg-slate-950 min-h-screen text-slate-100 ${view === 'live' ? 'h-screen overflow-hidden' : ''}`}>
       <Navbar
         refreshInterval={refreshInterval}
         onIntervalChange={handleIntervalChange}
@@ -222,7 +222,7 @@ export function App() {
       />
 
       {view === 'dashboard' && (
-        <main className="flex flex-1 min-h-[calc(100vh-72px)]">
+        <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-auto">
           <DashboardPage 
             units={units} 
             buildings={buildings}
@@ -234,13 +234,13 @@ export function App() {
       )}
 
       {view === 'history' && (
-        <main className="flex flex-1 min-h-[calc(100vh-72px)]">
+        <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-auto">
           <HistoryPage />
         </main>
       )}
 
       {view === 'live' && (
-        <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">
+        <main className="relative flex flex-1 min-h-[calc(100vh-72px)] overflow-hidden">
           <MapContainer
             events={sortedEvents}
             units={units}
