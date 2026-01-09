@@ -177,7 +177,9 @@ public final class SimulationEngine {
         List<BaseLocation> stations = api.loadStations();
         this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl);
+        
+        boolean updatesEnabled = !"false".equalsIgnoreCase(System.getenv("SIMULATION_UPDATING_ENABLED"));
+        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl, updatesEnabled);
         if (incidentSource != null) {
             this.incidentSources.add(incidentSource);
         }
@@ -196,7 +198,9 @@ public final class SimulationEngine {
         List<BaseLocation> stations = api.loadStations();
         this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl);
+        
+        boolean updatesEnabled = !"false".equalsIgnoreCase(System.getenv("SIMULATION_UPDATING_ENABLED"));
+        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl, updatesEnabled);
         if (!noGenerator) {
             this.incidentSources.add(new IncidentGenerator());
         }

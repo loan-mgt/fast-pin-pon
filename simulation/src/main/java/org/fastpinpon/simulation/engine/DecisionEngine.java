@@ -40,6 +40,7 @@ public final class DecisionEngine {
     private final List<Vehicle> vehicles;
     private final RoutingService routingService;
     private final List<BaseLocation> bases;
+    private final boolean updatesEnabled;
 
     // Distance thresholds in METERS
     private static final double ARRIVAL_THRESHOLD_METERS = 30.0;  // 30 meters to trigger arrival
@@ -107,16 +108,22 @@ public final class DecisionEngine {
      * @param vehicles the fleet of vehicles to manage
      * @param bases the list of base locations
      * @param apiBaseUrl the base URL of the API for routing
+     * @param updatesEnabled whether to push unit updates to the API
      */
-    public DecisionEngine(ApiClient api, List<Vehicle> vehicles, List<BaseLocation> bases, String apiBaseUrl) {
+    public DecisionEngine(ApiClient api, List<Vehicle> vehicles, List<BaseLocation> bases, String apiBaseUrl, boolean updatesEnabled) {
         this.api = api;
         this.vehicles = vehicles;
         this.routingService = new RoutingService(apiBaseUrl);
+        this.updatesEnabled = updatesEnabled;
         if (bases != null && !bases.isEmpty()) {
             this.bases = new ArrayList<>(bases);
         } else {
             this.bases = new ArrayList<>(Arrays.asList(DEFAULT_BASES));
         }
+    }
+    
+    public DecisionEngine(ApiClient api, List<Vehicle> vehicles, List<BaseLocation> bases, String apiBaseUrl) {
+        this(api, vehicles, bases, apiBaseUrl, true);
     }
 
     /**
@@ -244,6 +251,9 @@ public final class DecisionEngine {
      * Push telemetry for all vehicles and incidents to the API.
      */
     public void pushTelemetry() {
+        if (!updatesEnabled) {
+            return;
+        }
         for (Vehicle v : vehicles) {
             api.updateUnitStatus(v.getUnitId(), mapVehicleState(v.getEtat()));
             api.updateUnitLocation(v.getUnitId(), v.getLat(), v.getLon(), v.getLastUpdate());
@@ -392,8 +402,12 @@ public final class DecisionEngine {
         v.setEnRouteSince(v.getLastUpdate());
         v.setConvoyPosition(convoyPosition);
         
+        v.setConvoyPosition(convoyPosition);
+        
         // Update unit status to "under_way" in backend
-        api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_EN_ROUTE);
+        if (updatesEnabled) {
+            api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_EN_ROUTE);
+        }
         
         if (sharedRoute != null && !sharedRoute.isEmpty()) {
             // Copy the shared route for this vehicle
@@ -587,7 +601,11 @@ public final class DecisionEngine {
         v.setLastUpdate(Instant.now());
         v.setReturnSince(v.getLastUpdate());
         
-        api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_EN_ROUTE);
+        v.setReturnSince(v.getLastUpdate());
+        
+        if (updatesEnabled) {
+            api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_EN_ROUTE);
+        }
         
         if (PATCH_ASSIGNMENT_STATUS) {
             api.updateAssignmentStatus(v.getAssignmentId(), ASSIGNMENT_STATUS_RELEASED);
@@ -684,7 +702,9 @@ public final class DecisionEngine {
         if (PATCH_ASSIGNMENT_STATUS) {
             api.updateAssignmentStatus(v.getAssignmentId(), ASSIGNMENT_STATUS_ARRIVED);
         }
-        api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_ON_SITE);
+        if (updatesEnabled) {
+            api.updateUnitStatus(v.getUnitId(), UNIT_STATUS_ON_SITE);
+        }
         printIncidentStatusLine(incident);
         if (incident.getInterventionId() != null && PATCH_INTERVENTION_STATUS) {
             api.updateInterventionStatus(incident.getInterventionId(), INTERVENTION_STATUS_ON_SITE);
