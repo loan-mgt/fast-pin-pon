@@ -53,6 +53,10 @@ services:
       - api
     environment:
       - API_BASE_URL=http://api:8080
+      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - KEYCLOAK_REALM=sdmis-realm
+      - KEYCLOAK_CLIENT_ID=sdmis-api
+      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
     ports:
       - "8090:8090"
 
@@ -70,12 +74,23 @@ services:
     environment:
       - API_BASE_URL=http://api:8080
       - INCIDENT_INTERVAL_SECONDS=60
+      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - KEYCLOAK_REALM=sdmis-realm
+      - KEYCLOAK_CLIENT_ID=sdmis-api
+      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
   engine:
     image: fast-pin-pon-engine-dev
     container_name: fast-pin-pon-engine
     build:
       context: ./engine
       dockerfile: Dockerfile
+    environment:
+      - API_BASE_URL=http://api:8080
+      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - KEYCLOAK_REALM=sdmis-realm
+      - KEYCLOAK_CLIENT_ID=sdmis-api
+      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
+      - ENGINE_CALLBACK_PORT=8081
     ports:
       - "8083:8081"
 
@@ -105,6 +120,9 @@ services:
     environment:
       - KC_HOSTNAME=localhost
       - KC_HOSTNAME_PORT=8082
+      - KEYCLOAK_URL=http://localhost:8082
+      - KEYCLOAK_REALM=sdmis-realm
+      - KEYCLOAK_CLIENT_ID=sdmis-api
 
   keycloakdb:
     extends:
@@ -121,7 +139,7 @@ services:
     build:
       context: ./infra/grafana
       dockerfile: Dockerfile
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
     environment:
       GF_SERVER_ROOT_URL: http://localhost:3000
       GF_AUTH_GENERIC_OAUTH_AUTH_URL: http://localhost:8082/realms/sdmis-realm/protocol/openid-connect/auth
@@ -140,7 +158,7 @@ services:
     build:
       context: ./infra/loki
       dockerfile: Dockerfile
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
 
   promtail:
     extends:
@@ -151,7 +169,7 @@ services:
     build:
       context: ./infra/promtail
       dockerfile: Dockerfile
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
 
   prometheus:
     image: prometheus-dev
@@ -159,7 +177,7 @@ services:
     build:
       context: ./infra/prometheus
       dockerfile: Dockerfile
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
     ports:
       - "9090:9090"
 
@@ -174,5 +192,3 @@ volumes:
   kc-db-data: {}
   loki-data: {}
   logs: {}
-
-

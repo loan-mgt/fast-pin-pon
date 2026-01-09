@@ -107,18 +107,19 @@ export function App() {
 
   useEffect(() => {
     ; (async () => {
+      if (!isAuthenticated || !token) return
       try {
-        const types = await fastPinPonService.getEventTypes()
+        const types = await fastPinPonService.getEventTypes(token)
         setEventTypes(types)
-        const uTypes = await fastPinPonService.getUnitTypes()
+        const uTypes = await fastPinPonService.getUnitTypes(token)
         setUnitTypes(uTypes)
-        const blds = await fastPinPonService.getBuildings()
+        const blds = await fastPinPonService.getBuildings(token)
         setBuildings(blds)
       } catch (err) {
         console.error(err)
       }
     })()
-  }, [])
+  }, [isAuthenticated, token])
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -219,7 +220,7 @@ export function App() {
         onNavigate={setView}
         onLogout={logout}
         userLabel={userLabel}
-        onAddUnit={() => setIsAddUnitOpen(true)}
+        onAddUnit={permissions.canCreateUnit ? () => setIsAddUnitOpen(true) : undefined}
       />
 
       {view === 'dashboard' && (
@@ -250,10 +251,14 @@ export function App() {
             onEventSelect={handleEventSelect}
             onBuildingSelect={handleBuildingSelect}
             selectedEventId={selectedEventId}
-            onCreateAtLocation={(coords) => {
-              setPendingLocation(coords)
-              setIsCreateOpen(true)
-            }}
+            onCreateAtLocation={
+              permissions.canCreateIncident
+                ? (coords) => {
+                  setPendingLocation(coords)
+                  setIsCreateOpen(true)
+                }
+                : undefined
+            }
             onMapReady={(flyTo) => {
               flyToLocationRef.current = flyTo
             }}

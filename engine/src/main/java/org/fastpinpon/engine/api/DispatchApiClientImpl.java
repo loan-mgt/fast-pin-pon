@@ -26,22 +26,30 @@ public final class DispatchApiClientImpl implements DispatchApiClient {
     private static final Logger LOG = Logger.getLogger(DispatchApiClientImpl.class.getName());
 
     private final DispatchApiService api;
-
-    public DispatchApiClientImpl(String baseUrl) {
-        Objects.requireNonNull(baseUrl, "baseUrl must not be null");
+    
+    public DispatchApiClientImpl(org.fastpinpon.engine.config.EngineConfig config) {
+        String baseUrl = config.getApiBaseUrl();
+        Objects.requireNonNull(baseUrl, "config.apiBaseUrl must not be null");
         
         String normalizedUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
 
-        OkHttpClient client = new OkHttpClient.Builder()
+        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(10, TimeUnit.SECONDS)
-                .build();
+                .writeTimeout(10, TimeUnit.SECONDS);
+
+        if (!config.getKeycloakUrl().isEmpty() && !config.getClientId().isEmpty()) {
+             String tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", 
+                    config.getKeycloakUrl(), config.getKeycloakRealm());
+             
+             TokenManager tokenManager = new TokenManager(tokenUrl, config.getClientId(), config.getClientSecret());
+             clientBuilder.addInterceptor(new AuthInterceptor(tokenManager));
+        }
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(normalizedUrl)
                 .addConverterFactory(JacksonConverterFactory.create(new ObjectMapper()))
-                .client(client)
+                .client(clientBuilder.build())
                 .build();
 
         this.api = retrofit.create(DispatchApiService.class);

@@ -48,24 +48,30 @@ class FastPinPonService {
   // =========================
   // ADDED: fetch incident types
   // =========================
-  async getEventTypes(): Promise<EventType[]> {
-    const response = await fetch(`${this.API_BASE_URL}/event-types`)
+  async getEventTypes(token?: string): Promise<EventType[]> {
+    const response = await fetch(`${this.API_BASE_URL}/event-types`, {
+      headers: this.buildHeaders(token),
+    })
     if (!response.ok) {
       throw new Error(`Failed to fetch event types: ${response.status} ${response.statusText}`)
     }
     return response.json()
   }
 
-  async getUnitTypes(): Promise<UnitType[]> {
-    const response = await fetch(`${this.API_BASE_URL}/unit-types`)
+  async getUnitTypes(token?: string): Promise<UnitType[]> {
+    const response = await fetch(`${this.API_BASE_URL}/unit-types`, {
+      headers: this.buildHeaders(token),
+    })
     if (!response.ok) {
       throw new Error(`Failed to fetch unit types: ${response.status} ${response.statusText}`)
     }
     return response.json()
   }
 
-  async getBuildings(): Promise<Building[]> {
-    const response = await fetch(`${this.API_BASE_URL}/buildings`)
+  async getBuildings(token?: string): Promise<Building[]> {
+    const response = await fetch(`${this.API_BASE_URL}/buildings`, {
+      headers: this.buildHeaders(token),
+    })
     if (!response.ok) {
       throw new Error(`Failed to fetch buildings: ${response.status} ${response.statusText}`)
     }
