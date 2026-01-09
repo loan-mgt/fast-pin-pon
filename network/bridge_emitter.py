@@ -236,15 +236,31 @@ def handle_poll(ser: serial.Serial, simulator_url: str, unit_to_microbit: Dict[s
 
 
 def run_main_loop(ser: serial.Serial, simulator_url: str, poll_interval: float,
-                  unit_to_microbit: Dict[str, str]) -> None:
+                  unit_to_microbit: Dict[str, str], api_url: str) -> None:
     """Run the main polling loop."""
     microbit_ids: List[str] = list(set(unit_to_microbit.values()))
     microbit_latest: Dict[str, Dict] = {}
     rotation_idx = 0
     last_poll = 0.0
+    last_mapping_refresh = time.time()
+    mapping_refresh_interval = 60  # Refresh mapping every 60 seconds
 
     while True:
         now = time.time()
+        
+        # Refresh mapping periodically to pick up newly assigned microbits
+        if now - last_mapping_refresh > mapping_refresh_interval:
+            print("[INFO] Rafraîchissement du mapping unités -> microbits...")
+            new_mapping, _ = load_microbit_mapping(api_url)
+            if len(new_mapping) != len(unit_to_microbit):
+                print(f"[INFO] Mapping mis à jour: {len(new_mapping)} unités avec microbit assigné")
+                print_mapping_debug(new_mapping)
+            unit_to_microbit.clear()
+            unit_to_microbit.update(new_mapping)
+            microbit_ids.clear()
+            microbit_ids.extend(list(set(new_mapping.values())))
+            last_mapping_refresh = now
+        
         if now - last_poll >= poll_interval:
             rotation_idx = handle_poll(ser, simulator_url, unit_to_microbit, 
                                        microbit_latest, microbit_ids, rotation_idx)
@@ -276,7 +292,7 @@ def main() -> None:
     print_mapping_debug(unit_to_microbit)
 
     try:
-        run_main_loop(ser, simulator_url, poll_interval, unit_to_microbit)
+        run_main_loop(ser, simulator_url, poll_interval, unit_to_microbit, api_url)
     except KeyboardInterrupt:
         print("\n[INFO] Arrêt du bridge émetteur")
     finally:
