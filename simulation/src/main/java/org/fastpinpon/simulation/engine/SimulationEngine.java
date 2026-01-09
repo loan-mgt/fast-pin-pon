@@ -119,6 +119,33 @@ public final class SimulationEngine {
                     // If it changed from available to under_way mid-flight, remove from available set
                     movingAvailableUnits.remove(unit.id);
                 }
+                
+                // Check if existing state is stale (e.g. unit was settled but is now moving again,
+                // or switched context from intervention to return trip)
+                if (vehicleStates.containsKey(unit.id)) {
+                    VehicleState existing = vehicleStates.get(unit.id);
+                    boolean isStale = false;
+                    
+                    // If state counts as "Arrived" but unit is reported as moving status (under_way/available),
+                    // it means a new route is needed.
+                    if (existing.hasArrived()) {
+                        isStale = true;
+                    }
+                    // If returning (available) but tracking an intervention route
+                    else if (isAvailable && existing.getInterventionId() != null) {
+                        isStale = true;
+                    }
+                    // If responding (under_way) but tracking a return route (no intervention id)
+                    else if (isUnderWay && existing.getInterventionId() == null) {
+                        isStale = true;
+                    }
+                    
+                    if (isStale) {
+                        LOG.log(Level.INFO, "[ENGINE] State stale for {0} (Status: {1}, Arrived: {2}), reloading route.", 
+                            new Object[]{unit.id, unit.status, existing.hasArrived()});
+                        vehicleStates.remove(unit.id);
+                    }
+                }
 
                 // Add new vehicle if not already tracked
                 if (!vehicleStates.containsKey(unit.id)) {
@@ -305,12 +332,7 @@ public final class SimulationEngine {
             String interventionId = entry.getKey();
             List<VehicleState> arrivedUnits = entry.getValue();
             
-            // Check if there are still vehicles in transit for this intervention
-             boolean hasVehiclesInTransit = vehicleStates.values().stream()
-                    .filter(s -> !movingAvailableUnits.contains(s.getUnitId())) // Only count under_way units
-                    .anyMatch(s -> interventionId.equals(s.getInterventionId()) && !s.hasArrived());
-            
-            if (hasVehiclesInTransit || arrivedUnits.isEmpty()) {
+            if (arrivedUnits.isEmpty()) {
                 continue;
             }
 

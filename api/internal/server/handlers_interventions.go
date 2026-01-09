@@ -213,6 +213,9 @@ func (s *Server) releaseInterventionUnits(ctx context.Context, interventionID pg
 
 		s.observeAssignmentOnSite(ctx, a.ID)
 		s.log.Debug().Str("unit_id", uuidString(a.UnitID)).Msg("unit status set to available")
+
+		// Trigger return to station routing
+		go s.calculateAndSaveRouteToStation(context.Background(), a.UnitID)
 	}
 	return nil
 }
@@ -358,6 +361,8 @@ func (s *Server) handleReleaseAssignment(w http.ResponseWriter, r *http.Request)
 	}
 
 	s.observeAssignmentOnSite(r.Context(), releasedID)
+	// Trigger return to station routing
+	go s.calculateAndSaveRouteToStation(context.Background(), unitID)
 
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -222,10 +223,13 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Auto-delete route when unit status changes to something other than under_way
-	// (route is deleted when unit arrives on_site or becomes available/unavailable/offline)
-	if req.Status != "under_way" {
-		_ = s.queries.DeleteUnitRoute(r.Context(), unitID) // Ignore error - route may not exist
+	// Manage routes based on status change
+	if req.Status == "available" {
+		// Unit is returning to station -> calculate return route
+		go s.calculateAndSaveRouteToStation(context.Background(), unitID)
+	} else if req.Status != "under_way" {
+		// Delete route when unit arrives on_site, at station (available_hidden), or goes offline
+		_ = s.queries.DeleteUnitRoute(r.Context(), unitID) // Ignore error
 	}
 
 	s.writeJSON(w, http.StatusOK, mapUnitRow(unitRowData{

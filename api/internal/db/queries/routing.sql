@@ -97,3 +97,16 @@ WHERE i.id = sqlc.arg(intervention_id);
 
 -- NOTE: CalculateRoute is implemented as raw SQL in handlers_routing.go
 -- because sqlc cannot parse pgr_connectedComponents and other pgRouting functions
+
+-- name: GetUnitStationRouteData :one
+-- Gets all data needed to calculate a route to the unit's home station
+SELECT
+    u.id AS unit_id,
+    COALESCE(ST_X(u.location::geometry), 0)::float8 AS unit_lon,
+    COALESCE(ST_Y(u.location::geometry), 0)::float8 AS unit_lat,
+    l.id AS station_id,
+    COALESCE(ST_X(l.location::geometry), 0)::float8 AS station_lon,
+    COALESCE(ST_Y(l.location::geometry), 0)::float8 AS station_lat
+FROM units u
+JOIN locations l ON l.id = u.location_id
+WHERE u.id = sqlc.arg(unit_id);

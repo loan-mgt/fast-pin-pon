@@ -152,6 +152,46 @@ func (q *Queries) GetUnitRoute(ctx context.Context, unitID pgtype.UUID) (GetUnit
 	return i, err
 }
 
+const getUnitStationRouteData = `-- name: GetUnitStationRouteData :one
+
+SELECT
+    u.id AS unit_id,
+    COALESCE(ST_X(u.location::geometry), 0)::float8 AS unit_lon,
+    COALESCE(ST_Y(u.location::geometry), 0)::float8 AS unit_lat,
+    l.id AS station_id,
+    COALESCE(ST_X(l.location::geometry), 0)::float8 AS station_lon,
+    COALESCE(ST_Y(l.location::geometry), 0)::float8 AS station_lat
+FROM units u
+JOIN locations l ON l.id = u.location_id
+WHERE u.id = $1
+`
+
+type GetUnitStationRouteDataRow struct {
+	UnitID     pgtype.UUID `json:"unit_id"`
+	UnitLon    float64     `json:"unit_lon"`
+	UnitLat    float64     `json:"unit_lat"`
+	StationID  pgtype.UUID `json:"station_id"`
+	StationLon float64     `json:"station_lon"`
+	StationLat float64     `json:"station_lat"`
+}
+
+// NOTE: CalculateRoute is implemented as raw SQL in handlers_routing.go
+// because sqlc cannot parse pgr_connectedComponents and other pgRouting functions
+// Gets all data needed to calculate a route to the unit's home station
+func (q *Queries) GetUnitStationRouteData(ctx context.Context, unitID pgtype.UUID) (GetUnitStationRouteDataRow, error) {
+	row := q.db.QueryRow(ctx, getUnitStationRouteData, unitID)
+	var i GetUnitStationRouteDataRow
+	err := row.Scan(
+		&i.UnitID,
+		&i.UnitLon,
+		&i.UnitLat,
+		&i.StationID,
+		&i.StationLon,
+		&i.StationLat,
+	)
+	return i, err
+}
+
 const saveUnitRoute = `-- name: SaveUnitRoute :one
 
 INSERT INTO unit_routes (unit_id, intervention_id, route_geometry, route_length_meters, estimated_duration_seconds, progress_percent)
