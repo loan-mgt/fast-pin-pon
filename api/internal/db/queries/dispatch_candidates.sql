@@ -78,7 +78,7 @@ LEFT JOIN interventions ci
     ON a.intervention_id = ci.id
 LEFT JOIN events ce
     ON ci.event_id = ce.id
-WHERE u.status IN ('available', 'under_way')
+WHERE u.status IN ('available', 'available_hidden', 'under_way')
   AND u.location IS NOT NULL
   AND (sqlc.narg(unit_types)::text[] IS NULL OR u.unit_type_code = ANY(sqlc.narg(unit_types)::text[]))
 ORDER BY ST_Distance(u.location, e.location) ASC

@@ -13,6 +13,9 @@ services:
       - .env
     environment:
       - ENGINE_CALLBACK_URL=http://engine:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "8081:8080"
 
