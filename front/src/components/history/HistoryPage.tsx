@@ -68,7 +68,7 @@ interface SortIconProps {
     direction: SortDirection
 }
 
-function SortIcon({ field, currentField, direction }: SortIconProps): JSX.Element {
+function SortIcon({ field, currentField, direction }: Readonly<SortIconProps>): JSX.Element {
     if (currentField !== field) {
         return (
             <svg className="w-4 h-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">

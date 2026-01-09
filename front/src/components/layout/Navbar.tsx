@@ -4,14 +4,16 @@ import { MapLegendModal } from './MapLegendModal'
 
 const REFRESH_OPTIONS = [5, 10, 20, 30] as const
 
+type ViewMode = 'live' | 'dashboard' | 'history'
+
 interface NavbarProps {
     refreshInterval: number
     onIntervalChange: (event: ChangeEvent<HTMLSelectElement>) => void
     onRefresh: () => void
     isSpinning: boolean
     lastUpdated: string
-    currentView: 'live' | 'dashboard' | 'history'
-    onNavigate: (view: 'live' | 'dashboard' | 'history') => void
+    currentView: ViewMode
+    onNavigate: (view: ViewMode) => void
     onLogout?: () => void
     userLabel?: string
     onAddUnit?: () => void
@@ -29,7 +31,7 @@ export function Navbar({
     userLabel,
     onAddUnit,
 }: Readonly<NavbarProps>): JSX.Element {
-    const getViewTitle = (view: 'live' | 'dashboard' | 'history'): string => {
+    const getViewTitle = (view: ViewMode): string => {
         if (view === 'live') return 'Live events'
         if (view === 'dashboard') return 'Dashboard'
         return 'History'
