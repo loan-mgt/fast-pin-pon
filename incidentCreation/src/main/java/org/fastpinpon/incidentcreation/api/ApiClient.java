@@ -28,7 +28,6 @@ import java.util.logging.Logger;
  */
 public final class ApiClient {
     private static final Logger LOG = Logger.getLogger(ApiClient.class.getName());
-    private static final OkHttpClient HTTP = new OkHttpClient();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Random random = new Random();
     private final List<String> eventTypeCodes = new ArrayList<>();

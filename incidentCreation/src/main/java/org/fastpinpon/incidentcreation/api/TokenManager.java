@@ -74,7 +74,7 @@ public class TokenManager {
             // Set expiry time with a 10s buffer
             this.expiryTime = System.currentTimeMillis() + (expiresIn - 10) * 1000L;
             
-            LOG.info("[TokenManager] Fetched new access token, expires in " + expiresIn + "s");
+            LOG.log(Level.INFO, "[TokenManager] Fetched new access token, expires in {0}s", expiresIn);
             return accessToken;
         }
     }

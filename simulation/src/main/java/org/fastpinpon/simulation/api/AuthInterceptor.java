@@ -25,7 +25,6 @@ public class AuthInterceptor implements Interceptor {
         try {
             token = tokenManager.getAccessToken();
         } catch (IOException e) {
-            LOG.log(Level.WARNING, "[AuthInterceptor] Failed to get access token", e);
             throw e;
         }
 
