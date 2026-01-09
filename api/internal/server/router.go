@@ -38,6 +38,7 @@ func (s *Server) routes() http.Handler {
 		v1.Get("/events/{eventID}", s.handleGetEvent)
 		v1.Get("/events/{eventID}/logs", s.handleListEventLogs)
 		v1.Post("/events/{eventID}/logs", s.handleCreateEventLog)
+		v1.Get("/event-logs/recent", s.handleListRecentEventLogs)
 		v1.Get("/events/{eventID}/interventions", s.handleListInterventionsForEvent)
 
 		v1.Post("/interventions", s.handleCreateIntervention)

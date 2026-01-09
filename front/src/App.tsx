@@ -5,6 +5,7 @@ import { fastPinPonService } from './services/FastPinPonService'
 import { Navbar } from './components/layout/Navbar'
 import { MapContainer } from './components/map/MapContainer'
 import { EventPanel } from './components/events/EventPanel'
+import { RecentLogsTicker } from './components/events/RecentLogsTicker'
 import { UnitPanel } from './components/units/UnitPanel'
 import { EventDetailPanel } from './components/events/EventDetailPanel'
 import { CreateEventModal } from './components/events/CreateEventModal'
@@ -30,7 +31,7 @@ export function App() {
   const [isPaused, setIsPaused] = useState(false)
   const [refreshInterval, setRefreshInterval] = useState<number>(() => {
     const saved = localStorage.getItem(REFRESH_INTERVAL_KEY)
-    return saved ? Number.parseInt(saved, 10) : 10
+    return saved ? Number.parseInt(saved, 10) : 5
   })
   const [view, setView] = useState<ViewMode>('live')
   const {
@@ -77,7 +78,7 @@ export function App() {
         }
         return eventsData
       })
-      
+
       setUnits(unitsData)
       setLastUpdated(
         new Date().toLocaleTimeString('en-US', {
@@ -105,7 +106,7 @@ export function App() {
   }, [isAuthenticated, refreshData])
 
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       try {
         const types = await fastPinPonService.getEventTypes()
         setEventTypes(types)
@@ -157,12 +158,12 @@ export function App() {
   const handleCreateEvent = useCallback(
     async (payload: CreateEventRequest) => {
       const newEvent = await fastPinPonService.createEvent(payload, true)
-      
+
       // Update local state immediately so selection works even before refresh completes
       // We look up the event type name to avoid showing an empty label
       const eventTypeName = eventTypes.find((t) => t.code === newEvent.event_type_code)?.name ?? ''
       const optimisticEvent = { ...newEvent, event_type_name: eventTypeName }
-      
+
       setEvents((prev) => [optimisticEvent, ...prev])
       setSelectedEventId(optimisticEvent.id)
       setPendingLocation(null)
@@ -223,12 +224,12 @@ export function App() {
 
       {view === 'dashboard' && (
         <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-auto">
-          <DashboardPage 
-            units={units} 
+          <DashboardPage
+            units={units}
             buildings={buildings}
             selectedStationId={selectedStationId}
             onStationChange={setSelectedStationId}
-            onRefresh={refreshData} 
+            onRefresh={refreshData}
           />
         </main>
       )}
@@ -241,6 +242,7 @@ export function App() {
 
       {view === 'live' && (
         <main className="relative flex flex-1 min-h-[calc(100vh-72px)] overflow-hidden">
+          <RecentLogsTicker token={token} refreshIntervalSec={refreshInterval} />
           <MapContainer
             events={sortedEvents}
             units={units}
@@ -264,14 +266,14 @@ export function App() {
             selectedEventId={selectedEventId}
           />
           <EventDetailPanel
-          event={selectedEvent}
-          onClose={handleCloseDetail}
-          onEventSelect={handleEventSelect}
-          permissions={permissions}
-          onRefresh={refreshData}
-          onTogglePauseRefresh={setIsPaused}
-          onLocateEvent={(lng, lat) => flyToLocationRef.current?.(lng, lat, 14)}
-        />
+            event={selectedEvent}
+            onClose={handleCloseDetail}
+            onEventSelect={handleEventSelect}
+            permissions={permissions}
+            onRefresh={refreshData}
+            onTogglePauseRefresh={setIsPaused}
+            onLocateEvent={(lng, lat) => flyToLocationRef.current?.(lng, lat, 14)}
+          />
         </main>
       )}
 

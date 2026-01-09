@@ -166,3 +166,33 @@ SET
 WHERE intervention_id = $1 AND unit_id = $2 AND released_at IS NULL
 RETURNING id;
 
+-- name: GetAssignmentContext :one
+SELECT
+    ia.id,
+    ia.intervention_id,
+    ia.unit_id,
+    ia.dispatched_at,
+    ia.arrived_at,
+    ia.released_at,
+    u.call_sign,
+    u.unit_type_code,
+    i.event_id,
+    e.event_type_code,
+    e.severity
+FROM intervention_assignments ia
+JOIN interventions i ON i.id = ia.intervention_id
+JOIN events e ON e.id = i.event_id
+JOIN units u ON u.id = ia.unit_id
+WHERE ia.id = $1;
+
+-- name: GetInterventionEventContext :one
+SELECT
+    i.id,
+    e.event_type_code,
+    e.severity,
+    e.reported_at,
+    i.completed_at
+FROM interventions i
+JOIN events e ON e.id = i.event_id
+WHERE i.id = $1;
+
