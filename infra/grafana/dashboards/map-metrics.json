@@ -1,0 +1,480 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 600
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "p50",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_sum{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_count{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval]))",
+          "legendFormat": "avg travel {{event_type}}/{{unit_type}}",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Assignment travel (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1800
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "p50",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_sum{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_count{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval]))",
+          "legendFormat": "avg on-site {{event_type}}/{{unit_type}}",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Assignment on-site (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 7200
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "p50",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (event_type) (rate(api_event_resolution_duration_seconds_sum{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])) / sum by (event_type) (rate(api_event_resolution_duration_seconds_count{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval]))",
+          "legendFormat": "avg {{event_type}}",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Event resolution (s)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "map",
+    "dispatch",
+    "prometheus"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "allValue": ".*",
+        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, event_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "event_id",
+        "multi": false,
+        "name": "event_id",
+        "options": [],
+        "query": "label_values(api_intervention_assignment_travel_duration_seconds, event_id)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "allValue": ".*",
+        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, intervention_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "intervention_id",
+        "multi": false,
+        "name": "intervention_id",
+        "options": [],
+        "query": "label_values(api_intervention_assignment_travel_duration_seconds, intervention_id)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "allValue": ".*",
+        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, event_type)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "event_type",
+        "multi": false,
+        "name": "event_type",
+        "options": [],
+        "query": "label_values(api_intervention_assignment_travel_duration_seconds, event_type)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "allValue": ".*",
+        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, unit_type)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "unit_type",
+        "multi": false,
+        "name": "unit_type",
+        "options": [],
+        "query": "label_values(api_intervention_assignment_travel_duration_seconds, unit_type)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "allValue": ".*",
+        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, severity)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "severity",
+        "multi": false,
+        "name": "severity",
+        "options": [],
+        "query": "label_values(api_intervention_assignment_travel_duration_seconds, severity)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Map dispatch metrics",
+  "uid": "map-dispatch-metrics",
+  "version": 1,
+  "weekStart": ""
+}

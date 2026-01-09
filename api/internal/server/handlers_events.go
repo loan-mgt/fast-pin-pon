@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	db "fast/pin/internal/db/sqlc"
@@ -22,6 +23,38 @@ type CreateEventLogRequest struct {
 	Code    string  `json:"code" validate:"required"`
 	Actor   *string `json:"actor"`
 	Payload RawJSON `json:"payload"`
+}
+
+// handleListRecentEventLogs godoc
+// @Title List recent event logs
+// @Description Returns the most recent event logs across all events.
+// @Resource Events
+// @Produce json
+// @Param limit query int false "Maximum results" default(10)
+// @Success 200 {array} EventLogWithEventResponse
+// @Failure 500 {object} APIError
+// @Route /v1/event-logs/recent [get]
+func (s *Server) handleListRecentEventLogs(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	rows, err := s.queries.ListRecentEventLogs(r.Context(), int32(limit))
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to list recent event logs", err.Error())
+		return
+	}
+
+	resp := make([]EventLogWithEventResponse, 0, len(rows))
+	for _, row := range rows {
+		resp = append(resp, mapEventLogWithEvent(row))
+	}
+
+	s.writeJSON(w, http.StatusOK, resp)
 }
 
 // handleListEventTypes godoc
@@ -486,5 +519,18 @@ func mapEventLog(row db.EventLog) EventLogResponse {
 		Code:      row.Code,
 		Actor:     optionalString(row.Actor),
 		Payload:   RawJSON(row.Payload),
+	}
+}
+
+func mapEventLogWithEvent(row db.ListRecentEventLogsRow) EventLogWithEventResponse {
+	return EventLogWithEventResponse{
+		ID:            row.ID,
+		EventID:       uuidString(row.EventID),
+		EventTitle:    row.EventTitle,
+		EventTypeCode: row.EventTypeCode,
+		CreatedAt:     row.CreatedAt.Time,
+		Code:          row.Code,
+		Actor:         optionalString(row.Actor),
+		Payload:       RawJSON(row.Payload),
 	}
 }

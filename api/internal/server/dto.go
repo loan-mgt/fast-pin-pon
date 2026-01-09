@@ -60,6 +60,17 @@ type EventLogResponse struct {
 	Payload   RawJSON   `json:"payload"`
 }
 
+type EventLogWithEventResponse struct {
+	ID            int64     `json:"id"`
+	EventID       string    `json:"event_id"`
+	EventTitle    string    `json:"event_title"`
+	EventTypeCode string    `json:"event_type_code"`
+	CreatedAt     time.Time `json:"created_at"`
+	Code          string    `json:"code"`
+	Actor         string    `json:"actor,omitempty"`
+	Payload       RawJSON   `json:"payload"`
+}
+
 type EventTypeResponse struct {
 	Code                 string   `json:"code"`
 	Name                 string   `json:"name"`

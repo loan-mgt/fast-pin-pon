@@ -37,6 +37,17 @@ export type UnitSummary = {
     updated_at: string
 }
 
+export type EventLog = {
+    id: number
+    event_id: string
+    event_title: string
+    event_type_code: string
+    created_at: string
+    code: string
+    actor?: string
+    payload: unknown
+}
+
 export type UnitType = {
     code: string
     name: string

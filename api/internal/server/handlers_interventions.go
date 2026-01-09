@@ -177,6 +177,8 @@ func (s *Server) handleUpdateInterventionStatus(w http.ResponseWriter, r *http.R
 			s.writeError(w, http.StatusInternalServerError, "failed to release assignments", err.Error())
 			return
 		}
+
+		s.observeEventResolution(r.Context(), interventionID, row.CompletedAt)
 	}
 
 	s.writeJSON(w, http.StatusOK, mapIntervention(row))
@@ -204,6 +206,8 @@ func (s *Server) releaseInterventionUnits(ctx context.Context, interventionID pg
 		}); err != nil {
 			return err
 		}
+
+		s.observeAssignmentOnSite(ctx, a.ID)
 	}
 	return nil
 }
@@ -324,7 +328,7 @@ func (s *Server) handleReleaseAssignment(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err = s.queries.ReleaseUnitFromIntervention(r.Context(), db.ReleaseUnitFromInterventionParams{
+	releasedID, err := s.queries.ReleaseUnitFromIntervention(r.Context(), db.ReleaseUnitFromInterventionParams{
 		InterventionID: interventionID,
 		UnitID:         unitID,
 	})
@@ -344,6 +348,8 @@ func (s *Server) handleReleaseAssignment(w http.ResponseWriter, r *http.Request)
 	}); err != nil {
 		s.log.Error().Err(err).Str("unit_id", uuidString(unitID)).Msg("failed to update unit status after release")
 	}
+
+	s.observeAssignmentOnSite(r.Context(), releasedID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -416,6 +422,14 @@ func (s *Server) handleUpdateAssignmentStatus(w http.ResponseWriter, r *http.Req
 		}
 		s.writeError(w, http.StatusInternalServerError, "failed to update assignment", err.Error())
 		return
+	}
+
+	if row.Status == db.AssignmentStatusArrived {
+		s.observeAssignmentTravel(r.Context(), assignmentID)
+	}
+
+	if row.Status == db.AssignmentStatusReleased {
+		s.observeAssignmentOnSite(r.Context(), assignmentID)
 	}
 
 	s.writeJSON(w, http.StatusOK, mapAssignment(row))

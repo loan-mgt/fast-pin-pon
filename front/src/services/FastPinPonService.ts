@@ -1,4 +1,4 @@
-import type { EventSummary, UnitSummary, UnitType, Building } from '../types'
+import type { EventSummary, UnitSummary, UnitType, Building, EventLog } from '../types'
 import type { CreateEventRequest, EventType } from '../types/eventTypes'
 
 type InterventionStatus = 'created' | 'on_site' | 'completed' | 'cancelled'
@@ -186,6 +186,17 @@ class FastPinPonService {
     })
     if (!response.ok) {
       throw new Error(`Failed to fetch nearby units: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+
+  async getRecentEventLogs(limit = 10, token?: string): Promise<EventLog[]> {
+    const params = new URLSearchParams({ limit: String(limit) })
+    const response = await fetch(`${this.API_BASE_URL}/event-logs/recent?${params.toString()}`, {
+      headers: this.buildHeaders(token),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to fetch recent event logs: ${response.status} ${response.statusText}`)
     }
     return response.json()
   }
