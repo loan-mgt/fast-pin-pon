@@ -25,6 +25,7 @@ public class SimulationApp {
     private static final String HTTP_PORT_ENV = "SIM_HTTP_PORT";
     private static final String DISABLE_AUTO_TICK_ENV = "SIM_DISABLE_AUTO_TICK";
     private static final String UPDATING_ENABLED_ENV = "SIMULATION_UPDATING_ENABLED";
+    private static final String SPEED_MULTIPLIER_ENV = "SIMULATION_SPEED_MULTIPLIER";
     private static final String DEFAULT_LOG_FILE = "/app/logs/simulation/simulation.log";
 
     public static void main(String[] args) {
@@ -41,9 +42,10 @@ public class SimulationApp {
         log.info("[SIM] API connectivity check passed: " + apiBaseUrl);
         
         boolean updatingEnabled = envFlag(UPDATING_ENABLED_ENV, true);
-        log.info("[SIM] API updating enabled: " + updatingEnabled);
+        double movementSpeedMultiplier = resolveDoubleEnv(SPEED_MULTIPLIER_ENV, 1.0);
+        log.info("[SIM] API updating enabled: " + updatingEnabled + ", Speed Multiplier: " + movementSpeedMultiplier);
         
-        SimulationEngine engine = new SimulationEngine(api, apiBaseUrl, updatingEnabled);
+        SimulationEngine engine = new SimulationEngine(api, apiBaseUrl, updatingEnabled, movementSpeedMultiplier);
 
         boolean autoTickEnabled = !envFlag(DISABLE_AUTO_TICK_ENV, false);
         boolean httpEnabled = envFlag(HTTP_ENABLED_ENV, true);
@@ -156,6 +158,18 @@ public class SimulationApp {
         }
         try {
             return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private static double resolveDoubleEnv(String key, double defaultValue) {
+        String raw = System.getenv(key);
+        if (raw == null || raw.trim().isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return Double.parseDouble(raw.trim());
         } catch (NumberFormatException e) {
             return defaultValue;
         }

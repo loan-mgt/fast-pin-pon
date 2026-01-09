@@ -59,6 +59,7 @@ services:
     environment:
       - API_BASE_URL=http://api:8080
       - SIMULATION_UPDATING_ENABLED=true
+      - SIMULATION_SPEED_MULTIPLIER=3.0
     ports:
       - "8090:8090"
 

@@ -40,6 +40,7 @@ public final class SimulationEngine {
     private final ApiClient api;
     private final String apiBaseUrl;
     private final boolean updatingEnabled;
+    private final double movementSpeedMultiplier;
     private final Map<String, VehicleState> vehicleStates = new ConcurrentHashMap<>();
     private final Random random = new Random();
     
@@ -52,11 +53,12 @@ public final class SimulationEngine {
     private long lastTickTime = System.currentTimeMillis();
     private long lastSyncTime = 0;
 
-    public SimulationEngine(ApiClient api, String apiBaseUrl, boolean updatingEnabled) {
+    public SimulationEngine(ApiClient api, String apiBaseUrl, boolean updatingEnabled, double movementSpeedMultiplier) {
         this.api = api;
         this.apiBaseUrl = apiBaseUrl;
         this.updatingEnabled = updatingEnabled;
-        LOG.info("[ENGINE] SimulationEngine initialized (updatingEnabled=" + updatingEnabled + ")");
+        this.movementSpeedMultiplier = movementSpeedMultiplier;
+        LOG.info("[ENGINE] SimulationEngine initialized (updatingEnabled=" + updatingEnabled + ", speedMultiplier=" + movementSpeedMultiplier + ")");
     }
 
     /**
@@ -244,7 +246,7 @@ public final class SimulationEngine {
 
             try {
                 // Calculate new progress based on elapsed time and estimated duration
-                double increment = state.calculateProgressIncrement(deltaSeconds);
+                double increment = state.calculateProgressIncrement(deltaSeconds * movementSpeedMultiplier);
                 double newProgress = Math.min(100.0, state.getProgressPercent() + increment);
 
                 // Update progress in API and get interpolated position
