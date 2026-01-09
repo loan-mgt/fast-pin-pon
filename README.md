@@ -96,23 +96,22 @@ The project is organized into microservices and components:
 
 **IoT and Radio Frequency Communication Bridge**
 
-This module implements a physical radio bridge using **BBC Micro:bit v2** devices to process simulation data through a real "air gapped" radio link, simulating realistic field constraints (latency, packet loss, bandwidth).
+This module implements a physical radio bridge using **Micro:bit** devices to process simulation data through a real "air gapped" radio link
 
 #### Architecture Flow
 
-1.  **Simulation Source**: The `simulation` service generates vehicle movements.
-2.  **Emitter Bridge (PC)** (`bridge_emitter.py`):
+1.  **Emitter Bridge (PC)** (`bridge_emitter.py`):
     - Polls the simulation HTTP endpoint.
     - Encapsulates data into a custom serial protocol (SEQ + CRC + Data).
     - Sends data via USB Serial to the **Unit Micro:bit**.
-3.  **Unit Micro:bit** (`unit.py`):
+2.  **Unit Micro:bit** (`unit.py`):
     - Receives serial data from the Emitter Bridge.
     - Broadcasts the payload via **2.4GHz Radio**.
     - Allows manual status updates via hardware buttons (A/B).
-4.  **Relay Micro:bit** (`relay.py`):
+3.  **Relay Micro:bit** (`relay.py`):
     - Listens for radio packets on the specific channel.
     - Relays received messages to the Receiver Bridge via USB Serial.
-5.  **Receiver Bridge (Server)** (`bridge_receiver.py`):
+4.  **Receiver Bridge (Server)** (`bridge_receiver.py`):
     - Decodes the serial stream.
     - Validates data formats (`GPS`, `STA`).
     - Pushes updates to the Main API (`POST /v1/units/{id}/telemetry`).
@@ -137,7 +136,7 @@ SERIAL_PORT=/dev/ttyACM1 API_URL=http://localhost:8081 python3 bridge_receiver.p
 
 **Backend Services and REST API**
 
-The core backend is a high-performance **Go** application serving the REST API. It handles business logic, persistence, and coordinates between the Decision Engine and the Frontend.
+It handles business logic, persistence, and coordinates between the Decision Engine and the Frontend.
 
 #### Tech Stack
 
@@ -203,12 +202,8 @@ The "Brain" of the operation. It assigns the most appropriate resource to each i
 
 **Load & Chaos Generator (Java)**
 
-A standalone service designed to stimulate the system by generating random emergency events, acting as a "Chaos Monkey" or scenario player.
+A standalone service designed to stimulate the system by generating random emergency events.
 
-- **Behavior**:
-  - Waits for API availability on startup (resilient boot).
-  - Generates random incidents (different types, severities, locations) at configurable intervals (Default: 60s).
-  - Simulates call-center operators entering data via the API (`POST /v1/events`).
 - **Use Case**: Used for load testing, demos, and ensuring the system always has active data flow during development.
 
 
@@ -339,23 +334,6 @@ erDiagram
     integer heading
     float speed_kmh
     jsonb status_snapshot
-  }
-
-  Personnel {
-    uuid id
-    text full_name
-    text rank
-    text status
-    text home_base
-    text contact
-  }
-
-  InterventionCrew {
-    uuid id
-    uuid intervention_id
-    uuid personnel_id
-    text role
-    text status
   }
 ```
 
