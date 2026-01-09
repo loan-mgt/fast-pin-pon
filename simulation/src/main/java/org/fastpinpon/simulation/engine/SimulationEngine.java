@@ -422,10 +422,9 @@ public final class SimulationEngine {
 
     private void completeIntervention(String interventionId) {
         try {
-            LOG.log(Level.INFO, "[ENGINE] Completing intervention {0} after 30s delay", interventionId);
+            LOG.log(Level.INFO, "[ENGINE] Completing intervention {0}", interventionId);
             api.updateInterventionStatus(interventionId, "completed");
-            interventionCompletionTimers.remove(interventionId);
-            
+
             // Remove all vehicles for this intervention from tracking
             vehicleStates.entrySet().removeIf(e -> interventionId.equals(e.getValue().getInterventionId()));
             

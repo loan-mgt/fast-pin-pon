@@ -280,6 +280,7 @@ public final class ApiClient {
         if (unitId == null || unitId.trim().isEmpty()) {
             return;
         }
+        LOG.log(Level.INFO, "[API] POST /v1/units/{0}/route/repair", unitId);
         executeVoid(api.repairUnitRoute(unitId), "POST /v1/units/{id}/route/repair");
     }
 

@@ -327,6 +327,8 @@ func (s *Server) handleRepairUnitRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.log.Info().Str("unit_id", uuidString(unitUUID)).Msg("route repair requested")
+
 	key := uuidString(unitUUID)
 	if key == "" {
 		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, "invalid uuid")
