@@ -50,6 +50,7 @@ public final class SimulationEngine {
     private List<ApiClient.UnitInfo> cachedUnits = new ArrayList<>();
 
     private long lastTickTime = System.currentTimeMillis();
+    private long lastSyncTime = 0;
 
     public SimulationEngine(ApiClient api, String apiBaseUrl, boolean updatingEnabled) {
         this.api = api;
@@ -75,8 +76,18 @@ public final class SimulationEngine {
      */
     public void tick(double deltaSeconds) {
         try {
-            // 1. Sync tracked vehicles with current API state
-            syncVehicles();
+            // 1. Sync tracked vehicles with current API state (throttled to 10s)
+            // This prevents race conditions where the Simulator reads 'stale' status from API 
+            // before the Bridge Emitter/Receiver loop has propagated the new status.
+            long now = System.currentTimeMillis();
+            if (now - lastTickTime > 10000) { // Using lastTickTime as sync timer base here is confusing, better use separate timer
+               // Actually lastTickTime is used for delta calculation.
+            }
+            // Let's use a dedicated timer
+            if (now - lastSyncTime > 10000) {
+                 syncVehicles();
+                 lastSyncTime = now;
+            }
 
             // 2. Update progress for all tracked vehicles
             updateVehicleProgress(deltaSeconds);
@@ -401,11 +412,9 @@ public final class SimulationEngine {
 
     private void completeIntervention(String interventionId) {
         try {
-            LOG.log(Level.INFO, "[ENGINE] Completing intervention {0} (Probabilistic)", interventionId);
-            if (updatingEnabled) {
-                api.updateInterventionStatus(interventionId, "completed");
-            }
-            // interventionCompletionTimers.remove(interventionId); // Removed
+            LOG.log(Level.INFO, "[ENGINE] Completing intervention {0} after 30s delay", interventionId);
+            api.updateInterventionStatus(interventionId, "completed");
+            interventionCompletionTimers.remove(interventionId);
             
             // Remove all vehicles for this intervention from tracking
             vehicleStates.entrySet().removeIf(e -> interventionId.equals(e.getValue().getInterventionId()));

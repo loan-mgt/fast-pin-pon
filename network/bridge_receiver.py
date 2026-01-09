@@ -153,11 +153,12 @@ def update_unit_location(api_url: str, unit_id: str, lat: float, lon: float) -> 
 
 def update_unit_status(api_url: str, unit_id: str, status: str) -> bool:
     try:
-        api_status = normalize_status(status)
+        new_status = normalize_status(status)
         url = f"{api_url.rstrip('/')}/v1/units/{unit_id}/status"
-        response = requests.patch(url, json={"status": api_status}, timeout=5)
+        response = requests.patch(url, json={"status": new_status}, timeout=5)
         return response.status_code < 400
     except requests.RequestException:
+        print(f"[ERROR] Failed to update status for {unit_id}")
         return False
 
 
