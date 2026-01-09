@@ -47,12 +47,12 @@ export function RecentLogsTicker({ token, refreshIntervalSec = 5 }: Readonly<Rec
 
         const intervalMs = Math.max(1000, refreshIntervalSec * 1000)
         fetchLogs()
-        intervalRef.current = window.setInterval(fetchLogs, intervalMs)
+        intervalRef.current = globalThis.setInterval(fetchLogs, intervalMs)
 
         return () => {
             cancelled = true
             if (intervalRef.current !== null) {
-                window.clearInterval(intervalRef.current)
+                globalThis.clearInterval(intervalRef.current)
                 intervalRef.current = null
             }
         }
