@@ -19,16 +19,21 @@ import java.util.logging.Logger;
  * Core simulation engine that tracks vehicles in transit and updates their positions.
  * 
  * Responsibilities:
- * - Track units with status "under_way"
- * - Move them along their stored routes using estimated_duration_seconds
+ * - Track units with status "under_way" OR "available" (return trips)
+ * - Move them along their stored routes
  * - Update GPS position via API
- * - Transition to "on_site" on arrival
- * - Complete interventions 30s after all units arrive
+ * - Transition to "on_site" (if under_way) or "available_hidden" (if available) on arrival
+ * - Complete interventions 30s after all responding units arrive
  */
 public final class SimulationEngine {
     private static final Logger LOG = Logger.getLogger(SimulationEngine.class.getName());
+    
+    // Status Constants
     private static final String STATUS_UNDER_WAY = "under_way";
     private static final String STATUS_ON_SITE = "on_site";
+    private static final String STATUS_AVAILABLE = "available";
+    private static final String STATUS_AVAILABLE_HIDDEN = "available_hidden";
+    
     private static final long COMPLETION_DELAY_MS = 30_000; // 30 seconds
 
     private final ApiClient api;
@@ -36,6 +41,10 @@ public final class SimulationEngine {
     private final boolean updatingEnabled;
     private final Map<String, VehicleState> vehicleStates = new ConcurrentHashMap<>();
     
+    // Track units that are moving while "available" (Returning to station)
+    // Used to distinguish arrival behavior (Hidden vs On Site)
+    private final Set<String> movingAvailableUnits = ConcurrentHashMap.newKeySet();
+
     // Track interventions waiting for completion (interventionId -> first arrived timestamp)
     private final Map<String, Instant> interventionCompletionTimers = new ConcurrentHashMap<>();
     
@@ -52,7 +61,6 @@ public final class SimulationEngine {
 
     /**
      * Main simulation tick - called periodically.
-     * Uses wall-clock delta to calculate progress independent of tick rate.
      */
     public void tick() {
         long now = System.currentTimeMillis();
@@ -83,23 +91,33 @@ public final class SimulationEngine {
     }
 
     /**
-     * Sync tracked vehicles with API - add new under_way units, remove finished ones.
+     * Sync tracked vehicles with API.
+     * Tracks both 'under_way' (intervention) and 'available' (return to station) units.
      */
     private void syncVehicles() {
         List<ApiClient.UnitInfo> units = api.loadUnits();
         this.cachedUnits = units;
         
-        // Count units by status for logging
-        long underWayCount = units.stream().filter(u -> STATUS_UNDER_WAY.equals(u.status)).count();
-        long onSiteCount = units.stream().filter(u -> STATUS_ON_SITE.equals(u.status)).count();
-        LOG.log(Level.FINE, "[ENGINE] Syncing {0} units ({1} under_way, {2} on_site, {3} tracked)",
-                new Object[]{units.size(), underWayCount, onSiteCount, vehicleStates.size()});
-        
-        Set<String> currentUnderWay = new HashSet<>();
+        Set<String> currentTrackedIds = new HashSet<>();
+        long underWayCount = 0;
+        long availableCount = 0;
 
         for (UnitInfo unit : units) {
-            if (STATUS_UNDER_WAY.equals(unit.status)) {
-                currentUnderWay.add(unit.id);
+            boolean isUnderWay = STATUS_UNDER_WAY.equals(unit.status);
+            boolean isAvailable = STATUS_AVAILABLE.equals(unit.status);
+
+            if (isUnderWay || isAvailable) {
+                currentTrackedIds.add(unit.id);
+                if (isUnderWay) underWayCount++;
+                if (isAvailable) availableCount++;
+
+                // Manage the type of movement
+                if (isAvailable) {
+                    movingAvailableUnits.add(unit.id);
+                } else {
+                    // If it changed from available to under_way mid-flight, remove from available set
+                    movingAvailableUnits.remove(unit.id);
+                }
 
                 // Add new vehicle if not already tracked
                 if (!vehicleStates.containsKey(unit.id)) {
@@ -108,29 +126,36 @@ public final class SimulationEngine {
             }
         }
 
-        // Remove vehicles that are no longer under_way
+        LOG.log(Level.FINE, "[ENGINE] Sync: {0} under_way, {1} available (moving), {2} total tracked",
+                new Object[]{underWayCount, availableCount, vehicleStates.size()});
+
+        // Remove vehicles that are no longer moving (stopped externally or finished)
         Set<String> toRemove = new HashSet<>();
         for (String unitId : vehicleStates.keySet()) {
-            if (!currentUnderWay.contains(unitId)) {
+            if (!currentTrackedIds.contains(unitId)) {
                 VehicleState state = vehicleStates.get(unitId);
+                
                 // Only remove arrived vehicles if their intervention is NOT waiting for completion
                 if (state.hasArrived()) {
-                    // Keep tracking if intervention completion timer is active
+                    // Keep tracking if intervention completion timer is active (only for under_way / intervention units)
                     if (state.getInterventionId() != null && 
                         interventionCompletionTimers.containsKey(state.getInterventionId())) {
-                        // Don't remove - still waiting for intervention completion
                         continue;
                     }
                     toRemove.add(unitId);
                     LOG.log(Level.INFO, "[ENGINE] Removing arrived vehicle {0}", unitId);
-                } else if (!currentUnderWay.contains(unitId)) {
-                    // Unit changed status externally - stop tracking
+                } else {
+                    // Unit changed status externally (e.g. cancelled) - stop tracking
                     toRemove.add(unitId);
-                    LOG.log(Level.INFO, "[ENGINE] Vehicle {0} no longer under_way, removing", unitId);
+                    LOG.log(Level.INFO, "[ENGINE] Vehicle {0} no longer moving, removing", unitId);
                 }
             }
         }
-        toRemove.forEach(vehicleStates::remove);
+        
+        toRemove.forEach(id -> {
+            vehicleStates.remove(id);
+            movingAvailableUnits.remove(id);
+        });
     }
 
     /**
@@ -156,8 +181,10 @@ public final class SimulationEngine {
             );
 
             vehicleStates.put(unit.id, state);
-            LOG.log(Level.INFO, "[ENGINE] Now tracking vehicle {0} (callSign={1}, duration={2}s, length={3}m)",
-                    new Object[]{unit.id, unit.callSign, route.estimatedDurationSeconds, route.routeLengthMeters});
+            
+            String moveType = movingAvailableUnits.contains(unit.id) ? "Return to Station" : "Intervention";
+            LOG.log(Level.INFO, "[ENGINE] Now tracking vehicle {0} ({1}) (duration={2}s)",
+                    new Object[]{unit.id, moveType, route.estimatedDurationSeconds});
 
         } catch (Exception e) {
             LOG.log(Level.WARNING, "[ENGINE] Failed to add vehicle {0}: {1}", new Object[]{unit.id, e.getMessage()});
@@ -191,10 +218,6 @@ public final class SimulationEngine {
                         api.updateUnitLocation(state.getUnitId(), result.currentLat, result.currentLon, Instant.now());
                     }
 
-                    LOG.log(Level.FINE, "[ENGINE] Vehicle {0}: progress={1}%, pos=({2}, {3})",
-                            new Object[]{state.getUnitId(), String.format("%.1f", result.progressPercent), 
-                                        result.currentLat, result.currentLon});
-
                     // Check if arrived (100% progress)
                     if (result.progressPercent >= 100.0) {
                         handleArrival(state);
@@ -210,13 +233,43 @@ public final class SimulationEngine {
 
     /**
      * Handle vehicle arrival at destination.
+     * Behavior depends on whether unit is Returning (Available) or Responding (Under Way).
      */
     private void handleArrival(VehicleState state) {
-        LOG.log(Level.INFO, "[ENGINE] Vehicle {0} arrived at destination", state.getUnitId());
-        
         state.setArrivedAt(Instant.now());
 
-        // Update unit status to on_site only if updating is enabled
+        boolean isReturnTrip = movingAvailableUnits.contains(state.getUnitId());
+        
+        if (isReturnTrip) {
+            handleReturnTripArrival(state);
+        } else {
+            handleInterventionArrival(state);
+        }
+    }
+
+    /**
+     * Handle arrival for "available" units (Return to Station).
+     * Sets status to available_hidden.
+     */
+    private void handleReturnTripArrival(VehicleState state) {
+        LOG.log(Level.INFO, "[ENGINE] Vehicle {0} arrived at station (Return Trip)", state.getUnitId());
+        
+        if (updatingEnabled) {
+            api.updateUnitStatus(state.getUnitId(), STATUS_AVAILABLE_HIDDEN);
+        }
+        
+        // Clean up immediately as there are no completion timers for return trips
+        movingAvailableUnits.remove(state.getUnitId());
+        vehicleStates.remove(state.getUnitId());
+    }
+
+    /**
+     * Handle arrival for "under_way" units (Intervention).
+     * Sets status to on_site and manages completion timers.
+     */
+    private void handleInterventionArrival(VehicleState state) {
+        LOG.log(Level.INFO, "[ENGINE] Vehicle {0} arrived at intervention site", state.getUnitId());
+
         if (updatingEnabled) {
             api.updateUnitStatus(state.getUnitId(), STATUS_ON_SITE);
         }
@@ -240,18 +293,15 @@ public final class SimulationEngine {
             return;
         }
 
-        LOG.log(Level.FINE, "[ENGINE] Checking {0} intervention completion timers", interventionCompletionTimers.size());
-
-        // Group arrived vehicles by intervention
+        // Group arrived vehicles by intervention (exclude return trips)
         Map<String, List<VehicleState>> byIntervention = new HashMap<>();
         for (VehicleState state : vehicleStates.values()) {
-            if (state.hasArrived() && state.getInterventionId() != null) {
+            if (state.hasArrived() && state.getInterventionId() != null && !movingAvailableUnits.contains(state.getUnitId())) {
                 byIntervention.computeIfAbsent(state.getInterventionId(), k -> new ArrayList<>())
                         .add(state);
             }
         }
 
-        // Check each intervention with a completion timer
         Set<String> toComplete = new HashSet<>();
         Instant now = Instant.now();
 
@@ -259,48 +309,45 @@ public final class SimulationEngine {
             String interventionId = entry.getKey();
             Instant timerStart = entry.getValue();
 
-            // Check if all tracked vehicles for this intervention have arrived
             List<VehicleState> arrivedForIntervention = byIntervention.getOrDefault(interventionId, List.of());
             
-            // Also check if there are still vehicles in transit for this intervention
+            // Check if there are still vehicles in transit for this intervention
+            // (Exclude vehicles that are marked as 'available' return trips)
             boolean hasVehiclesInTransit = vehicleStates.values().stream()
+                    .filter(s -> !movingAvailableUnits.contains(s.getUnitId())) // Only count under_way units
                     .anyMatch(s -> interventionId.equals(s.getInterventionId()) && !s.hasArrived());
 
-            long elapsedMs = now.toEpochMilli() - timerStart.toEpochMilli();
-            
-            LOG.log(Level.FINE, "[ENGINE] Intervention {0}: arrivedCount={1}, inTransit={2}, elapsed={3}ms",
-                    new Object[]{interventionId, arrivedForIntervention.size(), hasVehiclesInTransit, elapsedMs});
-
             if (hasVehiclesInTransit) {
-                // Reset timer - not all vehicles have arrived yet
-                interventionCompletionTimers.put(interventionId, now);
+                interventionCompletionTimers.put(interventionId, now); // Reset timer
                 continue;
             }
 
-            // All vehicles arrived - check if 30s have passed
+            long elapsedMs = now.toEpochMilli() - timerStart.toEpochMilli();
             if (elapsedMs >= COMPLETION_DELAY_MS && !arrivedForIntervention.isEmpty()) {
                 toComplete.add(interventionId);
-                LOG.log(Level.INFO, "[ENGINE] Intervention {0} ready for completion (elapsed={1}ms, arrivedUnits={2})",
-                        new Object[]{interventionId, elapsedMs, arrivedForIntervention.size()});
             }
         }
 
         // Complete interventions
         for (String interventionId : toComplete) {
-            try {
-                LOG.log(Level.INFO, "[ENGINE] Completing intervention {0} after 30s delay", interventionId);
-                if (updatingEnabled) {
-                    api.updateInterventionStatus(interventionId, "completed");
-                }
-                interventionCompletionTimers.remove(interventionId);
-                
-                // Remove all vehicles for this intervention from tracking
-                vehicleStates.entrySet().removeIf(e -> interventionId.equals(e.getValue().getInterventionId()));
-                
-            } catch (Exception e) {
-                LOG.log(Level.WARNING, "[ENGINE] Failed to complete intervention {0}: {1}", 
-                        new Object[]{interventionId, e.getMessage()});
+            completeIntervention(interventionId);
+        }
+    }
+
+    private void completeIntervention(String interventionId) {
+        try {
+            LOG.log(Level.INFO, "[ENGINE] Completing intervention {0} after 30s delay", interventionId);
+            if (updatingEnabled) {
+                api.updateInterventionStatus(interventionId, "completed");
             }
+            interventionCompletionTimers.remove(interventionId);
+            
+            // Remove all vehicles for this intervention from tracking
+            vehicleStates.entrySet().removeIf(e -> interventionId.equals(e.getValue().getInterventionId()));
+            
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "[ENGINE] Failed to complete intervention {0}: {1}", 
+                    new Object[]{interventionId, e.getMessage()});
         }
     }
 
@@ -309,43 +356,28 @@ public final class SimulationEngine {
      */
     public List<VehicleSnapshot> snapshotVehicles() {
         List<VehicleSnapshot> snapshots = new ArrayList<>();
-        
-        // Use cached units to ensure we report ALL units, not just moving ones
-        for (ApiClient.UnitInfo unit : cachedUnits) {
-            VehicleState state = vehicleStates.get(unit.id);
-            if (state != null) {
-                // Moving vehicle - use interpolated position
-                snapshots.add(new VehicleSnapshot(
-                        state.getUnitId(),
-                        state.getCurrentLat(),
-                        state.getCurrentLon(),
-                        state.getProgressPercent(),
-                        state.hasArrived() ? STATUS_ON_SITE : STATUS_UNDER_WAY,
-                        state.getInterventionId(),
-                        calculateHeading(state)
-                ));
+        for (VehicleState state : vehicleStates.values()) {
+            String snapshotStatus;
+            
+            boolean isReturnTrip = movingAvailableUnits.contains(state.getUnitId());
+            
+            if (state.hasArrived()) {
+                snapshotStatus = isReturnTrip ? STATUS_AVAILABLE_HIDDEN : STATUS_ON_SITE;
             } else {
-                // Stationary vehicle - use static data from API
-                snapshots.add(new VehicleSnapshot(
-                        unit.id,
-                        unit.latitude != null ? unit.latitude : 0.0,
-                        unit.longitude != null ? unit.longitude : 0.0,
-                        0.0,
-                        unit.status,
-                        null,
-                        0
-                ));
+                snapshotStatus = isReturnTrip ? STATUS_AVAILABLE : STATUS_UNDER_WAY;
             }
+
+            snapshots.add(new VehicleSnapshot(
+                    state.getUnitId(),
+                    state.getCurrentLat(),
+                    state.getCurrentLon(),
+                    state.getProgressPercent(),
+                    snapshotStatus,
+                    state.getInterventionId(),
+                    0 // Heading placeholder
+            ));
         }
         return snapshots;
-    }
-
-    /**
-     * Calculate approximate heading based on movement (placeholder - would need previous position).
-     */
-    private int calculateHeading(VehicleState state) {
-        // For now, return 0 - a real implementation would track previous position
-        return 0;
     }
 
     /**
