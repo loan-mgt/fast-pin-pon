@@ -83,41 +83,35 @@ type PositionResponse struct {
 
 const calculateRouteSQL = `
 WITH 
--- Only consider vertices in the main connected component (component with most vertices)
+-- 1. Get the main component ID (pre-calculated) - fast lookup
 main_component AS (
-    SELECT component FROM (
-        SELECT source AS node FROM routing_ways
-        UNION
-        SELECT target FROM routing_ways
-    ) nodes
-    JOIN (
-        SELECT node, component FROM pgr_connectedComponents(
-            'SELECT gid AS id, source, target, cost_s AS cost FROM routing_ways WHERE cost_s > 0'
-        )
-    ) cc ON cc.node = nodes.node
-    GROUP BY component
-    ORDER BY COUNT(*) DESC
+    SELECT component_id 
+    FROM routing_ways_vertices_pgr 
+    WHERE component_id IS NOT NULL 
+    GROUP BY component_id 
+    ORDER BY COUNT(*) DESC 
     LIMIT 1
 ),
-connected_vertices AS (
-    SELECT v.id, v.the_geom
-    FROM routing_ways_vertices_pgr v
-    JOIN (
-        SELECT node FROM pgr_connectedComponents(
-            'SELECT gid AS id, source, target, cost_s AS cost FROM routing_ways WHERE cost_s > 0'
-        ) WHERE component = (SELECT component FROM main_component)
-    ) cc ON cc.node = v.id
-),
+-- 2. Find nearest start vertex within the main component
 start_vertex AS (
-    SELECT id FROM connected_vertices
+    SELECT id 
+    FROM routing_ways_vertices_pgr
+    WHERE component_id = (SELECT component_id FROM main_component)
     ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)
     LIMIT 1
 ),
+-- 3. Find nearest end vertex within the main component
 end_vertex AS (
-    SELECT id FROM connected_vertices
+    SELECT id 
+    FROM routing_ways_vertices_pgr
+    WHERE component_id = (SELECT component_id FROM main_component)
     ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint($3, $4), 4326)
     LIMIT 1
 ),
+-- 4. Calculate route using Dijkstra
+-- We rely on the fact that if both points are in the same component, a path exists.
+-- We don't filter edges by component here to keep the query simple and fast, 
+-- as Dijkstra will only traverse reachable nodes anyway.
 route_segments AS (
     SELECT 
         rw.geom,

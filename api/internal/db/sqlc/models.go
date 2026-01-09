@@ -298,12 +298,13 @@ type RoutingWay struct {
 }
 
 type RoutingWaysVerticesPgr struct {
-	ID      int64       `json:"id"`
-	Cnt     *int32      `json:"cnt"`
-	Chk     *int32      `json:"chk"`
-	Ein     *int32      `json:"ein"`
-	Eout    *int32      `json:"eout"`
-	TheGeom interface{} `json:"the_geom"`
+	ID          int64       `json:"id"`
+	Cnt         *int32      `json:"cnt"`
+	Chk         *int32      `json:"chk"`
+	Ein         *int32      `json:"ein"`
+	Eout        *int32      `json:"eout"`
+	TheGeom     interface{} `json:"the_geom"`
+	ComponentID *int32      `json:"component_id"`
 }
 
 type Unit struct {

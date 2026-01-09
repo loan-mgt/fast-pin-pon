@@ -131,3 +131,5 @@ WHERE ia.unit_id = sqlc.arg(unit_id)
     AND ia.status IN ('dispatched', 'arrived')
 ORDER BY ia.dispatched_at DESC
 LIMIT 1;
+
+
