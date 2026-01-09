@@ -38,6 +38,8 @@ public final class SimulationEngine {
     
     // Track interventions waiting for completion (interventionId -> first arrived timestamp)
     private final Map<String, Instant> interventionCompletionTimers = new ConcurrentHashMap<>();
+    
+    private List<ApiClient.UnitInfo> cachedUnits = new ArrayList<>();
 
     private long lastTickTime = System.currentTimeMillis();
 
@@ -84,7 +86,8 @@ public final class SimulationEngine {
      * Sync tracked vehicles with API - add new under_way units, remove finished ones.
      */
     private void syncVehicles() {
-        List<UnitInfo> units = api.loadUnits();
+        List<ApiClient.UnitInfo> units = api.loadUnits();
+        this.cachedUnits = units;
         
         // Count units by status for logging
         long underWayCount = units.stream().filter(u -> STATUS_UNDER_WAY.equals(u.status)).count();
@@ -306,16 +309,33 @@ public final class SimulationEngine {
      */
     public List<VehicleSnapshot> snapshotVehicles() {
         List<VehicleSnapshot> snapshots = new ArrayList<>();
-        for (VehicleState state : vehicleStates.values()) {
-            snapshots.add(new VehicleSnapshot(
-                    state.getUnitId(),
-                    state.getCurrentLat(),
-                    state.getCurrentLon(),
-                    state.getProgressPercent(),
-                    state.hasArrived() ? STATUS_ON_SITE : STATUS_UNDER_WAY,
-                    state.getInterventionId(),
-                    calculateHeading(state)
-            ));
+        
+        // Use cached units to ensure we report ALL units, not just moving ones
+        for (ApiClient.UnitInfo unit : cachedUnits) {
+            VehicleState state = vehicleStates.get(unit.id);
+            if (state != null) {
+                // Moving vehicle - use interpolated position
+                snapshots.add(new VehicleSnapshot(
+                        state.getUnitId(),
+                        state.getCurrentLat(),
+                        state.getCurrentLon(),
+                        state.getProgressPercent(),
+                        state.hasArrived() ? STATUS_ON_SITE : STATUS_UNDER_WAY,
+                        state.getInterventionId(),
+                        calculateHeading(state)
+                ));
+            } else {
+                // Stationary vehicle - use static data from API
+                snapshots.add(new VehicleSnapshot(
+                        unit.id,
+                        unit.latitude != null ? unit.latitude : 0.0,
+                        unit.longitude != null ? unit.longitude : 0.0,
+                        0.0,
+                        unit.status,
+                        null,
+                        0
+                ));
+            }
         }
         return snapshots;
     }
