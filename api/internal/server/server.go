@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -22,6 +23,7 @@ type Server struct {
 	pool      *pgxpool.Pool
 	queries   *db.Queries
 	validate  *validator.Validate
+	authMw    *AuthMiddleware
 	startedAt time.Time
 }
 
@@ -34,12 +36,19 @@ func New(ctx context.Context, cfg config.Config, log zerolog.Logger) (*Server, e
 
 	validate := newValidator()
 
+	authMw, err := NewAuthMiddleware(ctx, cfg.Keycloak, log)
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("init auth middleware: %w", err)
+	}
+
 	srv := &Server{
 		cfg:       cfg,
 		log:       log,
 		pool:      pool,
 		queries:   db.New(pool),
 		validate:  validate,
+		authMw:    authMw,
 		startedAt: time.Now().UTC(),
 	}
 
@@ -48,6 +57,9 @@ func New(ctx context.Context, cfg config.Config, log zerolog.Logger) (*Server, e
 
 // Close releases database resources.
 func (s *Server) Close() {
+	if s.authMw != nil {
+		s.authMw.Close()
+	}
 	if s.pool != nil {
 		s.pool.Close()
 	}

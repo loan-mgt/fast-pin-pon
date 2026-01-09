@@ -24,12 +24,33 @@ public class SimulationApp {
     private static final String HTTP_ENABLED_ENV = "SIM_HTTP_ENABLED";
     private static final String HTTP_PORT_ENV = "SIM_HTTP_PORT";
     private static final String DISABLE_AUTO_TICK_ENV = "SIM_DISABLE_AUTO_TICK";
+    
+    // Keycloak environment variables
+    private static final String KEYCLOAK_URL_KEY = "KEYCLOAK_URL";
+    private static final String KEYCLOAK_REALM_KEY = "KEYCLOAK_REALM";
+    private static final String KEYCLOAK_CLIENT_ID_KEY = "KEYCLOAK_CLIENT_ID";
+    private static final String KEYCLOAK_CLIENT_SECRET_KEY = "KEYCLOAK_CLIENT_SECRET";
+
     private static final String DEFAULT_LOG_FILE = "/app/logs/simulation/simulation.log";
 
     public static void main(String[] args) {
         configureFileLogging();
         String apiBaseUrl = resolveApiBaseUrl();
-        ApiClient api = new ApiClient(apiBaseUrl);
+        
+        // Resolve Keycloak config
+        String keycloakUrl = resolveEnv(KEYCLOAK_URL_KEY, "");
+        String keycloakRealm = resolveEnv(KEYCLOAK_REALM_KEY, "");
+        String clientId = resolveEnv(KEYCLOAK_CLIENT_ID_KEY, "");
+        String clientSecret = resolveEnv(KEYCLOAK_CLIENT_SECRET_KEY, "");
+        
+        String tokenUrl = "";
+        if (!keycloakUrl.isEmpty() && !keycloakRealm.isEmpty()) {
+            tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", keycloakUrl, keycloakRealm);
+        }
+
+        Logger.getLogger(SimulationApp.class.getName()).info("Starting Simulation with API=" + apiBaseUrl + ", tokenUrl=" + tokenUrl);
+
+        ApiClient api = new ApiClient(apiBaseUrl, tokenUrl, clientId, clientSecret);
         SimulationEngine engine = new SimulationEngine(api, apiBaseUrl);
 
         boolean autoTickEnabled = !envFlag(DISABLE_AUTO_TICK_ENV, false);
@@ -91,6 +112,32 @@ public class SimulationApp {
         }
 
         return "http://localhost:8081";
+    }
+
+    private static String resolveEnv(String key, String defaultValue) {
+        String fromEnv = System.getenv(key);
+        if (fromEnv != null && !fromEnv.trim().isEmpty()) {
+            return fromEnv.trim();
+        }
+
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+        String fromDotEnv = dotenv.get(key);
+        if (fromDotEnv != null && !fromDotEnv.trim().isEmpty()) {
+            return fromDotEnv.trim();
+        }
+
+        Dotenv parentDotenv = Dotenv.configure()
+                .directory("../")
+                .ignoreIfMissing()
+                .load();
+        String fromParent = parentDotenv.get(key);
+        if (fromParent != null && !fromParent.trim().isEmpty()) {
+            return fromParent.trim();
+        }
+
+        return defaultValue;
     }
 
     private static void configureFileLogging() {

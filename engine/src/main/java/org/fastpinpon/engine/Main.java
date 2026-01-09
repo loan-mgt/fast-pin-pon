@@ -56,7 +56,8 @@ public final class Main {
         configureLogging(config);
 
         // Create API client
-        DispatchApiClient apiClient = new DispatchApiClientImpl(config.getApiBaseUrl());
+        // Create API client
+        DispatchApiClient apiClient = new DispatchApiClientImpl(config);
         LOG.info(() -> "API client configured for: " + config.getApiBaseUrl());
 
         // Create cache and load static data

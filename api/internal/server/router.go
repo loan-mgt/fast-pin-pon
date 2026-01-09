@@ -29,6 +29,9 @@ func (s *Server) routes() http.Handler {
 
 	r.Get("/healthz", s.handleHealth)
 	r.Route("/v1", func(v1 chi.Router) {
+		// Apply JWT authentication to all v1 routes
+		v1.Use(s.authMw.Middleware)
+
 		v1.Get("/event-types", s.handleListEventTypes)
 		v1.Get("/unit-types", s.handleListUnitTypes)
 		v1.Get("/buildings", s.handleListBuildings)
