@@ -232,7 +232,6 @@ class FastPinPonService {
   async createUnit(
     callSign: string,
     unitTypeCode: string,
-    homeBase: string,
     latitude: number,
     longitude: number,
     token?: string,
@@ -247,7 +246,6 @@ class FastPinPonService {
       body: JSON.stringify({
         call_sign: callSign,
         unit_type_code: unitTypeCode,
-        home_base: homeBase,
         location_id: locationId,
         status: 'available',
         latitude,

@@ -310,7 +310,6 @@ type Unit struct {
 	ID            pgtype.UUID        `json:"id"`
 	CallSign      string             `json:"call_sign"`
 	UnitTypeCode  string             `json:"unit_type_code"`
-	HomeBase      *string            `json:"home_base"`
 	Status        UnitStatus         `json:"status"`
 	Location      interface{}        `json:"location"`
 	LastContactAt pgtype.Timestamptz `json:"last_contact_at"`

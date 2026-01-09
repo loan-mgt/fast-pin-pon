@@ -175,8 +175,8 @@ export function App() {
   )
 
   const handleAddUnit = useCallback(
-    async (callSign: string, unitTypeCode: string, homeBase: string, lat: number, lon: number) => {
-      await fastPinPonService.createUnit(callSign, unitTypeCode, homeBase, lat, lon, token ?? undefined)
+    async (callSign: string, unitTypeCode: string, locationId: string, lat: number, lon: number) => {
+      await fastPinPonService.createUnit(callSign, unitTypeCode, lat, lon, token ?? undefined, locationId)
       await refreshData()
     },
     [refreshData, token],
@@ -222,7 +222,7 @@ export function App() {
         onAddUnit={() => setIsAddUnitOpen(true)}
       />
 
-      {view === 'dashboard' && (
+      {view === 'dashboard' ? (
         <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-auto">
           <DashboardPage
             units={units}
