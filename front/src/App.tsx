@@ -221,7 +221,7 @@ export function App() {
         onAddUnit={() => setIsAddUnitOpen(true)}
       />
 
-      {view === 'dashboard' ? (
+      {view === 'dashboard' && (
         <main className="flex flex-1 min-h-[calc(100vh-72px)]">
           <DashboardPage 
             units={units} 
@@ -231,11 +231,15 @@ export function App() {
             onRefresh={refreshData} 
           />
         </main>
-      ) : view === 'history' ? (
+      )}
+
+      {view === 'history' && (
         <main className="flex flex-1 min-h-[calc(100vh-72px)]">
           <HistoryPage />
         </main>
-      ) : (
+      )}
+
+      {view === 'live' && (
         <main className="relative flex flex-1 min-h-[calc(100vh-72px)]">
           <MapContainer
             events={sortedEvents}
