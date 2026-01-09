@@ -24,11 +24,11 @@ func (q *Queries) DeleteUnitRoute(ctx context.Context, unitID pgtype.UUID) error
 const getRouteCalculationData = `-- name: GetRouteCalculationData :one
 SELECT
     u.id AS unit_id,
-    (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS unit_lon,
-    (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS unit_lat,
+    COALESCE(ST_X(u.location::geometry), 0)::float8 AS unit_lon,
+    COALESCE(ST_Y(u.location::geometry), 0)::float8 AS unit_lat,
     e.id AS event_id,
-    ST_X(e.location::geometry)::double precision AS event_lon,
-    ST_Y(e.location::geometry)::double precision AS event_lat
+    ST_X(e.location::geometry)::float8 AS event_lon,
+    ST_Y(e.location::geometry)::float8 AS event_lat
 FROM interventions i
 JOIN events e ON e.id = i.event_id
 JOIN units u ON u.id = $1
@@ -50,7 +50,6 @@ type GetRouteCalculationDataRow struct {
 }
 
 // Gets all data needed to calculate a route for an assignment (unit position + event destination)
-// Single query instead of 3 separate queries
 func (q *Queries) GetRouteCalculationData(ctx context.Context, arg GetRouteCalculationDataParams) (GetRouteCalculationDataRow, error) {
 	row := q.db.QueryRow(ctx, getRouteCalculationData, arg.UnitID, arg.InterventionID)
 	var i GetRouteCalculationDataRow
@@ -67,14 +66,14 @@ func (q *Queries) GetRouteCalculationData(ctx context.Context, arg GetRouteCalcu
 
 const getRoutePosition = `-- name: GetRoutePosition :one
 SELECT
-    ST_X(ST_LineInterpolatePoint(route_geometry, LEAST($1::double precision / 100.0, 1.0)))::double precision AS lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST($1::double precision / 100.0, 1.0)))::double precision AS lat
+    ST_X(ST_LineInterpolatePoint(route_geometry, $1 / 100.0))::float8 AS lon,
+    ST_Y(ST_LineInterpolatePoint(route_geometry, $1 / 100.0))::float8 AS lat
 FROM unit_routes
 WHERE unit_id = $2
 `
 
 type GetRoutePositionParams struct {
-	ProgressPercent float64     `json:"progress_percent"`
+	ProgressPercent interface{} `json:"progress_percent"`
 	UnitID          pgtype.UUID `json:"unit_id"`
 }
 
@@ -84,6 +83,7 @@ type GetRoutePositionRow struct {
 }
 
 // Gets just the interpolated position for a given progress (for simulation)
+// Optimized: Removed redundant cast and LEAST call
 func (q *Queries) GetRoutePosition(ctx context.Context, arg GetRoutePositionParams) (GetRoutePositionRow, error) {
 	row := q.db.QueryRow(ctx, getRoutePosition, arg.ProgressPercent, arg.UnitID)
 	var i GetRoutePositionRow
@@ -100,11 +100,11 @@ SELECT
     estimated_duration_seconds,
     progress_percent,
     -- Current position interpolated along the route
-    ST_X(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lat,
+    ST_X(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lon,
+    ST_Y(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lat,
     -- Remaining distance and time
-    (route_length_meters * (1.0 - progress_percent / 100.0))::double precision AS remaining_meters,
-    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::double precision AS remaining_seconds,
+    (route_length_meters * (1.0 - progress_percent / 100.0))::float8 AS remaining_meters,
+    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::float8 AS remaining_seconds,
     created_at,
     updated_at
 FROM unit_routes
@@ -230,10 +230,10 @@ WHERE unit_id = $2
 RETURNING 
     unit_id,
     progress_percent,
-    ST_X(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lat,
-    (route_length_meters * (1.0 - progress_percent / 100.0))::double precision AS remaining_meters,
-    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::double precision AS remaining_seconds
+    ST_X(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lon,
+    ST_Y(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lat,
+    (route_length_meters * (1.0 - progress_percent / 100.0))::float8 AS remaining_meters,
+    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::float8 AS remaining_seconds
 `
 
 type UpdateRouteProgressParams struct {

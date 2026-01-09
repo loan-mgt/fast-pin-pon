@@ -173,6 +173,7 @@ func (s *Server) handleUpdateInterventionStatus(w http.ResponseWriter, r *http.R
 
 	// When an intervention is completed, release all assignments and set units available.
 	if req.Status == string(db.InterventionStatusCompleted) {
+		s.log.Info().Str("intervention_id", uuidString(interventionID)).Msg("intervention completed, releasing all assigned units")
 		if err := s.releaseInterventionUnits(r.Context(), interventionID); err != nil {
 			s.writeError(w, http.StatusInternalServerError, "failed to release assignments", err.Error())
 			return
@@ -190,6 +191,8 @@ func (s *Server) releaseInterventionUnits(ctx context.Context, interventionID pg
 		return err
 	}
 
+	s.log.Info().Str("intervention_id", uuidString(interventionID)).Int("assignment_count", len(assignments)).Msg("releasing intervention units")
+
 	for _, a := range assignments {
 		if a.Status != db.AssignmentStatusReleased {
 			if _, err := s.queries.UpdateAssignmentStatus(ctx, db.UpdateAssignmentStatusParams{
@@ -198,6 +201,7 @@ func (s *Server) releaseInterventionUnits(ctx context.Context, interventionID pg
 			}); err != nil {
 				return err
 			}
+			s.log.Debug().Str("assignment_id", uuidString(a.ID)).Str("unit_id", uuidString(a.UnitID)).Msg("assignment released")
 		}
 
 		if _, err := s.queries.UpdateUnitStatus(ctx, db.UpdateUnitStatusParams{
@@ -208,6 +212,7 @@ func (s *Server) releaseInterventionUnits(ctx context.Context, interventionID pg
 		}
 
 		s.observeAssignmentOnSite(ctx, a.ID)
+		s.log.Debug().Str("unit_id", uuidString(a.UnitID)).Msg("unit status set to available")
 	}
 	return nil
 }

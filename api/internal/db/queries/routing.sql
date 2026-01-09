@@ -40,11 +40,11 @@ SELECT
     estimated_duration_seconds,
     progress_percent,
     -- Current position interpolated along the route
-    ST_X(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lat,
+    ST_X(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lon,
+    ST_Y(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lat,
     -- Remaining distance and time
-    (route_length_meters * (1.0 - progress_percent / 100.0))::double precision AS remaining_meters,
-    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::double precision AS remaining_seconds,
+    (route_length_meters * (1.0 - progress_percent / 100.0))::float8 AS remaining_meters,
+    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::float8 AS remaining_seconds,
     created_at,
     updated_at
 FROM unit_routes
@@ -60,10 +60,10 @@ WHERE unit_id = sqlc.arg(unit_id)
 RETURNING 
     unit_id,
     progress_percent,
-    ST_X(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lat,
-    (route_length_meters * (1.0 - progress_percent / 100.0))::double precision AS remaining_meters,
-    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::double precision AS remaining_seconds;
+    ST_X(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lon,
+    ST_Y(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lat,
+    (route_length_meters * (1.0 - progress_percent / 100.0))::float8 AS remaining_meters,
+    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::float8 AS remaining_seconds;
 
 -- name: DeleteUnitRoute :exec
 -- Deletes a unit's route (called when unit status changes)
@@ -71,23 +71,26 @@ DELETE FROM unit_routes WHERE unit_id = sqlc.arg(unit_id);
 
 -- name: GetRoutePosition :one
 -- Gets just the interpolated position for a given progress (for simulation)
+-- Optimized: Removed redundant cast and LEAST call
 SELECT
-    ST_X(ST_LineInterpolatePoint(route_geometry, LEAST(sqlc.arg(progress_percent)::double precision / 100.0, 1.0)))::double precision AS lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST(sqlc.arg(progress_percent)::double precision / 100.0, 1.0)))::double precision AS lat
+    ST_X(ST_LineInterpolatePoint(route_geometry, sqlc.arg(progress_percent) / 100.0))::float8 AS lon,
+    ST_Y(ST_LineInterpolatePoint(route_geometry, sqlc.arg(progress_percent) / 100.0))::float8 AS lat
 FROM unit_routes
 WHERE unit_id = sqlc.arg(unit_id);
 
 -- name: GetRouteCalculationData :one
 -- Gets all data needed to calculate a route for an assignment (unit position + event destination)
--- Single query instead of 3 separate queries
 SELECT
     u.id AS unit_id,
-    (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS unit_lon,
-    (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS unit_lat,
+    COALESCE(ST_X(u.location::geometry), 0)::float8 AS unit_lon,
+    COALESCE(ST_Y(u.location::geometry), 0)::float8 AS unit_lat,
     e.id AS event_id,
-    ST_X(e.location::geometry)::double precision AS event_lon,
-    ST_Y(e.location::geometry)::double precision AS event_lat
+    ST_X(e.location::geometry)::float8 AS event_lon,
+    ST_Y(e.location::geometry)::float8 AS event_lat
 FROM interventions i
 JOIN events e ON e.id = i.event_id
 JOIN units u ON u.id = sqlc.arg(unit_id)
 WHERE i.id = sqlc.arg(intervention_id);
+
+-- NOTE: CalculateRoute is implemented as raw SQL in handlers_routing.go
+-- because sqlc cannot parse pgr_connectedComponents and other pgRouting functions

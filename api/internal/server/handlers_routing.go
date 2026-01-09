@@ -133,7 +133,7 @@ route_segments AS (
     WHERE path.edge > 0
 )
 SELECT 
-    COALESCE(ST_AsGeoJSON(ST_MakeLine(geom ORDER BY seq))::text, '') AS route_geojson,
+    COALESCE(ST_AsGeoJSON(ST_Simplify(ST_MakeLine(geom ORDER BY seq), 0.0005))::text, '') AS route_geojson,
     COALESCE(SUM(length_m), 0)::double precision AS route_length_meters,
     COALESCE(SUM(cost_s), 0)::double precision AS estimated_duration_seconds
 FROM route_segments
@@ -187,16 +187,20 @@ func (s *Server) handleGetUnitRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	currentLat := route.CurrentLat
+	currentLon := route.CurrentLon
+	remainingMeters := route.RemainingMeters
+	remainingSeconds := route.RemainingSeconds
 	resp := UnitRouteResponse{
 		UnitID:                   uuidString(route.UnitID),
 		RouteGeoJSON:             route.RouteGeojson,
 		RouteLengthMeters:        route.RouteLengthMeters,
 		EstimatedDurationSeconds: route.EstimatedDurationSeconds,
 		ProgressPercent:          route.ProgressPercent,
-		CurrentLat:               &route.CurrentLat,
-		CurrentLon:               &route.CurrentLon,
-		RemainingMeters:          &route.RemainingMeters,
-		RemainingSeconds:         &route.RemainingSeconds,
+		CurrentLat:               &currentLat,
+		CurrentLon:               &currentLon,
+		RemainingMeters:          &remainingMeters,
+		RemainingSeconds:         &remainingSeconds,
 	}
 
 	if route.InterventionID.Valid {
