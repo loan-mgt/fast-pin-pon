@@ -149,7 +149,12 @@
         "id": "ba2b85cf-7989-449f-ae5c-7eab63c2bccf",
         "name": "classic",
         "description": "Map",
-        "composite": false,
+        "composite": true,
+        "composites": {
+          "realm": [
+            "api-access"
+          ]
+        },
         "clientRole": false,
         "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
         "attributes": {}
@@ -605,7 +610,9 @@
         "view-identity-providers",
         "default-roles-sdmis-realm",
         "view-users",
-        "api-access"
+        "api-access",
+        "manage-events",
+        "manage-realm"
       ],
       "notBefore": 0,
       "groups": []

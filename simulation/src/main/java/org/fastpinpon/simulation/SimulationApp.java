@@ -51,6 +51,10 @@ public class SimulationApp {
         Logger.getLogger(SimulationApp.class.getName()).log(Level.INFO, "Starting Simulation with API={0}, tokenUrl={1}", new Object[]{apiBaseUrl, tokenUrl});
 
         ApiClient api = new ApiClient(apiBaseUrl, tokenUrl, clientId, clientSecret);
+        if (!api.waitForApi(30, 2000)) {
+            Logger.getLogger(SimulationApp.class.getName()).severe("API not available after retries. Exiting.");
+            System.exit(1);
+        }
         SimulationEngine engine = new SimulationEngine(api, apiBaseUrl);
 
         boolean autoTickEnabled = !envFlag(DISABLE_AUTO_TICK_ENV, false);

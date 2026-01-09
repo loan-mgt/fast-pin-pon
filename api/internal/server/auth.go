@@ -59,7 +59,8 @@ func NewAuthMiddleware(ctx context.Context, cfg config.KeycloakConfig, log zerol
 	publicIssuer := fmt.Sprintf("%s/realms/%s", cfg.PublicURL, cfg.Realm)
 	// Also allow localhost:8080 for dev environment quirks
 	devIssuer := fmt.Sprintf("http://localhost:8080/realms/%s", cfg.Realm)
-	validIssuers := []string{internalIssuer, publicIssuer, devIssuer}
+	localKeycloakIssuer := fmt.Sprintf("http://localhost:8082/realms/%s", cfg.Realm)
+	validIssuers := []string{internalIssuer, publicIssuer, devIssuer, localKeycloakIssuer}
 
 	log.Info().
 		Str("jwks_url", jwksURL).
@@ -167,6 +168,38 @@ func (a *AuthMiddleware) hasRole(claims *UserClaims, role string) bool {
 			return true
 		}
 	}
+	return false
+}
+
+// RequireRole is a helper that returns true if the user has the role, or writes 403 and returns false.
+func (a *AuthMiddleware) RequireRole(w http.ResponseWriter, r *http.Request, role string) bool {
+	claims, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	if !a.hasRole(claims, role) {
+		a.log.Warn().Str("user", claims.PreferredUsername).Str("missing_role", role).Msg("access denied")
+		http.Error(w, "Forbidden: missing "+role+" role", http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
+// RequireOneOfRoles checks if user has at least one of the provided roles.
+func (a *AuthMiddleware) RequireOneOfRoles(w http.ResponseWriter, r *http.Request, roles ...string) bool {
+	claims, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	for _, role := range roles {
+		if a.hasRole(claims, role) {
+			return true
+		}
+	}
+	a.log.Warn().Str("user", claims.PreferredUsername).Strs("missing_any_role", roles).Strs("user_roles", claims.RealmAccess.Roles).Msg("access denied")
+	http.Error(w, "Forbidden", http.StatusForbidden)
 	return false
 }
 
