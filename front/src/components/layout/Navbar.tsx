@@ -29,12 +29,18 @@ export function Navbar({
     userLabel,
     onAddUnit,
 }: Readonly<NavbarProps>): JSX.Element {
+    const getViewTitle = (view: 'live' | 'dashboard' | 'history'): string => {
+        if (view === 'live') return 'Live events'
+        if (view === 'dashboard') return 'Dashboard'
+        return 'History'
+    }
+
     return (
         <nav className="bg-slate-950/90 border-slate-900/70 border-b">
             <div className="flex justify-between items-center gap-4 px-6 py-4">
                 <div>
                     <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Fast Pin Pon</p>
-                    <p className="font-semibold text-white text-lg">{currentView === 'live' ? 'Live events' : currentView === 'dashboard' ? 'Dashboard' : 'History'}</p>
+                    <p className="font-semibold text-white text-lg">{getViewTitle(currentView)}</p>
                 </div>
 
                 {currentView === 'dashboard' && onAddUnit && (

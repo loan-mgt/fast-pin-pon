@@ -52,6 +52,44 @@ function getDurationMinutes(startedAt?: string, completedAt?: string): number {
     return Math.floor((end - start) / (1000 * 60))
 }
 
+function getStatusStyle(status?: string): string {
+    if (status === 'completed') {
+        return 'bg-emerald-500/20 text-emerald-400'
+    }
+    if (status === 'cancelled') {
+        return 'bg-slate-500/20 text-slate-400'
+    }
+    return 'bg-amber-500/20 text-amber-400'
+}
+
+interface SortIconProps {
+    field: SortField
+    currentField: SortField
+    direction: SortDirection
+}
+
+function SortIcon({ field, currentField, direction }: SortIconProps): JSX.Element {
+    if (currentField !== field) {
+        return (
+            <svg className="w-4 h-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+        )
+    }
+    if (direction === 'asc') {
+        return (
+            <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+        )
+    }
+    return (
+        <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+    )
+}
+
 export function HistoryPage(): JSX.Element {
     const { token } = useAuth()
     const [events, setEvents] = useState<EventSummary[]>([])
@@ -80,7 +118,7 @@ export function HistoryPage(): JSX.Element {
 
     const eventTypes = useMemo(() => {
         const types = new Set(events.map((e) => e.event_type_code))
-        return Array.from(types).sort()
+        return Array.from(types).sort((a, b) => a.localeCompare(b))
     }, [events])
 
     const sortedAndFilteredEvents = useMemo(() => {
@@ -118,25 +156,6 @@ export function HistoryPage(): JSX.Element {
         }
     }
 
-    const SortIcon = ({ field }: { field: SortField }) => {
-        if (sortField !== field) {
-            return (
-                <svg className="w-4 h-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                </svg>
-            )
-        }
-        return sortDirection === 'asc' ? (
-            <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-        ) : (
-            <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-        )
-    }
-
     if (loading) {
         return (
             <div className="flex justify-center items-center flex-1 p-8">
@@ -159,8 +178,9 @@ export function HistoryPage(): JSX.Element {
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-white">Incident History</h1>
                     <div className="flex items-center gap-3">
-                        <label className="text-slate-400 text-sm">Filter by type:</label>
+                        <label htmlFor="filter-type" className="text-slate-400 text-sm">Filter by type:</label>
                         <select
+                            id="filter-type"
                             value={filterType}
                             onChange={(e) => setFilterType(e.target.value)}
                             className="bg-slate-800/80 px-3 py-2 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
@@ -186,7 +206,7 @@ export function HistoryPage(): JSX.Element {
                                         className="flex items-center gap-2 text-slate-300 text-xs font-semibold uppercase tracking-wider hover:text-white transition-colors"
                                     >
                                         Date & Time
-                                        <SortIcon field="date" />
+                                        <SortIcon field="date" currentField={sortField} direction={sortDirection} />
                                     </button>
                                 </th>
                                 <th className="px-4 py-3 text-left">
@@ -196,7 +216,7 @@ export function HistoryPage(): JSX.Element {
                                         className="flex items-center gap-2 text-slate-300 text-xs font-semibold uppercase tracking-wider hover:text-white transition-colors"
                                     >
                                         Type
-                                        <SortIcon field="type" />
+                                        <SortIcon field="type" currentField={sortField} direction={sortDirection} />
                                     </button>
                                 </th>
                                 <th className="px-4 py-3 text-left">
@@ -211,7 +231,7 @@ export function HistoryPage(): JSX.Element {
                                         className="flex items-center gap-2 text-slate-300 text-xs font-semibold uppercase tracking-wider hover:text-white transition-colors"
                                     >
                                         Severity
-                                        <SortIcon field="severity" />
+                                        <SortIcon field="severity" currentField={sortField} direction={sortDirection} />
                                     </button>
                                 </th>
                                 <th className="px-4 py-3 text-left">
@@ -221,7 +241,7 @@ export function HistoryPage(): JSX.Element {
                                         className="flex items-center gap-2 text-slate-300 text-xs font-semibold uppercase tracking-wider hover:text-white transition-colors"
                                     >
                                         Duration
-                                        <SortIcon field="duration" />
+                                        <SortIcon field="duration" currentField={sortField} direction={sortDirection} />
                                     </button>
                                 </th>
                                 <th className="px-4 py-3 text-left">
@@ -264,13 +284,7 @@ export function HistoryPage(): JSX.Element {
                                     </td>
                                     <td className="px-4 py-3">
                                         <span
-                                            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                                event.intervention_status === 'completed'
-                                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                                    : event.intervention_status === 'cancelled'
-                                                      ? 'bg-slate-500/20 text-slate-400'
-                                                      : 'bg-amber-500/20 text-amber-400'
-                                            }`}
+                                            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(event.intervention_status)}`}
                                         >
                                             {event.intervention_status ?? 'unknown'}
                                         </span>
