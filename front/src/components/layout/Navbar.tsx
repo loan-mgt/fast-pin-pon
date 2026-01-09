@@ -10,8 +10,8 @@ interface NavbarProps {
     onRefresh: () => void
     isSpinning: boolean
     lastUpdated: string
-    currentView: 'live' | 'dashboard'
-    onNavigate: (view: 'live' | 'dashboard') => void
+    currentView: 'live' | 'dashboard' | 'history'
+    onNavigate: (view: 'live' | 'dashboard' | 'history') => void
     onLogout?: () => void
     userLabel?: string
     onAddUnit?: () => void
@@ -31,10 +31,10 @@ export function Navbar({
 }: Readonly<NavbarProps>): JSX.Element {
     return (
         <nav className="bg-slate-950/90 border-slate-900/70 border-b">
-            <div className="flex justify-between items-center gap-4 mx-auto mr-2 px-6 py-4 max-w-6xl">
+            <div className="flex justify-between items-center gap-4 px-6 py-4">
                 <div>
                     <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Fast Pin Pon</p>
-                    <p className="font-semibold text-white text-lg">{currentView === 'live' ? 'Live events' : 'Dashboard'}</p>
+                    <p className="font-semibold text-white text-lg">{currentView === 'live' ? 'Live events' : currentView === 'dashboard' ? 'Dashboard' : 'History'}</p>
                 </div>
 
                 {currentView === 'dashboard' && onAddUnit && (
@@ -76,6 +76,18 @@ export function Navbar({
                             aria-pressed={currentView === 'dashboard'}
                         >
                             Dashboard
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onNavigate('history')}
+                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${
+                                currentView === 'history'
+                                    ? 'bg-slate-100 text-slate-950 shadow'
+                                    : 'text-slate-300 hover:text-white'
+                            }`}
+                            aria-pressed={currentView === 'history'}
+                        >
+                            History
                         </button>
                     </div>
                     <div className="flex items-center gap-2 text-slate-400 text-xs">

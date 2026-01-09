@@ -52,7 +52,9 @@ SELECT
     e.updated_at,
     e.closed_at,
     i.id AS intervention_id,
-    i.status AS intervention_status
+    i.status AS intervention_status,
+    i.started_at AS intervention_started_at,
+    i.completed_at AS intervention_completed_at
 FROM events e
 JOIN event_types et ON et.code = e.event_type_code
 LEFT JOIN interventions i ON i.event_id = e.id

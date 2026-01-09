@@ -18,6 +18,8 @@ export type EventSummary = {
     reported_at: string
     updated_at: string
     closed_at?: string
+    started_at?: string
+    completed_at?: string
     assigned_units?: UnitSummary[]
 }
 
