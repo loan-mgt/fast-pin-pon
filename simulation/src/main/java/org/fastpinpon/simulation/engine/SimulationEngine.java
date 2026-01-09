@@ -33,6 +33,7 @@ public final class SimulationEngine {
 
     private final ApiClient api;
     private final String apiBaseUrl;
+    private final boolean updatingEnabled;
     private final Map<String, VehicleState> vehicleStates = new ConcurrentHashMap<>();
     
     // Track interventions waiting for completion (interventionId -> first arrived timestamp)
@@ -40,10 +41,11 @@ public final class SimulationEngine {
 
     private long lastTickTime = System.currentTimeMillis();
 
-    public SimulationEngine(ApiClient api, String apiBaseUrl) {
+    public SimulationEngine(ApiClient api, String apiBaseUrl, boolean updatingEnabled) {
         this.api = api;
         this.apiBaseUrl = apiBaseUrl;
-        LOG.info("[ENGINE] SimulationEngine initialized");
+        this.updatingEnabled = updatingEnabled;
+        LOG.info("[ENGINE] SimulationEngine initialized (updatingEnabled=" + updatingEnabled + ")");
     }
 
     /**
@@ -108,8 +110,14 @@ public final class SimulationEngine {
         for (String unitId : vehicleStates.keySet()) {
             if (!currentUnderWay.contains(unitId)) {
                 VehicleState state = vehicleStates.get(unitId);
-                // Only remove if already arrived (handled) or no longer under_way
+                // Only remove arrived vehicles if their intervention is NOT waiting for completion
                 if (state.hasArrived()) {
+                    // Keep tracking if intervention completion timer is active
+                    if (state.getInterventionId() != null && 
+                        interventionCompletionTimers.containsKey(state.getInterventionId())) {
+                        // Don't remove - still waiting for intervention completion
+                        continue;
+                    }
                     toRemove.add(unitId);
                     LOG.log(Level.INFO, "[ENGINE] Removing arrived vehicle {0}", unitId);
                 } else if (!currentUnderWay.contains(unitId)) {
@@ -175,8 +183,10 @@ public final class SimulationEngine {
                     state.setCurrentLat(result.currentLat);
                     state.setCurrentLon(result.currentLon);
 
-                    // Update unit location in API
-                    api.updateUnitLocation(state.getUnitId(), result.currentLat, result.currentLon, Instant.now());
+                    // Update unit location in API only if updating is enabled
+                    if (updatingEnabled) {
+                        api.updateUnitLocation(state.getUnitId(), result.currentLat, result.currentLon, Instant.now());
+                    }
 
                     LOG.log(Level.FINE, "[ENGINE] Vehicle {0}: progress={1}%, pos=({2}, {3})",
                             new Object[]{state.getUnitId(), String.format("%.1f", result.progressPercent), 
@@ -203,12 +213,16 @@ public final class SimulationEngine {
         
         state.setArrivedAt(Instant.now());
 
-        // Update unit status to on_site
-        api.updateUnitStatus(state.getUnitId(), STATUS_ON_SITE);
+        // Update unit status to on_site only if updating is enabled
+        if (updatingEnabled) {
+            api.updateUnitStatus(state.getUnitId(), STATUS_ON_SITE);
+        }
 
         // Update assignment status to arrived (if we have intervention ID)
         if (state.getInterventionId() != null) {
-            api.updateAssignmentStatusByUnit(state.getInterventionId(), state.getUnitId(), "arrived");
+            if (updatingEnabled) {
+                api.updateAssignmentStatusByUnit(state.getInterventionId(), state.getUnitId(), "arrived");
+            }
             
             // Start or update completion timer for this intervention
             interventionCompletionTimers.putIfAbsent(state.getInterventionId(), Instant.now());
@@ -222,6 +236,8 @@ public final class SimulationEngine {
         if (interventionCompletionTimers.isEmpty()) {
             return;
         }
+
+        LOG.log(Level.FINE, "[ENGINE] Checking {0} intervention completion timers", interventionCompletionTimers.size());
 
         // Group arrived vehicles by intervention
         Map<String, List<VehicleState>> byIntervention = new HashMap<>();
@@ -247,6 +263,11 @@ public final class SimulationEngine {
             boolean hasVehiclesInTransit = vehicleStates.values().stream()
                     .anyMatch(s -> interventionId.equals(s.getInterventionId()) && !s.hasArrived());
 
+            long elapsedMs = now.toEpochMilli() - timerStart.toEpochMilli();
+            
+            LOG.log(Level.FINE, "[ENGINE] Intervention {0}: arrivedCount={1}, inTransit={2}, elapsed={3}ms",
+                    new Object[]{interventionId, arrivedForIntervention.size(), hasVehiclesInTransit, elapsedMs});
+
             if (hasVehiclesInTransit) {
                 // Reset timer - not all vehicles have arrived yet
                 interventionCompletionTimers.put(interventionId, now);
@@ -254,9 +275,10 @@ public final class SimulationEngine {
             }
 
             // All vehicles arrived - check if 30s have passed
-            long elapsedMs = now.toEpochMilli() - timerStart.toEpochMilli();
             if (elapsedMs >= COMPLETION_DELAY_MS && !arrivedForIntervention.isEmpty()) {
                 toComplete.add(interventionId);
+                LOG.log(Level.INFO, "[ENGINE] Intervention {0} ready for completion (elapsed={1}ms, arrivedUnits={2})",
+                        new Object[]{interventionId, elapsedMs, arrivedForIntervention.size()});
             }
         }
 
@@ -264,7 +286,9 @@ public final class SimulationEngine {
         for (String interventionId : toComplete) {
             try {
                 LOG.log(Level.INFO, "[ENGINE] Completing intervention {0} after 30s delay", interventionId);
-                api.updateInterventionStatus(interventionId, "completed");
+                if (updatingEnabled) {
+                    api.updateInterventionStatus(interventionId, "completed");
+                }
                 interventionCompletionTimers.remove(interventionId);
                 
                 // Remove all vehicles for this intervention from tracking
