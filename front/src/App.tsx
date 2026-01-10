@@ -13,7 +13,7 @@ import { DashboardPage } from './components/dashboard/DashboardPage'
 import { AddUnitModal } from './components/dashboard/AddUnitModal'
 import { HistoryPage } from './components/history/HistoryPage'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
-import type { EventSummary, UnitSummary, Building, UnitType, EventLog } from './types'
+import type { EventSummary, UnitSummary, Building, UnitType, ActivityLog } from './types'
 import { useAuth } from './auth/AuthProvider'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
@@ -23,7 +23,7 @@ type ViewMode = 'live' | 'dashboard' | 'history'
 export function App() {
   const [events, setEvents] = useState<EventSummary[]>([])
   const [units, setUnits] = useState<UnitSummary[]>([])
-  const [recentLogs, setRecentLogs] = useState<EventLog[]>([])
+  const [recentLogs, setRecentLogs] = useState<ActivityLog[]>([])
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
   const [isSpinning, setIsSpinning] = useState(false)
@@ -208,6 +208,17 @@ export function App() {
     setSelectedEventId(null)
   }
 
+  const handleLogUnitClick = useCallback((unitId: string) => {
+    const unit = units.find((u) => u.id === unitId)
+    if (unit?.location?.longitude && unit?.location?.latitude && flyToLocationRef.current) {
+      flyToLocationRef.current(unit.location.longitude, unit.location.latitude, 16)
+    }
+  }, [units])
+
+  const handleLogEventClick = useCallback((eventId: string) => {
+    setSelectedEventId(eventId)
+  }, [])
+
   if (isAuthLoading) {
     return (
       <div className="flex flex-col justify-center items-center bg-slate-950 min-h-screen text-slate-100">
@@ -219,6 +230,8 @@ export function App() {
   const userLabel = profile?.firstName
     ? `${profile.firstName} ${profile.lastName ?? ''}`.trim()
     : profile?.username ?? profile?.email ?? 'Utilisateur'
+
+
   return (
     <div className={`flex flex-col bg-slate-950 min-h-screen text-slate-100 ${view === 'live' ? 'h-screen overflow-hidden' : ''}`}>
       <Navbar
@@ -254,7 +267,12 @@ export function App() {
 
       {view === 'live' && (
         <main className="relative flex flex-1 min-h-[calc(100vh-72px)] overflow-hidden">
-          <RecentLogsTicker logs={recentLogs} error={error} />
+          <RecentLogsTicker
+            logs={recentLogs}
+            error={error}
+            onUnitClick={handleLogUnitClick}
+            onEventClick={handleLogEventClick}
+          />
           <MapContainer
             events={sortedEvents}
             units={units}

@@ -1,4 +1,4 @@
-import type { EventSummary, UnitSummary, UnitType, Building, EventLog } from '../types'
+import type { EventSummary, UnitSummary, UnitType, Building, EventLog, ActivityLog } from '../types'
 import type { CreateEventRequest, EventType } from '../types/eventTypes'
 
 class FastPinPonService {
@@ -226,7 +226,7 @@ class FastPinPonService {
   async getSync(limitEvents = 25, limitLogs = 3, token?: string, denyStatuses?: string[]): Promise<{
     events: EventSummary[],
     units: UnitSummary[],
-    recent_logs: EventLog[]
+    recent_logs: ActivityLog[]
   }> {
     const params = new URLSearchParams({
       limit_events: String(limitEvents),

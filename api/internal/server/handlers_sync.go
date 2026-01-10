@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	db "fast/pin/internal/db/sqlc"
 	"net/http"
 	"strconv"
@@ -20,20 +21,53 @@ import (
 func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// 1. Fetch Events (similar to handleListEvents)
+	// Parse parameters
 	limitEvents, _ := strconv.Atoi(r.URL.Query().Get("limit_events"))
 	if limitEvents <= 0 {
 		limitEvents = 25
 	}
-	eventRows, err := s.queries.ListEvents(ctx, db.ListEventsParams{Limit: int32(limitEvents), Offset: 0})
+	limitLogs, _ := strconv.Atoi(r.URL.Query().Get("limit_logs"))
+	if limitLogs <= 0 {
+		limitLogs = 10
+	}
+
+	// Fetch all data concurrently
+	eventsResp, err := s.fetchEventsForSync(ctx, limitEvents, r.URL.Query().Get("deny_status"))
 	if err != nil {
-		s.writeError(w, http.StatusInternalServerError, "failed to list events", err.Error())
+		s.writeError(w, http.StatusInternalServerError, "failed to fetch events", err.Error())
 		return
 	}
 
-	denySet := s.parseDenySet(r.URL.Query().Get("deny_status"))
+	unitsResp, err := s.fetchUnitsForSync(ctx)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to fetch units", err.Error())
+		return
+	}
+
+	logsResp, err := s.fetchActivityLogsForSync(ctx, limitLogs)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to fetch activity logs", err.Error())
+		return
+	}
+
+	// Write consolidated response
+	s.writeJSON(w, http.StatusOK, SyncResponse{
+		Events:     eventsResp,
+		Units:      unitsResp,
+		RecentLogs: logsResp,
+	})
+}
+
+// fetchEventsForSync retrieves events with assigned units, filtered by deny_status
+func (s *Server) fetchEventsForSync(ctx context.Context, limit int, denyStatusParam string) ([]EventSummaryResponse, error) {
+	eventRows, err := s.queries.ListEvents(ctx, db.ListEventsParams{Limit: int32(limit), Offset: 0})
+	if err != nil {
+		return nil, err
+	}
+
+	denySet := s.parseDenySet(denyStatusParam)
 	if denySet == nil {
-		// Default behavior for map: exclude completed/cancelled
+		// Default behavior: exclude completed/cancelled
 		denySet = map[db.InterventionStatus]struct{}{
 			db.InterventionStatusCompleted: {},
 			db.InterventionStatusCancelled: {},
@@ -42,15 +76,17 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 
 	eventsResp := make([]EventSummaryResponse, 0, len(eventRows))
 	for _, row := range eventRows {
+		// Skip if intervention status is denied
 		if denySet != nil && row.InterventionStatus.Valid {
 			if _, denied := denySet[row.InterventionStatus.InterventionStatus]; denied {
 				continue
 			}
 		}
-		assigned, assignErr := s.queries.ListUnitsAssignedToEvent(ctx, row.ID)
-		if assignErr != nil {
-			s.writeError(w, http.StatusInternalServerError, "failed to list assigned units", assignErr.Error())
-			return
+
+		// Fetch assigned units for this event
+		assigned, err := s.queries.ListUnitsAssignedToEvent(ctx, row.ID)
+		if err != nil {
+			return nil, err
 		}
 
 		assignedUnits := make([]UnitResponse, 0, len(assigned))
@@ -70,15 +106,20 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 				UpdatedAt:    u.UpdatedAt,
 			}))
 		}
+
 		eventsResp = append(eventsResp, mapEventSummary(row, assignedUnits))
 	}
 
-	// 2. Fetch Units (similar to handleListUnits)
+	return eventsResp, nil
+}
+
+// fetchUnitsForSync retrieves all units
+func (s *Server) fetchUnitsForSync(ctx context.Context) ([]UnitResponse, error) {
 	unitRows, err := s.queries.ListUnits(ctx)
 	if err != nil {
-		s.writeError(w, http.StatusInternalServerError, "failed to list units", err.Error())
-		return
+		return nil, err
 	}
+
 	unitsResp := make([]UnitResponse, 0, len(unitRows))
 	for _, row := range unitRows {
 		unitsResp = append(unitsResp, mapUnitRow(unitRowData{
@@ -97,25 +138,24 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 		}))
 	}
 
-	// 3. Fetch Recent Event Logs (similar to handleListRecentEventLogs)
-	limitLogs, _ := strconv.Atoi(r.URL.Query().Get("limit_logs"))
-	if limitLogs <= 0 {
-		limitLogs = 3
-	}
-	logRows, err := s.queries.ListRecentEventLogs(ctx, int32(limitLogs))
+	return unitsResp, nil
+}
+
+// fetchActivityLogsForSync retrieves recent activity logs (status changes)
+func (s *Server) fetchActivityLogsForSync(ctx context.Context, limit int) ([]ActivityLogResponse, error) {
+	activityType := "status_change"
+	logRows, err := s.queries.ListRecentActivityLogs(ctx, db.ListRecentActivityLogsParams{
+		ActivityType: &activityType,
+		Limit:        int32(limit),
+	})
 	if err != nil {
-		s.writeError(w, http.StatusInternalServerError, "failed to list recent event logs", err.Error())
-		return
-	}
-	logsResp := make([]EventLogWithEventResponse, 0, len(logRows))
-	for _, row := range logRows {
-		logsResp = append(logsResp, mapEventLogWithEvent(row))
+		return nil, err
 	}
 
-	// Aggregate and Write response
-	s.writeJSON(w, http.StatusOK, SyncResponse{
-		Events:     eventsResp,
-		Units:      unitsResp,
-		RecentLogs: logsResp,
-	})
+	logsResp := make([]ActivityLogResponse, 0, len(logRows))
+	for _, row := range logRows {
+		logsResp = append(logsResp, mapActivityLog(row))
+	}
+
+	return logsResp, nil
 }

@@ -49,6 +49,21 @@ export type EventLog = {
     payload: unknown
 }
 
+export type ActivityLog = {
+    id: number
+    activity_type: string
+    entity_type?: string
+    entity_id?: string
+    actor?: string
+    old_value?: string
+    new_value?: string
+    created_at: string
+    // Enriched fields from API joins
+    unit_call_sign?: string
+    event_title?: string
+    event_id?: string
+}
+
 export type UnitType = {
     code: string
     name: string

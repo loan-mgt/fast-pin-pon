@@ -187,6 +187,18 @@ func (ns NullUnitStatus) Value() (driver.Value, error) {
 	return string(ns.UnitStatus), nil
 }
 
+type ActivityLog struct {
+	ID           int64              `json:"id"`
+	ActivityType string             `json:"activity_type"`
+	EntityType   *string            `json:"entity_type"`
+	EntityID     pgtype.UUID        `json:"entity_id"`
+	Actor        *string            `json:"actor"`
+	OldValue     *string            `json:"old_value"`
+	NewValue     *string            `json:"new_value"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	Metadata     []byte             `json:"metadata"`
+}
+
 type DispatchConfig struct {
 	Key         string             `json:"key"`
 	Value       pgtype.Numeric     `json:"value"`
@@ -208,15 +220,6 @@ type Event struct {
 	ReportedAt    pgtype.Timestamptz `json:"reported_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	ClosedAt      pgtype.Timestamptz `json:"closed_at"`
-}
-
-type EventLog struct {
-	ID        int64              `json:"id"`
-	EventID   pgtype.UUID        `json:"event_id"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	Code      string             `json:"code"`
-	Actor     *string            `json:"actor"`
-	Payload   []byte             `json:"payload"`
 }
 
 type EventType struct {
@@ -295,6 +298,10 @@ type RoutingWay struct {
 	Source       *int32      `json:"source"`
 	Target       *int32      `json:"target"`
 	Geom         interface{} `json:"geom"`
+	X1           *float64    `json:"x1"`
+	Y1           *float64    `json:"y1"`
+	X2           *float64    `json:"x2"`
+	Y2           *float64    `json:"y2"`
 }
 
 type RoutingWaysVerticesPgr struct {
