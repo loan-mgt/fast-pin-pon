@@ -209,9 +209,23 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Fetch current unit to get old status for logging
+	currentUnit, err := s.queries.GetUnit(r.Context(), unitID)
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, errUnitNotFound, nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to fetch unit", err.Error())
+		return
+	}
+
+	oldStatus := string(currentUnit.Status)
+	newStatus := req.Status
+
 	row, err := s.queries.UpdateUnitStatus(r.Context(), db.UpdateUnitStatusParams{
 		ID:     unitID,
-		Status: db.UnitStatus(req.Status),
+		Status: db.UnitStatus(newStatus),
 	})
 	if err != nil {
 		if isNotFound(err) {
@@ -220,6 +234,14 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		}
 		s.writeError(w, http.StatusInternalServerError, "failed to update unit", err.Error())
 		return
+	}
+
+	// Log the status change if it actually changed
+	if oldStatus != newStatus {
+		if logErr := s.logUnitStatusChange(r.Context(), unitID, currentUnit.CallSign, oldStatus, newStatus, nil); logErr != nil {
+			s.log.Error().Err(logErr).Msg("failed to log unit status change")
+			// Don't fail the request if logging fails
+		}
 	}
 
 	// Manage routes based on status change

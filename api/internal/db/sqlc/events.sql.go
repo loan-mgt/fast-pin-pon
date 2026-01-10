@@ -104,49 +104,6 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Creat
 	return i, err
 }
 
-const createEventLog = `-- name: CreateEventLog :one
-INSERT INTO event_logs (
-    event_id,
-    code,
-    actor,
-    payload
-) VALUES (
-    $1, $2, $3, $4
-) RETURNING
-    id,
-    event_id,
-    created_at,
-    code,
-    actor,
-    payload
-`
-
-type CreateEventLogParams struct {
-	EventID pgtype.UUID `json:"event_id"`
-	Code    string      `json:"code"`
-	Actor   *string     `json:"actor"`
-	Payload []byte      `json:"payload"`
-}
-
-func (q *Queries) CreateEventLog(ctx context.Context, arg CreateEventLogParams) (EventLog, error) {
-	row := q.db.QueryRow(ctx, createEventLog,
-		arg.EventID,
-		arg.Code,
-		arg.Actor,
-		arg.Payload,
-	)
-	var i EventLog
-	err := row.Scan(
-		&i.ID,
-		&i.EventID,
-		&i.CreatedAt,
-		&i.Code,
-		&i.Actor,
-		&i.Payload,
-	)
-	return i, err
-}
-
 const getEvent = `-- name: GetEvent :one
 SELECT
     e.id,
@@ -215,53 +172,6 @@ func (q *Queries) GetEvent(ctx context.Context, id pgtype.UUID) (GetEventRow, er
 		&i.InterventionStatus,
 	)
 	return i, err
-}
-
-const listEventLogs = `-- name: ListEventLogs :many
-SELECT
-    id,
-    event_id,
-    created_at,
-    code,
-    actor,
-    payload
-FROM event_logs
-WHERE event_id = $1
-ORDER BY created_at DESC
-LIMIT $2 OFFSET $3
-`
-
-type ListEventLogsParams struct {
-	EventID pgtype.UUID `json:"event_id"`
-	Limit   int32       `json:"limit"`
-	Offset  int32       `json:"offset"`
-}
-
-func (q *Queries) ListEventLogs(ctx context.Context, arg ListEventLogsParams) ([]EventLog, error) {
-	rows, err := q.db.Query(ctx, listEventLogs, arg.EventID, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []EventLog
-	for rows.Next() {
-		var i EventLog
-		if err := rows.Scan(
-			&i.ID,
-			&i.EventID,
-			&i.CreatedAt,
-			&i.Code,
-			&i.Actor,
-			&i.Payload,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listEvents = `-- name: ListEvents :many
@@ -345,86 +255,6 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]ListE
 			&i.InterventionStatus,
 			&i.InterventionStartedAt,
 			&i.InterventionCompletedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listRecentEventLogs = `-- name: ListRecentEventLogs :many
-WITH recent_events AS (
-    SELECT 
-        e.id AS event_id,
-        e.title AS event_title,
-        e.event_type_code,
-        e.reported_at
-    FROM events e
-    LEFT JOIN interventions i ON i.event_id = e.id
-    WHERE e.closed_at IS NULL 
-      AND (i.status IS NULL OR i.status NOT IN ('completed', 'cancelled'))
-    ORDER BY e.reported_at DESC
-    LIMIT $1
-),
-latest_logs AS (
-    SELECT DISTINCT ON (el.event_id)
-        el.id,
-        el.event_id,
-        el.created_at,
-        el.code,
-        el.actor,
-        el.payload
-    FROM event_logs el
-    WHERE el.event_id IN (SELECT event_id FROM recent_events)
-    ORDER BY el.event_id, el.created_at DESC
-)
-SELECT 
-    COALESCE(ll.id, 0) AS id,
-    re.event_id,
-    COALESCE(ll.created_at, re.reported_at) AS created_at,
-    COALESCE(ll.code, 'created') AS code,
-    ll.actor,
-    COALESCE(ll.payload, '{}'::jsonb) AS payload,
-    re.event_title,
-    re.event_type_code
-FROM recent_events re
-LEFT JOIN latest_logs ll ON ll.event_id = re.event_id
-ORDER BY re.reported_at DESC
-`
-
-type ListRecentEventLogsRow struct {
-	ID            int64              `json:"id"`
-	EventID       pgtype.UUID        `json:"event_id"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	Code          string             `json:"code"`
-	Actor         *string            `json:"actor"`
-	Payload       []byte             `json:"payload"`
-	EventTitle    string             `json:"event_title"`
-	EventTypeCode string             `json:"event_type_code"`
-}
-
-func (q *Queries) ListRecentEventLogs(ctx context.Context, limit int32) ([]ListRecentEventLogsRow, error) {
-	rows, err := q.db.Query(ctx, listRecentEventLogs, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListRecentEventLogsRow
-	for rows.Next() {
-		var i ListRecentEventLogsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.EventID,
-			&i.CreatedAt,
-			&i.Code,
-			&i.Actor,
-			&i.Payload,
-			&i.EventTitle,
-			&i.EventTypeCode,
 		); err != nil {
 			return nil, err
 		}

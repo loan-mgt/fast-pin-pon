@@ -71,7 +71,7 @@ SELECT
     ST_Distance(u.location, ST_SetSRID(ST_MakePoint(sqlc.arg(longitude)::double precision, sqlc.arg(latitude)::double precision), 4326)::geography)::double precision AS distance
 FROM units u
 LEFT JOIN locations l ON u.location_id = l.id
-WHERE u.status = 'available'
+WHERE (u.status = 'available' OR u.status = 'available_hidden')
 AND (sqlc.narg(unit_types)::text[] IS NULL OR u.unit_type_code = ANY(sqlc.narg(unit_types)::text[]))
 ORDER BY distance ASC;
 

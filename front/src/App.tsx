@@ -13,7 +13,7 @@ import { DashboardPage } from './components/dashboard/DashboardPage'
 import { AddUnitModal } from './components/dashboard/AddUnitModal'
 import { HistoryPage } from './components/history/HistoryPage'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
-import type { EventSummary, UnitSummary, Building, UnitType } from './types'
+import type { EventSummary, UnitSummary, Building, UnitType, ActivityLog } from './types'
 import { useAuth } from './auth/AuthProvider'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
@@ -23,6 +23,7 @@ type ViewMode = 'live' | 'dashboard' | 'history'
 export function App() {
   const [events, setEvents] = useState<EventSummary[]>([])
   const [units, setUnits] = useState<UnitSummary[]>([])
+  const [recentLogs, setRecentLogs] = useState<ActivityLog[]>([])
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
   const [isSpinning, setIsSpinning] = useState(false)
@@ -60,26 +61,37 @@ export function App() {
     const spinStart = Date.now()
 
     try {
-      const [eventsData, unitsData] = await Promise.all([
-        fastPinPonService.getEvents(25, token ?? undefined, ['completed']),
-        fastPinPonService.getUnits(token ?? undefined),
-      ])
+      const data = await fastPinPonService.getSync(25, 3, token ?? undefined, ['completed', 'cancelled'])
+      const eventsData = data.events
+      const unitsData = data.units
+      const logsData = data.recent_logs
 
       // If we have a selected event that isn't in the fresh list yet (e.g. just created),
       // we keep it to avoid selection jumping or disappearing.
       setEvents((prev) => {
         if (!selectedEventId) return eventsData
-        const existsInNew = eventsData.some((e) => e.id === selectedEventId)
+        const existsInNew = eventsData.some((e: EventSummary) => e.id === selectedEventId)
         if (existsInNew) return eventsData
 
-        const currentSelected = prev.find((e) => e.id === selectedEventId)
+        const currentSelected = prev.find((e: EventSummary) => e.id === selectedEventId)
         if (currentSelected) {
-          return [currentSelected, ...eventsData]
+          // If the selected event is missing from the list (usually because it's completed/cancelled),
+          // we only keep it if it's very fresh (less than 2x refresh interval).
+          // This ensures that "just created" events stay while indexing,
+          // but "just closed" events correctly disappear.
+          const reportedAt = new Date(currentSelected.reported_at).getTime()
+          const now = Date.now()
+          const isVeryRecent = now - reportedAt < (refreshInterval * 2 * 1000)
+
+          if (isVeryRecent) {
+            return [currentSelected, ...eventsData]
+          }
         }
         return eventsData
       })
 
       setUnits(unitsData)
+      setRecentLogs(logsData)
       setLastUpdated(
         new Date().toLocaleTimeString('en-US', {
           hour: 'numeric',
@@ -97,7 +109,7 @@ export function App() {
         setIsSpinning(false)
       }
     }
-  }, [isAuthenticated, token])
+  }, [isAuthenticated, token, selectedEventId, refreshInterval])
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -135,7 +147,7 @@ export function App() {
   }
 
   const sortedEvents = useMemo(() => {
-    return [...events].sort((a, b) => {
+    return [...events].sort((a: EventSummary, b: EventSummary) => {
       const aTime = new Date(a.reported_at).getTime()
       const bTime = new Date(b.reported_at).getTime()
       return bTime - aTime
@@ -151,7 +163,7 @@ export function App() {
   }, [isAuthenticated])
 
   const selectedEvent = useMemo(
-    () => sortedEvents.find((event) => event.id === selectedEventId) ?? null,
+    () => sortedEvents.find((event: EventSummary) => event.id === selectedEventId) ?? null,
     [sortedEvents, selectedEventId],
   )
 
@@ -161,10 +173,10 @@ export function App() {
 
       // Update local state immediately so selection works even before refresh completes
       // We look up the event type name to avoid showing an empty label
-      const eventTypeName = eventTypes.find((t) => t.code === newEvent.event_type_code)?.name ?? ''
+      const eventTypeName = eventTypes.find((t: EventType) => t.code === newEvent.event_type_code)?.name ?? ''
       const optimisticEvent = { ...newEvent, event_type_name: eventTypeName }
 
-      setEvents((prev) => [optimisticEvent, ...prev])
+      setEvents((prev: EventSummary[]) => [optimisticEvent, ...prev])
       setSelectedEventId(optimisticEvent.id)
       setPendingLocation(null)
       setIsCreateOpen(false)
@@ -196,6 +208,17 @@ export function App() {
     setSelectedEventId(null)
   }
 
+  const handleLogUnitClick = useCallback((unitId: string) => {
+    const unit = units.find((u) => u.id === unitId)
+    if (unit?.location?.longitude && unit?.location?.latitude && flyToLocationRef.current) {
+      flyToLocationRef.current(unit.location.longitude, unit.location.latitude, 16)
+    }
+  }, [units])
+
+  const handleLogEventClick = useCallback((eventId: string) => {
+    setSelectedEventId(eventId)
+  }, [])
+
   if (isAuthLoading) {
     return (
       <div className="flex flex-col justify-center items-center bg-slate-950 min-h-screen text-slate-100">
@@ -207,6 +230,8 @@ export function App() {
   const userLabel = profile?.firstName
     ? `${profile.firstName} ${profile.lastName ?? ''}`.trim()
     : profile?.username ?? profile?.email ?? 'Utilisateur'
+
+
   return (
     <div className={`flex flex-col bg-slate-950 min-h-screen text-slate-100 ${view === 'live' ? 'h-screen overflow-hidden' : ''}`}>
       <Navbar
@@ -242,7 +267,12 @@ export function App() {
 
       {view === 'live' && (
         <main className="relative flex flex-1 min-h-[calc(100vh-72px)] overflow-hidden">
-          <RecentLogsTicker token={token} refreshIntervalSec={refreshInterval} />
+          <RecentLogsTicker
+            logs={recentLogs}
+            error={error}
+            onUnitClick={handleLogUnitClick}
+            onEventClick={handleLogEventClick}
+          />
           <MapContainer
             events={sortedEvents}
             units={units}

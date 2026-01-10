@@ -69,6 +69,10 @@ type EventLogWithEventResponse struct {
 	Code          string    `json:"code"`
 	Actor         string    `json:"actor,omitempty"`
 	Payload       RawJSON   `json:"payload"`
+	EntityType    string    `json:"entity_type,omitempty"`
+	EntityID      string    `json:"entity_id,omitempty"`
+	OldValue      string    `json:"old_value,omitempty"`
+	NewValue      string    `json:"new_value,omitempty"`
 }
 
 type EventTypeResponse struct {
@@ -140,17 +144,38 @@ type TelemetryResponse struct {
 	Status     RawJSON   `json:"status_snapshot"`
 }
 
+type ActivityLogResponse struct {
+	ID           int64     `json:"id"`
+	ActivityType string    `json:"activity_type"`
+	EntityType   *string   `json:"entity_type,omitempty"`
+	EntityID     *string   `json:"entity_id,omitempty"`
+	Actor        *string   `json:"actor,omitempty"`
+	OldValue     *string   `json:"old_value,omitempty"`
+	NewValue     *string   `json:"new_value,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	// Enriched fields from joins
+	UnitCallSign *string `json:"unit_call_sign,omitempty"`
+	EventTitle   *string `json:"event_title,omitempty"`
+	EventID      *string `json:"event_id,omitempty"`
+}
+
 type HealthResponse struct {
 	Status string `json:"status"`
 	Env    string `json:"env"`
 	Uptime string `json:"uptime"`
 }
 
+type SyncResponse struct {
+	Events     []EventSummaryResponse `json:"events"`
+	Units      []UnitResponse         `json:"units"`
+	RecentLogs []ActivityLogResponse  `json:"recent_logs"`
+}
+
 type LocationResponse struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Type      string   `json:"type"`
-	Location  GeoPoint `json:"location"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Type      string    `json:"type"`
+	Location  GeoPoint  `json:"location"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

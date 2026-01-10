@@ -26,8 +26,8 @@ type CreateEventLogRequest struct {
 }
 
 // handleListRecentEventLogs godoc
-// @Title List recent event logs
-// @Description Returns the most recent event logs across all events.
+// @Title List recent activity logs
+// @Description Returns the most recent activity logs.
 // @Resource Events
 // @Produce json
 // @Param limit query int false "Maximum results" default(10)
@@ -43,15 +43,19 @@ func (s *Server) handleListRecentEventLogs(w http.ResponseWriter, r *http.Reques
 		limit = 100
 	}
 
-	rows, err := s.queries.ListRecentEventLogs(r.Context(), int32(limit))
+	// Fetch all recent activity logs (ActivityType nil = all)
+	rows, err := s.queries.ListRecentActivityLogs(r.Context(), db.ListRecentActivityLogsParams{
+		ActivityType: nil,
+		Limit:        int32(limit),
+	})
 	if err != nil {
-		s.writeError(w, http.StatusInternalServerError, "failed to list recent event logs", err.Error())
+		s.writeError(w, http.StatusInternalServerError, "failed to list recent activity logs", err.Error())
 		return
 	}
 
 	resp := make([]EventLogWithEventResponse, 0, len(rows))
 	for _, row := range rows {
-		resp = append(resp, mapEventLogWithEvent(row))
+		resp = append(resp, mapActivityLogToEventLogResponse(row))
 	}
 
 	s.writeJSON(w, http.StatusOK, resp)
@@ -258,6 +262,8 @@ func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 			// We don't fail the event creation, but maybe we should return a different status
 			// or include it in the response. For now, just log the error.
 		} else {
+			// Log the creation
+			s.logInterventionStatusChange(r.Context(), intervention.ID, row.ID, "", string(db.InterventionStatusCreated), nil)
 			// Trigger engine dispatch
 			s.notifyEngineDispatch(r.Context(), uuidString(intervention.ID))
 		}
@@ -325,7 +331,11 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 		}))
 	}
 
-	logs, err := s.queries.ListEventLogs(r.Context(), db.ListEventLogsParams{EventID: eventID, Limit: 50, Offset: 0})
+	logs, err := s.queries.ListActivityLogsForEvent(r.Context(), db.ListActivityLogsForEventParams{
+		EventID: eventID,
+		Limit:   50,
+		Offset:  0,
+	})
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to fetch event logs", err.Error())
 		return
@@ -338,7 +348,7 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 
 // handleCreateEventLog godoc
 // @Title Append event log entry
-// @Description Adds an entry to an incident timeline.
+// @Description Adds an entry to an incident timeline (as an activity log).
 // @Resource Events
 // @Accept json
 // @Produce json
@@ -361,20 +371,29 @@ func (s *Server) handleCreateEventLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params := db.CreateEventLogParams{
-		EventID: eventID,
-		Code:    req.Code,
-		Actor:   req.Actor,
-		Payload: rawJSONOrEmpty(req.Payload),
+	entityType := "event"
+	params := db.CreateActivityLogParams{
+		ActivityType: req.Code,
+		EntityType:   &entityType,
+		EntityID:     eventID,
+		Actor:        req.Actor,
+		Metadata:     rawJSONOrEmpty(req.Payload),
 	}
 
-	logRow, err := s.queries.CreateEventLog(r.Context(), params)
+	logRow, err := s.queries.CreateActivityLog(r.Context(), params)
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to create log", err.Error())
 		return
 	}
 
-	s.writeJSON(w, http.StatusCreated, mapEventLog(logRow))
+	s.writeJSON(w, http.StatusCreated, EventLogResponse{
+		ID:        logRow.ID,
+		EventID:   uuidStringOptional(logRow.EntityID),
+		CreatedAt: logRow.CreatedAt.Time,
+		Code:      logRow.ActivityType,
+		Actor:     optionalString(logRow.Actor),
+		Payload:   RawJSON(logRow.Metadata),
+	})
 }
 
 // handleListEventLogs godoc
@@ -397,7 +416,11 @@ func (s *Server) handleListEventLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	limit, offset := s.paginate(r, 50)
 
-	rows, err := s.queries.ListEventLogs(r.Context(), db.ListEventLogsParams{EventID: eventID, Limit: limit, Offset: offset})
+	rows, err := s.queries.ListActivityLogsForEvent(r.Context(), db.ListActivityLogsForEventParams{
+		EventID: eventID,
+		Limit:   int32(limit),
+		Offset:  int32(offset),
+	})
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to list logs", err.Error())
 		return
@@ -405,7 +428,14 @@ func (s *Server) handleListEventLogs(w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]EventLogResponse, 0, len(rows))
 	for _, row := range rows {
-		resp = append(resp, mapEventLog(row))
+		resp = append(resp, EventLogResponse{
+			ID:        row.ID,
+			EventID:   uuidString(eventID),
+			CreatedAt: row.CreatedAt.Time,
+			Code:      row.ActivityType,
+			Actor:     optionalString(row.Actor),
+			Payload:   RawJSON(row.Metadata),
+		})
 	}
 
 	s.writeJSON(w, http.StatusOK, resp)
@@ -463,7 +493,7 @@ func mapCreateEventRow(row db.CreateEventRow) EventSummaryResponse {
 	}
 }
 
-func mapEventDetail(event db.GetEventRow, interventions []db.Intervention, logs []db.EventLog) EventDetailResponse {
+func mapEventDetail(event db.GetEventRow, interventions []db.Intervention, logs []db.ActivityLog) EventDetailResponse {
 	var intID *string
 	if event.InterventionID.Valid {
 		s := uuidString(event.InterventionID)
@@ -505,32 +535,37 @@ func mapEventDetail(event db.GetEventRow, interventions []db.Intervention, logs 
 	}
 
 	for _, logRow := range logs {
-		resp.Logs = append(resp.Logs, mapEventLog(logRow))
+		resp.Logs = append(resp.Logs, EventLogResponse{
+			ID:        logRow.ID,
+			EventID:   uuidString(event.ID),
+			CreatedAt: logRow.CreatedAt.Time,
+			Code:      logRow.ActivityType,
+			Actor:     optionalString(logRow.Actor),
+			Payload:   RawJSON(logRow.Metadata),
+		})
 	}
 
 	return resp
 }
 
-func mapEventLog(row db.EventLog) EventLogResponse {
-	return EventLogResponse{
-		ID:        row.ID,
-		EventID:   uuidString(row.EventID),
-		CreatedAt: row.CreatedAt.Time,
-		Code:      row.Code,
-		Actor:     optionalString(row.Actor),
-		Payload:   RawJSON(row.Payload),
+func mapActivityLogToEventLogResponse(row db.ListRecentActivityLogsRow) EventLogWithEventResponse {
+	return EventLogWithEventResponse{
+		ID:            row.ID,
+		EventID:       uuidStringOptional(row.EventID),
+		EventTitle:    optionalString(row.EventTitle),
+		EventTypeCode: "", // Not returned by ListRecentActivityLogsRow currently, can be added later if needed
+		CreatedAt:     row.CreatedAt.Time,
+		Code:          row.ActivityType,
+		Actor:         optionalString(row.Actor),
+		Payload:       RawJSON(row.Metadata),
+		// Add new fields if front expects them for unit logs
+		EntityType: optionalString(row.EntityType),
+		EntityID:   uuidStringOptional(row.EntityID),
+		OldValue:   optionalString(row.OldValue),
+		NewValue:   optionalString(row.NewValue),
 	}
 }
 
-func mapEventLogWithEvent(row db.ListRecentEventLogsRow) EventLogWithEventResponse {
-	return EventLogWithEventResponse{
-		ID:            row.ID,
-		EventID:       uuidString(row.EventID),
-		EventTitle:    row.EventTitle,
-		EventTypeCode: row.EventTypeCode,
-		CreatedAt:     row.CreatedAt.Time,
-		Code:          row.Code,
-		Actor:         optionalString(row.Actor),
-		Payload:       RawJSON(row.Payload),
-	}
+func stringPtr(s string) *string {
+	return &s
 }
