@@ -20,7 +20,6 @@ services:
       - "8081:8080"
 
   postgres:
-    image: fast-pin-pon-postgres-dev
     extends:
       file: docker-compose.prod.yml
       service: postgres
