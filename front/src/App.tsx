@@ -74,7 +74,17 @@ export function App() {
 
         const currentSelected = prev.find((e) => e.id === selectedEventId)
         if (currentSelected) {
-          return [currentSelected, ...eventsData]
+          // If the selected event is missing from the list (usually because it's completed/cancelled),
+          // we only keep it if it's very fresh (less than 2x refresh interval).
+          // This ensures that "just created" events stay while indexing,
+          // but "just closed" events correctly disappear.
+          const reportedAt = new Date(currentSelected.reported_at).getTime()
+          const now = Date.now()
+          const isVeryRecent = now - reportedAt < (refreshInterval * 2 * 1000)
+
+          if (isVeryRecent) {
+            return [currentSelected, ...eventsData]
+          }
         }
         return eventsData
       })
@@ -97,7 +107,7 @@ export function App() {
         setIsSpinning(false)
       }
     }
-  }, [isAuthenticated, token])
+  }, [isAuthenticated, token, selectedEventId, refreshInterval])
 
   useEffect(() => {
     if (isAuthenticated) {
