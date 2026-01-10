@@ -19,21 +19,45 @@ public final class VehicleState {
     private double currentLon;
     private Instant arrivedAt; // null until unit reaches destination
 
-    public VehicleState(String unitId, String interventionId, String assignmentId,
-                        double estimatedDurationSeconds, double routeLengthMeters,
-                        double initialProgressPercent, double initialLat, double initialLon,
-                        Integer severity) {
-        this.unitId = unitId;
-        this.interventionId = interventionId;
-        this.assignmentId = assignmentId;
-        this.estimatedDurationSeconds = estimatedDurationSeconds;
-        this.routeLengthMeters = routeLengthMeters;
+    public static final class VehicleConfig {
+        public final String unitId;
+        public final String interventionId;
+        public final String assignmentId;
+        public final double estimatedDurationSeconds;
+        public final double routeLengthMeters;
+        public final double initialProgressPercent;
+        public final double initialLat;
+        public final double initialLon;
+        public final Integer severity;
+
+        public VehicleConfig(String unitId, String interventionId, String assignmentId,
+                             double estimatedDurationSeconds, double routeLengthMeters,
+                             double initialProgressPercent, double initialLat, double initialLon,
+                             Integer severity) {
+            this.unitId = unitId;
+            this.interventionId = interventionId;
+            this.assignmentId = assignmentId;
+            this.estimatedDurationSeconds = estimatedDurationSeconds;
+            this.routeLengthMeters = routeLengthMeters;
+            this.initialProgressPercent = initialProgressPercent;
+            this.initialLat = initialLat;
+            this.initialLon = initialLon;
+            this.severity = severity;
+        }
+    }
+
+    public VehicleState(VehicleConfig config) {
+        this.unitId = config.unitId;
+        this.interventionId = config.interventionId;
+        this.assignmentId = config.assignmentId;
+        this.estimatedDurationSeconds = config.estimatedDurationSeconds;
+        this.routeLengthMeters = config.routeLengthMeters;
         this.startedAt = Instant.now();
-        this.progressPercent = initialProgressPercent;
-        this.currentLat = initialLat;
-        this.currentLon = initialLon;
+        this.progressPercent = config.initialProgressPercent;
+        this.currentLat = config.initialLat;
+        this.currentLon = config.initialLon;
         this.arrivedAt = null;
-        this.severity = severity;
+        this.severity = config.severity;
     }
 
     public Integer getSeverity() {

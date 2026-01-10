@@ -11,8 +11,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 
 /**
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  */
 public final class DispatchServiceImpl implements DispatchService {
 
-    private static final Logger LOG = Logger.getLogger(DispatchServiceImpl.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(DispatchServiceImpl.class);
 
     private final DispatchApiClient apiClient;
     private final StaticDataCache cache;
@@ -35,13 +35,13 @@ public final class DispatchServiceImpl implements DispatchService {
 
     @Override
     public List<ScoredCandidate> dispatchForIntervention(String interventionId) {
-        LOG.info(() -> "Dispatching units for intervention: " + interventionId);
+        log.info("Dispatching units for intervention: {}", interventionId);
 
         try {
             // Get candidates from API
             CandidatesResponseDto response = apiClient.getCandidates(interventionId);
             if (response == null || response.getCandidates() == null || response.getCandidates().isEmpty()) {
-                LOG.warning(() -> "No candidates available for intervention: " + interventionId);
+                log.warn("No candidates available for intervention: {}", interventionId);
                 return Collections.emptyList();
             }
 
@@ -56,7 +56,7 @@ public final class DispatchServiceImpl implements DispatchService {
                     .collect(Collectors.toList());
 
             if (scoredCandidates.isEmpty()) {
-                LOG.warning(() -> "No eligible candidates after scoring for intervention: " + interventionId);
+                log.warn("No eligible candidates after scoring for intervention: {}", interventionId);
                 return Collections.emptyList();
             }
 
@@ -72,13 +72,13 @@ public final class DispatchServiceImpl implements DispatchService {
                 }
             }
 
-            LOG.info(() -> String.format("Dispatched %d/%d units to intervention %s",
-                    dispatched.size(), unitsToDispatch, interventionId));
+            log.info("Dispatched {}/{} units to intervention {}",
+                    dispatched.size(), unitsToDispatch, interventionId);
 
             return dispatched;
 
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, e, () -> "Error dispatching for intervention: " + interventionId);
+            log.error("Error dispatching for intervention: {}", interventionId, e);
             return Collections.emptyList();
         }
     }
@@ -87,8 +87,8 @@ public final class DispatchServiceImpl implements DispatchService {
         try {
             // Handle preemption if necessary
             if (candidate.requiresPreemption()) {
-                LOG.info(() -> String.format("Preempting %s from intervention %s",
-                        candidate.getCallSign(), candidate.getCurrentInterventionId()));
+                log.info("Preempting {} from intervention {}",
+                        candidate.getCallSign(), candidate.getCurrentInterventionId());
                 apiClient.releaseAssignment(candidate.getCurrentAssignmentId());
             }
 
@@ -97,24 +97,24 @@ public final class DispatchServiceImpl implements DispatchService {
             String assignmentId = apiClient.assignUnit(interventionId, candidate.getUnitId(), role);
 
             if (assignmentId != null) {
-                LOG.info(() -> String.format("Dispatched %s to intervention %s (score=%.2f, ETA=%.1fs)",
-                        candidate.getCallSign(), interventionId, candidate.getScore(), candidate.getTravelTimeSeconds()));
+                log.info("Dispatched {} to intervention {} (score={:.2f}, ETA={:.1f}s)",
+                        candidate.getCallSign(), interventionId, candidate.getScore(), candidate.getTravelTimeSeconds());
                 return candidate;
             }
         } catch (Exception e) {
-            LOG.log(Level.WARNING, e, () -> "Failed to dispatch " + candidate.getCallSign());
+            log.warn("Failed to dispatch {}: {}", candidate.getCallSign(), e.getMessage());
         }
         return null;
     }
 
     @Override
     public int periodicDispatch() {
-        LOG.fine("Running periodic dispatch...");
+        log.debug("Running periodic dispatch...");
 
         try {
             PendingInterventionsDto pending = apiClient.getPendingInterventions();
             if (pending == null || pending.getInterventions() == null || pending.getInterventions().isEmpty()) {
-                LOG.fine("No pending interventions");
+                log.debug("No pending interventions");
                 return 0;
             }
 
@@ -128,14 +128,13 @@ public final class DispatchServiceImpl implements DispatchService {
             }
 
             if (totalDispatched > 0) {
-                final int count = totalDispatched;
-                LOG.info(() -> "Periodic dispatch completed: " + count + " units dispatched");
+                log.info("Periodic dispatch completed: {} units dispatched", totalDispatched);
             }
 
             return totalDispatched;
 
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, e, () -> "Error in periodic dispatch");
+            log.error("Error in periodic dispatch", e);
             return 0;
         }
     }

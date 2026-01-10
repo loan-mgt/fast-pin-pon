@@ -20,11 +20,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class ApiClient {
-    private static final Logger LOG = Logger.getLogger(ApiClient.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(ApiClient.class);
     private static final OkHttpClient HTTP = new OkHttpClient();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_INSTANT;
@@ -149,7 +149,7 @@ public final class ApiClient {
             List<UnitDto> result = execute(api.getUnits(), "GET /v1/units (health check)");
             return result != null;
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[API] Health check failed: {0}", e.getMessage());
+            log.warn("Health check failed: {}", e.getMessage());
             return false;
         }
     }
@@ -280,7 +280,7 @@ public final class ApiClient {
         if (unitId == null || unitId.trim().isEmpty()) {
             return;
         }
-        LOG.log(Level.INFO, "[API] POST /v1/units/{0}/route/repair", unitId);
+        log.info("Triggering route repair for unit {}", unitId);
         executeVoid(api.repairUnitRoute(unitId), "POST /v1/units/{id}/route/repair");
     }
 
@@ -369,8 +369,7 @@ public final class ApiClient {
                 return;
             }
         }
-        LOG.log(Level.WARNING, "[API] No assignment found for unit {0} in intervention {1}",
-                new Object[]{unitId, interventionId});
+        log.warn("No assignment found for unit {} in intervention {}", unitId, interventionId);
     }
 
     /**
@@ -408,14 +407,7 @@ public final class ApiClient {
                 }
             }
         }
-        LOG.log(Level.INFO, "[API] Event types: {0}", eventTypeCodes);
-    }
-
-    private String pickEventType() {
-        if (eventTypeCodes.isEmpty()) {
-            return null;
-        }
-        return eventTypeCodes.get(random.nextInt(eventTypeCodes.size()));
+        log.info("Loaded event types: {}", eventTypeCodes);
     }
 
     private void loadUnitTypes() {
@@ -427,7 +419,7 @@ public final class ApiClient {
                 }
             }
         }
-        LOG.log(Level.INFO, "[API] Unit types: {0}", unitTypeCodes);
+        log.info("Loaded unit types: {}", unitTypeCodes);
     }
 
     private <T> T execute(Call<T> call, String action) {
@@ -440,9 +432,9 @@ public final class ApiClient {
             if (!resp.isSuccessful()) {
                 // Only log at SEVERE if it's not an expected 404
                 if (resp.code() == 404 && expect404) {
-                    LOG.log(Level.FINE, "[API] {0} -> 404 (expected, no data)", action);
+                    log.debug("{} -> 404 (expected, no data)", action);
                 } else {
-                    LOG.log(Level.SEVERE, "[API] {0} -> {1} body={2}", new Object[]{action, resp.code(), errorBody(resp)});
+                    log.error("{} -> {} body={}", action, resp.code(), errorBody(resp));
                 }
                 return null;
             }
@@ -451,7 +443,7 @@ public final class ApiClient {
             if (wasInterrupted(e)) {
                 return null;
             }
-            LOG.log(Level.SEVERE, e, () -> "[API] " + action + " error");
+            log.error("{} error", action, e);
             return null;
         }
     }
@@ -464,14 +456,14 @@ public final class ApiClient {
         try {
             Response<Void> resp = call.execute();
             if (!resp.isSuccessful()) {
-                LOG.log(Level.SEVERE, "[API] {0} -> {1} body={2} payload={3}",
-                        new Object[]{action, resp.code(), errorBody(resp), serializePayload(payload)});
+                log.error("{} -> {} body={} payload={}",
+                        action, resp.code(), errorBody(resp), serializePayload(payload));
             }
         } catch (Exception e) {
             if (wasInterrupted(e)) {
                 return;
             }
-            LOG.log(Level.SEVERE, e, () -> "[API] " + action + " error payload=" + serializePayload(payload));
+            log.error("{} error payload={}", action, serializePayload(payload), e);
         }
     }
 
