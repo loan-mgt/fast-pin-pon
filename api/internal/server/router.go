@@ -32,6 +32,7 @@ func (s *Server) routes() http.Handler {
 		v1.Get("/event-types", s.handleListEventTypes)
 		v1.Get("/unit-types", s.handleListUnitTypes)
 		v1.Get("/buildings", s.handleListBuildings)
+		v1.Get("/sync", s.handleSync)
 
 		v1.Get("/events", s.handleListEvents)
 		v1.Post("/events", s.handleCreateEvent)

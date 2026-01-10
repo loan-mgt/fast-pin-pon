@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
 import { Card } from '../ui/card'
 import type { EventLog } from '../../types'
-import { fastPinPonService } from '../../services/FastPinPonService'
 
 const MAX_LOGS = 3
 
@@ -18,45 +17,14 @@ function buildLabel(log: EventLog): string {
 }
 
 type RecentLogsTickerProps = {
-    token?: string | null
-    refreshIntervalSec?: number
+    logs: EventLog[]
+    loading?: boolean
+    error?: string | null
 }
 
-export function RecentLogsTicker({ token, refreshIntervalSec = 5 }: Readonly<RecentLogsTickerProps>) {
+export function RecentLogsTicker({ logs, loading, error }: Readonly<RecentLogsTickerProps>) {
     const [open, setOpen] = useState(false)
-    const [logs, setLogs] = useState<EventLog[]>([])
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const intervalRef = useRef<number | null>(null)
 
-    useEffect(() => {
-        let cancelled = false
-
-        const fetchLogs = async () => {
-            setLoading(true)
-            setError(null)
-            try {
-                const data = await fastPinPonService.getRecentEventLogs(MAX_LOGS, token ?? undefined)
-                if (!cancelled) setLogs(data)
-            } catch (err) {
-                if (!cancelled) setError(err instanceof Error ? err.message : 'Erreur inconnue')
-            } finally {
-                if (!cancelled) setLoading(false)
-            }
-        }
-
-        const intervalMs = Math.max(1000, refreshIntervalSec * 1000)
-        fetchLogs()
-        intervalRef.current = globalThis.setInterval(fetchLogs, intervalMs)
-
-        return () => {
-            cancelled = true
-            if (intervalRef.current !== null) {
-                globalThis.clearInterval(intervalRef.current)
-                intervalRef.current = null
-            }
-        }
-    }, [token, refreshIntervalSec])
 
     return (
         <Card

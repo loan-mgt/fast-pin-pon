@@ -146,11 +146,17 @@ type HealthResponse struct {
 	Uptime string `json:"uptime"`
 }
 
+type SyncResponse struct {
+	Events     []EventSummaryResponse      `json:"events"`
+	Units      []UnitResponse              `json:"units"`
+	RecentLogs []EventLogWithEventResponse `json:"recent_logs"`
+}
+
 type LocationResponse struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Type      string   `json:"type"`
-	Location  GeoPoint `json:"location"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Type      string    `json:"type"`
+	Location  GeoPoint  `json:"location"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
