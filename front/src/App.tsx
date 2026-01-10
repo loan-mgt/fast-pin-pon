@@ -222,7 +222,7 @@ export function App() {
         onAddUnit={() => setIsAddUnitOpen(true)}
       />
 
-      {view === 'dashboard' ? (
+      {view === 'dashboard' && (
         <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-auto">
           <DashboardPage
             units={units}
