@@ -17,14 +17,11 @@ import org.slf4j.LoggerFactory;
 
 public class SimulationApp {
     private static final String API_BASE_URL_KEY = "API_BASE_URL";
-    private static final String LOG_FILE_ENV = "SIMULATION_LOG_FILE";
-    private static final String FILE_LOGGING_ENABLED_ENV = "SIMULATION_FILE_LOGGING_ENABLED";
     private static final String HTTP_ENABLED_ENV = "SIM_HTTP_ENABLED";
     private static final String HTTP_PORT_ENV = "SIM_HTTP_PORT";
     private static final String DISABLE_AUTO_TICK_ENV = "SIM_DISABLE_AUTO_TICK";
     private static final String UPDATING_ENABLED_ENV = "SIMULATION_UPDATING_ENABLED";
     private static final String SPEED_MULTIPLIER_ENV = "SIMULATION_SPEED_MULTIPLIER";
-    private static final String DEFAULT_LOG_FILE = "/app/logs/simulation/simulation.log";
 
     private static final Logger log = LoggerFactory.getLogger(SimulationApp.class);
 

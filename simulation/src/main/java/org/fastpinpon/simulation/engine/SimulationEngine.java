@@ -48,7 +48,6 @@ public final class SimulationEngine {
     // Track units for which a repair request has been triggered to avoid duplicates
     private final Set<String> repairRequests = ConcurrentHashMap.newKeySet();
 
-    private List<ApiClient.UnitInfo> cachedUnits = new ArrayList<>();
 
     private long lastTickTime = System.currentTimeMillis();
     private long lastSyncTime = 0;
@@ -144,20 +143,17 @@ public final class SimulationEngine {
 
     private void checkAndReloadStaleState(UnitInfo unit, boolean isAvailable, boolean isUnderWay) {
         VehicleState existing = vehicleStates.get(unit.id);
-        if (existing != null) {
-            if (isStateStale(existing, isAvailable, isUnderWay)) {
-                log.info("State stale for unit {} (status: {}, arrived: {}), reloading route", 
-                    unit.id, unit.status, existing.hasArrived());
-                vehicleStates.remove(unit.id);
-            }
+        if (existing != null && isStateStale(existing, isAvailable, isUnderWay)) {
+            log.info("State stale for unit {} (status: {}, arrived: {}), reloading route", 
+                unit.id, unit.status, existing.hasArrived());
+            vehicleStates.remove(unit.id);
         }
     }
 
     private boolean isStateStale(VehicleState state, boolean isAvailable, boolean isUnderWay) {
-        if (state.hasArrived()) return true;
-        if (isAvailable && state.getInterventionId() != null) return true;
-        if (isUnderWay && state.getInterventionId() == null) return true;
-        return false;
+        return state.hasArrived() || 
+               (isAvailable && state.getInterventionId() != null) || 
+               (isUnderWay && state.getInterventionId() == null);
     }
 
     private void cleanupInactiveVehicles(Set<String> currentTrackedIds, Map<String, String> latestStatusMap) {
@@ -200,8 +196,19 @@ public final class SimulationEngine {
             // Clear any pending repair flag once a route is present again
             repairRequests.remove(unit.id);
 
-            double initialLat = route.currentLat != null ? route.currentLat : (unit.latitude != null ? unit.latitude : 0);
-            double initialLon = route.currentLon != null ? route.currentLon : (unit.longitude != null ? unit.longitude : 0);
+            double initialLat = 0;
+            if (route.currentLat != null) {
+                initialLat = route.currentLat;
+            } else if (unit.latitude != null) {
+                initialLat = unit.latitude;
+            }
+
+            double initialLon = 0;
+            if (route.currentLon != null) {
+                initialLon = route.currentLon;
+            } else if (unit.longitude != null) {
+                initialLon = unit.longitude;
+            }
 
             VehicleState state = new VehicleState(new VehicleState.VehicleConfig(
                     unit.id,
@@ -209,10 +216,8 @@ public final class SimulationEngine {
                     null,
                     route.estimatedDurationSeconds,
                     route.routeLengthMeters,
-                    route.progressPercent,
-                    initialLat,
-                    initialLon,
-                    route.severity
+                    route.severity,
+                    new VehicleState.InitialPosition(initialLat, initialLon, route.progressPercent)
             ));
 
             vehicleStates.put(unit.id, state);

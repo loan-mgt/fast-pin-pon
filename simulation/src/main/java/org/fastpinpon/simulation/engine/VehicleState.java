@@ -19,30 +19,37 @@ public final class VehicleState {
     private double currentLon;
     private Instant arrivedAt; // null until unit reaches destination
 
+    public static final class InitialPosition {
+        public final double lat;
+        public final double lon;
+        public final double progressPercent;
+
+        public InitialPosition(double lat, double lon, double progressPercent) {
+            this.lat = lat;
+            this.lon = lon;
+            this.progressPercent = progressPercent;
+        }
+    }
+
     public static final class VehicleConfig {
         public final String unitId;
         public final String interventionId;
         public final String assignmentId;
         public final double estimatedDurationSeconds;
         public final double routeLengthMeters;
-        public final double initialProgressPercent;
-        public final double initialLat;
-        public final double initialLon;
         public final Integer severity;
+        public final InitialPosition initialPosition;
 
         public VehicleConfig(String unitId, String interventionId, String assignmentId,
                              double estimatedDurationSeconds, double routeLengthMeters,
-                             double initialProgressPercent, double initialLat, double initialLon,
-                             Integer severity) {
+                             Integer severity, InitialPosition initialPosition) {
             this.unitId = unitId;
             this.interventionId = interventionId;
             this.assignmentId = assignmentId;
             this.estimatedDurationSeconds = estimatedDurationSeconds;
             this.routeLengthMeters = routeLengthMeters;
-            this.initialProgressPercent = initialProgressPercent;
-            this.initialLat = initialLat;
-            this.initialLon = initialLon;
             this.severity = severity;
+            this.initialPosition = initialPosition;
         }
     }
 
@@ -53,9 +60,9 @@ public final class VehicleState {
         this.estimatedDurationSeconds = config.estimatedDurationSeconds;
         this.routeLengthMeters = config.routeLengthMeters;
         this.startedAt = Instant.now();
-        this.progressPercent = config.initialProgressPercent;
-        this.currentLat = config.initialLat;
-        this.currentLon = config.initialLon;
+        this.progressPercent = config.initialPosition.progressPercent;
+        this.currentLat = config.initialPosition.lat;
+        this.currentLon = config.initialPosition.lon;
         this.arrivedAt = null;
         this.severity = config.severity;
     }

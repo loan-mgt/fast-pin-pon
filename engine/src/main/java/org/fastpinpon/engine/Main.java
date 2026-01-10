@@ -103,10 +103,4 @@ public final class Main {
         Thread.currentThread().join();
     }
 
-    /**
-     * Configure file logging if enabled.
-     */
-    private void configureLogging(EngineConfig config) {
-        // Logback handles configuration via logback.xml
-    }
 }
