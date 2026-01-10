@@ -8,7 +8,7 @@ import { Button } from '../ui/button'
 interface AddUnitModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (callSign: string, unitTypeCode: string, homeBase: string, lat: number, lon: number) => Promise<void>
+  onSubmit: (callSign: string, unitTypeCode: string, locationId: string, lat: number, lon: number) => Promise<void>
   unitTypes: UnitType[]
   buildings: Building[]
 }
@@ -69,7 +69,7 @@ export function AddUnitModal({
       await onSubmit(
         callSign.trim(),
         unitTypeCode,
-        building.name,
+        building.id,
         building.location.latitude,
         building.location.longitude,
       )

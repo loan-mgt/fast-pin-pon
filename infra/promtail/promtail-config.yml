@@ -40,6 +40,16 @@ scrape_configs:
           job: simulation
           app: fast-pin-pon-simulation
           __path__: /opt/logs/simulation/*.log*
+    pipeline_stages:
+      - json:
+          expressions:
+            level: level
+            logger: logger_name
+            thread: thread_name
+      - labels:
+          level:
+          logger:
+          thread:
   - job_name: engine
     static_configs:
       - targets:
@@ -48,3 +58,13 @@ scrape_configs:
           job: engine
           app: fast-pin-pon-engine
           __path__: /opt/logs/engine/*.log*
+    pipeline_stages:
+      - json:
+          expressions:
+            level: level
+            logger: logger_name
+            thread: thread_name
+      - labels:
+          level:
+          logger:
+          thread:

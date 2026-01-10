@@ -12,8 +12,8 @@ import retrofit2.http.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Routing service that uses the local pgRouting API to calculate
@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  * percentage-based position interpolation for smooth vehicle movement.
  */
 public final class RoutingService {
-    private static final Logger LOG = Logger.getLogger(RoutingService.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(RoutingService.class);
     
     private static final OkHttpClient HTTP = new OkHttpClient.Builder()
             .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
@@ -86,7 +86,7 @@ public final class RoutingService {
                 .build();
         this.api = retrofit.create(RoutingApi.class);
         
-        LOG.log(Level.INFO, "[Routing] Initialized with API: {0}", normalized);
+        log.info("Routing service initialized with API: {}", normalized);
     }
     
     /**
@@ -102,20 +102,19 @@ public final class RoutingService {
     public RouteInfo calculateRoute(double fromLat, double fromLon, double toLat, double toLon) {
         String cacheKey = String.format("%.5f,%.5f->%.5f,%.5f", fromLat, fromLon, toLat, toLon);
         
-        LOG.log(Level.INFO, "[Routing] Calculating route: ({0}, {1}) -> ({2}, {3})",
-                new Object[]{fromLat, fromLon, toLat, toLon});
+        log.debug("Calculating route: ({}, {}) -> ({}, {})", fromLat, fromLon, toLat, toLon);
         
         // Check cache first
         synchronized (routeCache) {
             if (routeCache.containsKey(cacheKey)) {
                 RouteInfo cached = routeCache.get(cacheKey);
-                LOG.log(Level.INFO, "[Routing] Cache HIT: {0}m, {1}s",
-                        new Object[]{String.format("%.0f", cached.lengthMeters), String.format("%.0f", cached.durationSeconds)});
+                log.debug("Route cache HIT: {}m, {}s",
+                        String.format("%.0f", cached.lengthMeters), String.format("%.0f", cached.durationSeconds));
                 return cached;
             }
         }
         
-        LOG.log(Level.INFO, "[Routing] Cache MISS, calling API...");
+        log.debug("Route cache MISS, calling API...");
         
         try {
             CalculateRouteRequest request = new CalculateRouteRequest(fromLat, fromLon, toLat, toLon);
@@ -123,17 +122,17 @@ public final class RoutingService {
             
             if (!response.isSuccessful()) {
                 String errorBody = extractErrorBody(response);
-                LOG.log(Level.WARNING, "[Routing] API ERROR: status={0}, url={1}, error={2}",
-                        new Object[]{response.code(), response.raw().request().url(), errorBody});
+                log.warn("Routing API error: status={}, url={}, error={}",
+                        response.code(), response.raw().request().url(), errorBody);
                 return null;
             }
             
             CalculateRouteResponse body = response.body();
             if (body == null || body.routeGeoJson == null || body.routeGeoJson.isEmpty()) {
-                LOG.log(Level.WARNING, "[Routing] No route found between points");
+                log.warn("No route found between points");
                 return null;
             }
-            
+        
             RouteInfo routeInfo = new RouteInfo(body.routeGeoJson, body.routeLengthMeters, body.estimatedDurationSeconds);
             
             // Cache the result
@@ -141,18 +140,16 @@ public final class RoutingService {
                 routeCache.put(cacheKey, routeInfo);
             }
             
-            LOG.log(Level.INFO, "[Routing] Route SUCCESS: {0}m ({1}km), {2}s ({3} min)", 
-                    new Object[]{
-                        String.format("%.0f", routeInfo.lengthMeters),
-                        String.format("%.2f", routeInfo.lengthMeters / 1000),
-                        String.format("%.0f", routeInfo.durationSeconds),
-                        String.format("%.1f", routeInfo.durationSeconds / 60)
-                    });
+            log.info("Route success: {}m ({}km), {}s ({} min)", 
+                    String.format("%.0f", routeInfo.lengthMeters),
+                    String.format("%.2f", routeInfo.lengthMeters / 1000),
+                    String.format("%.0f", routeInfo.durationSeconds),
+                    String.format("%.1f", routeInfo.durationSeconds / 60));
             
             return routeInfo;
             
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[Routing] EXCEPTION: {0}", e.getMessage());
+            log.warn("Routing exception: {}", e.getMessage());
             return null;
         }
     }
@@ -167,7 +164,7 @@ public final class RoutingService {
             }
         } catch (Exception e) {
             // Ignore error reading body - not critical
-            LOG.log(Level.FINE, "Could not read error body: {0}", e.getMessage());
+            log.debug("Could not read error body: {}", e.getMessage());
         }
         return "";
     }
@@ -213,17 +210,15 @@ public final class RoutingService {
             Response<Void> response = api.saveUnitRoute(unitId, request).execute();
             
             if (!response.isSuccessful()) {
-                LOG.log(Level.WARNING, "[Routing] Failed to save route for unit {0}: {1}", 
-                        new Object[]{unitId, response.code()});
+                log.warn("Failed to save route for unit {}: {}", unitId, response.code());
                 return false;
             }
             
-            LOG.log(Level.FINE, "[Routing] Saved route for unit {0}", unitId);
+            log.debug("Saved route for unit {}", unitId);
             return true;
             
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[Routing] Failed to save route for unit {0}: {1}", 
-                    new Object[]{unitId, e.getMessage()});
+            log.warn("Failed to save route for unit {}: {}", unitId, e.getMessage());
             return false;
         }
     }
@@ -246,8 +241,7 @@ public final class RoutingService {
             Response<UpdateProgressResponse> response = api.updateProgress(unitId, request).execute();
             
             if (!response.isSuccessful()) {
-                LOG.log(Level.WARNING, "[Routing] Failed to update progress for unit {0}: {1}", 
-                        new Object[]{unitId, response.code()});
+                log.warn("Failed to update progress for unit {}: {}", unitId, response.code());
                 return null;
             }
             
@@ -259,8 +253,7 @@ public final class RoutingService {
             return new Position(body.currentLat, body.currentLon);
             
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[Routing] Failed to update progress for unit {0}: {1}", 
-                    new Object[]{unitId, e.getMessage()});
+            log.warn("Failed to update progress for unit {}: {}", unitId, e.getMessage());
             return null;
         }
     }
@@ -292,8 +285,7 @@ public final class RoutingService {
             return new Position(body.lat, body.lon);
             
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[Routing] Failed to get position for unit {0}: {1}", 
-                    new Object[]{unitId, e.getMessage()});
+            log.warn("Failed to get position for unit {}: {}", unitId, e.getMessage());
             return null;
         }
     }
@@ -311,11 +303,10 @@ public final class RoutingService {
         try {
             Response<Void> response = api.deleteUnitRoute(unitId).execute();
             if (response.isSuccessful()) {
-                LOG.log(Level.FINE, "[Routing] Deleted route for unit {0}", unitId);
+                log.debug("Deleted route for unit {}", unitId);
             }
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[Routing] Failed to delete route for unit {0}: {1}", 
-                    new Object[]{unitId, e.getMessage()});
+            log.warn("Failed to delete route for unit {}: {}", unitId, e.getMessage());
         }
     }
     
@@ -344,7 +335,7 @@ public final class RoutingService {
             parseCoordinatePairs(coordsStr, waypoints);
             
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[Routing] Failed to parse GeoJSON: {0}", e.getMessage());
+            log.warn("Failed to parse GeoJSON: {}", e.getMessage());
         }
         
         return waypoints;

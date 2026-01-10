@@ -50,7 +50,7 @@ SELECT
     u.id,
     u.call_sign,
     u.unit_type_code,
-    u.home_base,
+    l.name AS home_base_name,
     u.status,
     (ST_X(u.location::geometry))::double precision AS longitude,
     (ST_Y(u.location::geometry))::double precision AS latitude,
@@ -62,10 +62,11 @@ SELECT
     (ST_Distance(u.location, e.location) / 13.89)::double precision AS travel_time_seconds,
     ST_Distance(u.location, e.location)::double precision AS distance_meters,
     (SELECT COUNT(*) FROM units u2 
-     WHERE u2.home_base = u.home_base 
+     WHERE u2.location_id = u.location_id 
        AND u2.status = 'available' 
        AND u2.id != u.id)::int AS other_units_at_base
 FROM units u
+LEFT JOIN locations l ON u.location_id = l.id
 CROSS JOIN (
     SELECT ev.location
     FROM interventions iv
@@ -78,7 +79,7 @@ LEFT JOIN interventions ci
     ON a.intervention_id = ci.id
 LEFT JOIN events ce
     ON ci.event_id = ce.id
-WHERE u.status IN ('available', 'under_way')
+WHERE u.status IN ('available', 'available_hidden', 'under_way')
   AND u.location IS NOT NULL
   AND (sqlc.narg(unit_types)::text[] IS NULL OR u.unit_type_code = ANY(sqlc.narg(unit_types)::text[]))
 ORDER BY ST_Distance(u.location, e.location) ASC
@@ -90,7 +91,7 @@ SELECT
     COUNT(*) FILTER (WHERE status = 'available')::bigint AS available_count,
     COUNT(*)::bigint AS total_count
 FROM units
-WHERE home_base = $1;
+WHERE location_id = $1;
 
 -- name: ReleaseAssignment :exec
 -- Release a unit from its current assignment (for preemption)

@@ -21,7 +21,8 @@
     <dotenv.version>2.3.2</dotenv.version>
     <retrofit.version>2.11.0</retrofit.version>
     <spark.version>2.9.4</spark.version>
-    <slf4j.version>1.7.36</slf4j.version>
+    <slf4j.version>2.0.13</slf4j.version>
+    <logback.version>1.5.6</logback.version>
     <exec.mainClass>org.fastpinpon.engine.Main</exec.mainClass>
   </properties>
 
@@ -34,8 +35,13 @@
 
     <dependency>
       <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
+      <artifactId>slf4j-api</artifactId>
       <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>${logback.version}</version>
     </dependency>
 
     <dependency>
@@ -72,6 +78,11 @@
       <groupId>com.squareup.retrofit2</groupId>
       <artifactId>converter-jackson</artifactId>
       <version>${retrofit.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+      <version>7.4</version>
     </dependency>
   </dependencies>
 
