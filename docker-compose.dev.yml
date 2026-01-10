@@ -20,6 +20,7 @@ services:
       - "8081:8080"
 
   postgres:
+    image: fast-pin-pon-postgres-dev
     extends:
       file: docker-compose.prod.yml
       service: postgres
@@ -59,7 +60,7 @@ services:
     environment:
       - API_BASE_URL=http://api:8080
       - SIMULATION_UPDATING_ENABLED=true
-      - SIMULATION_SPEED_MULTIPLIER=3.0
+      - SIMULATION_SPEED_MULTIPLIER=8.0
     ports:
       - "8090:8090"
 
@@ -133,7 +134,7 @@ services:
     build:
       context: ./infra/grafana
       dockerfile: Dockerfile
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
     environment:
       GF_SERVER_ROOT_URL: http://localhost:3000
       GF_AUTH_GENERIC_OAUTH_AUTH_URL: http://localhost:8082/realms/sdmis-realm/protocol/openid-connect/auth
@@ -152,7 +153,7 @@ services:
     build:
       context: ./infra/loki
       dockerfile: Dockerfile
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
 
   promtail:
     extends:
@@ -163,7 +164,7 @@ services:
     build:
       context: ./infra/promtail
       dockerfile: Dockerfile
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
 
   prometheus:
     image: prometheus-dev
@@ -171,7 +172,7 @@ services:
     build:
       context: ./infra/prometheus
       dockerfile: Dockerfile
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
     ports:
       - "9090:9090"
 
@@ -186,5 +187,3 @@ volumes:
   kc-db-data: {}
   loki-data: {}
   logs: {}
-
-

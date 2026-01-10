@@ -5,8 +5,8 @@ ARG BASE_IMAGE=postgres:18-alpine3.22
 FROM ${BASE_IMAGE}
 
 LABEL maintainer="PostGIS Project - https://postgis.net" \
-      org.opencontainers.image.description="PostGIS 3.6.1 spatial database extension with PostgreSQL 18 Alpine" \
-      org.opencontainers.image.source="https://github.com/postgis/docker-postgis"
+    org.opencontainers.image.description="PostGIS 3.6.1 spatial database extension with PostgreSQL 18 Alpine" \
+    org.opencontainers.image.source="https://github.com/postgis/docker-postgis"
 
 ENV POSTGIS_VERSION=3.6.1
 ENV POSTGIS_SHA256=849391e75488a749663fbc8d63b846d063d387d286c04dea062820476f84c8f6
@@ -16,67 +16,67 @@ ENV PGROUTING_SHA256=b8a5f0472934fdf7cda3fb4754d01945378d920cdaddc01f378617ddbb9
 
 RUN set -eux \
     && apk add --no-cache --virtual .fetch-deps \
-        ca-certificates \
-        openssl \
-        tar \
+    ca-certificates \
+    openssl \
+    tar \
     \
     && wget -O postgis.tar.gz "https://github.com/postgis/postgis/archive/${POSTGIS_VERSION}.tar.gz" \
     && echo "${POSTGIS_SHA256} *postgis.tar.gz" | sha256sum -c - \
     && mkdir -p /usr/src/postgis \
     && tar \
-        --extract \
-        --file postgis.tar.gz \
-        --directory /usr/src/postgis \
-        --strip-components 1 \
+    --extract \
+    --file postgis.tar.gz \
+    --directory /usr/src/postgis \
+    --strip-components 1 \
     && rm postgis.tar.gz \
     \
     && wget -O pgrouting.tar.gz "https://github.com/pgRouting/pgrouting/archive/v${PGROUTING_VERSION}.tar.gz" \
     && echo "${PGROUTING_SHA256} *pgrouting.tar.gz" | sha256sum -c - \
     && mkdir -p /usr/src/pgrouting \
     && tar \
-        --extract \
-        --file pgrouting.tar.gz \
-        --directory /usr/src/pgrouting \
-        --strip-components 1 \
+    --extract \
+    --file pgrouting.tar.gz \
+    --directory /usr/src/pgrouting \
+    --strip-components 1 \
     && rm pgrouting.tar.gz \
     \
     && apk add --no-cache --virtual .build-deps \
-        \
-        gdal-dev \
-        geos-dev \
-        proj-dev \
-        proj-util \
-        sfcgal-dev \
-        \
-        # The upstream variable, '$DOCKER_PG_LLVM_DEPS' contains
-        #  the correct versions of 'llvm-dev' and 'clang' for the current version of PostgreSQL.
-        # This improvement has been discussed in https://github.com/docker-library/postgres/pull/1077
-        $DOCKER_PG_LLVM_DEPS \
-        \
-        autoconf \
-        automake \
-        boost-dev \
-        cmake \
-        cunit-dev \
-        file \
-        g++ \
-        gcc \
-        gettext-dev \
-        git \
-        json-c-dev \
-        libtool \
-        libxml2-dev \
-        make \
-        pcre2-dev \
-        perl \
-        protobuf-c-dev \
     \
-# build PostGIS - with Link Time Optimization (LTO) enabled
+    gdal-dev \
+    geos-dev \
+    proj-dev \
+    proj-util \
+    sfcgal-dev \
+    \
+    # The upstream variable, '$DOCKER_PG_LLVM_DEPS' contains
+    #  the correct versions of 'llvm-dev' and 'clang' for the current version of PostgreSQL.
+    # This improvement has been discussed in https://github.com/docker-library/postgres/pull/1077
+    $DOCKER_PG_LLVM_DEPS \
+    \
+    autoconf \
+    automake \
+    boost-dev \
+    cmake \
+    cunit-dev \
+    file \
+    g++ \
+    gcc \
+    gettext-dev \
+    git \
+    json-c-dev \
+    libtool \
+    libxml2-dev \
+    make \
+    pcre2-dev \
+    perl \
+    protobuf-c-dev \
+    \
+    # build PostGIS - with Link Time Optimization (LTO) enabled
     && cd /usr/src/postgis \
     && gettextize \
     && ./autogen.sh \
     && ./configure \
-        --enable-lto \
+    --enable-lto \
     && make -j$(nproc) \
     && make install \
     \
@@ -87,14 +87,14 @@ RUN set -eux \
     && make -j$(nproc) \
     && make install \
     \
-# This section is for refreshing the proj data for the regression tests.
-# It serves as a workaround for an issue documented at https://trac.osgeo.org/postgis/ticket/5316
-# This increases the Docker image size by about 1 MB.
+    # This section is for refreshing the proj data for the regression tests.
+    # It serves as a workaround for an issue documented at https://trac.osgeo.org/postgis/ticket/5316
+    # This increases the Docker image size by about 1 MB.
     && projsync --system-directory --file ch_swisstopo_CHENyx06_ETRS \
     && projsync --system-directory --file us_noaa_eshpgn \
     && projsync --system-directory --file us_noaa_prvi \
     && projsync --system-directory --file us_noaa_wmhpgn \
-# This section performs a regression check.
+    # This section performs a regression check.
     && mkdir /tempdb \
     && chown -R postgres:postgres /tempdb \
     && su postgres -c 'pg_ctl -D /tempdb init' \
@@ -120,31 +120,33 @@ RUN set -eux \
     && rm -rf /tempdb \
     && rm -rf /tmp/logfile \
     && rm -rf /tmp/pgis_reg \
-# add .postgis-rundeps
+    # add .postgis-rundeps
     && apk add --no-cache --virtual .postgis-rundeps \
-        \
-        gdal \
-        geos \
-        proj \
-        sfcgal \
-        \
-        boost-libs \
-        json-c \
-        libstdc++ \
-        pcre2 \
-        protobuf-c \
-        \
-        # ca-certificates: for accessing remote raster files
-        #   fix https://github.com/postgis/docker-postgis/issues/307
-        ca-certificates \
-# clean
+    \
+    gdal \
+    geos \
+    proj \
+    sfcgal \
+    \
+    boost-libs \
+    json-c \
+    libstdc++ \
+    pcre2 \
+    protobuf-c \
+    \
+    # ca-certificates: for accessing remote raster files
+    #   fix https://github.com/postgis/docker-postgis/issues/307
+    ca-certificates \
+    # clean
     && cd / \
     && rm -rf /usr/src/postgis \
     && rm -rf /usr/src/pgrouting \
     && apk del .fetch-deps .build-deps \
-# At the end of the build, we print the collected information
-# from the '/_pgis_full_version.txt' file. This is for experimental and internal purposes.
+    # At the end of the build, we print the collected information
+    # from the '/_pgis_full_version.txt' file. This is for experimental and internal purposes.
     && cat /_pgis_full_version.txt
 
-COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/10_postgis.sh
-COPY ./update-postgis.sh /usr/local/bin
+COPY --chmod=0755 ./initdb-postgis.sh /docker-entrypoint-initdb.d/10_postgis.sh
+COPY --chmod=0755 ./initdb-routing-data.sh /docker-entrypoint-initdb.d/20_routing_data.sh
+COPY ./routing_data.dump /routing_data.dump
+COPY --chmod=0755 ./update-postgis.sh /usr/local/bin

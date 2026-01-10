@@ -83,46 +83,30 @@ type PositionResponse struct {
 
 const calculateRouteSQL = `
 WITH 
--- 1. Get the main component ID (pre-calculated) - fast lookup
-main_component AS (
-    SELECT component_id 
-    FROM routing_ways_vertices_pgr 
-    WHERE component_id IS NOT NULL 
-    GROUP BY component_id 
-    ORDER BY COUNT(*) DESC 
-    LIMIT 1
-),
--- 2. Find nearest start vertex within the main component
 start_vertex AS (
     SELECT id 
     FROM routing_ways_vertices_pgr
-    WHERE component_id = (SELECT component_id FROM main_component)
     ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)
     LIMIT 1
 ),
--- 3. Find nearest end vertex within the main component
 end_vertex AS (
     SELECT id 
     FROM routing_ways_vertices_pgr
-    WHERE component_id = (SELECT component_id FROM main_component)
     ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint($3, $4), 4326)
     LIMIT 1
 ),
--- 4. Calculate route using Dijkstra
--- We rely on the fact that if both points are in the same component, a path exists.
--- We don't filter edges by component here to keep the query simple and fast, 
--- as Dijkstra will only traverse reachable nodes anyway.
 route_segments AS (
     SELECT 
         rw.geom,
         rw.length_m,
         rw.cost_s,
         path.seq
-    FROM pgr_dijkstra(
-        'SELECT gid AS id, source, target, cost_s AS cost, reverse_cost_s AS reverse_cost FROM routing_ways',
+    FROM pgr_astar(
+        'SELECT gid AS id, source, target, cost_s AS cost, reverse_cost_s AS reverse_cost, x1, y1, x2, y2 FROM routing_ways',
         (SELECT id FROM start_vertex),
         (SELECT id FROM end_vertex),
-        directed := true
+        directed := true,
+        heuristic := 2
     ) AS path
     JOIN routing_ways rw ON rw.gid = path.edge
     WHERE path.edge > 0
