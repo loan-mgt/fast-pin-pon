@@ -48,7 +48,7 @@ public class SimulationApp {
             tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", keycloakUrl, keycloakRealm);
         }
 
-        Logger.getLogger(SimulationApp.class.getName()).info("Starting Simulation with API=" + apiBaseUrl + ", tokenUrl=" + tokenUrl);
+        Logger.getLogger(SimulationApp.class.getName()).log(Level.INFO, "Starting Simulation with API={0}, tokenUrl={1}", new Object[]{apiBaseUrl, tokenUrl});
 
         ApiClient api = new ApiClient(apiBaseUrl, tokenUrl, clientId, clientSecret);
         
