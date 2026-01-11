@@ -162,6 +162,40 @@ public final class ApiClient {
     }
 
     /**
+     * Check if the API is reachable by loading event types.
+     *
+     * @return true if event types were loaded successfully
+     */
+    public boolean isAvailable() {
+        return !eventTypeCodes.isEmpty();
+    }
+
+    /**
+     * Wait for API to become available with retries.
+     *
+     * @param maxRetries maximum number of retries
+     * @param retryDelayMs delay between retries in milliseconds
+     * @return true if API became available
+     */
+    public boolean waitForApi(int maxRetries, long retryDelayMs) {
+        for (int i = 0; i < maxRetries; i++) {
+            loadEventTypes();
+            loadUnitTypes();
+            if (isAvailable()) {
+                return true;
+            }
+            LOG.log(Level.INFO, "[API] Waiting for API to become available... ({0}/{1})", new Object[]{i + 1, maxRetries});
+            try {
+                Thread.sleep(retryDelayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return isAvailable();
+    }
+
+    /**
      * Load all buildings (locations) from the API and return fire stations as base locations.
      */
     public List<BaseLocation> loadStations() {

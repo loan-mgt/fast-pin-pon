@@ -51,7 +51,6 @@ public class SimulationApp {
         Logger.getLogger(SimulationApp.class.getName()).log(Level.INFO, "Starting Simulation with API={0}, tokenUrl={1}", new Object[]{apiBaseUrl, tokenUrl});
 
         ApiClient api = new ApiClient(apiBaseUrl, tokenUrl, clientId, clientSecret);
-        
         // Check API connectivity before proceeding
         if (!api.isHealthy()) {
             log.error("API not reachable at {}. Exiting to allow restart.", apiBaseUrl);

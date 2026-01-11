@@ -23,6 +23,7 @@ const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? 'sdmis-fro
 
 export type Permissions = {
   canCreateIncident: boolean
+  canCreateUnit: boolean
   canAssignUnits: boolean
   canUpdateIncidentStatus: boolean
   canDeleteIncident: boolean
@@ -42,7 +43,8 @@ function derivePermissions(roles: string[]): Permissions {
   const isSuperieur = normalized.has('superieur')
 
   return {
-    canCreateIncident: true, // Tous les profils peuvent créer
+    canCreateIncident: isIt || isSuperieur,
+    canCreateUnit: isIt,
     canAssignUnits: isIt || isSuperieur,
     canUpdateIncidentStatus: isIt,
     canDeleteIncident: isIt,

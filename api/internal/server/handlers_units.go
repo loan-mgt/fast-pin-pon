@@ -99,6 +99,11 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} APIError
 // @Route /v1/units [post]
 func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
+	// Require 'it' or 'manage-realm'
+	if !s.authMw.RequireOneOfRoles(w, r, "it", "manage-realm") {
+		return
+	}
+
 	var req CreateUnitRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
@@ -156,6 +161,11 @@ func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} APIError
 // @Route /v1/units/{unitID} [delete]
 func (s *Server) handleDeleteUnit(w http.ResponseWriter, r *http.Request) {
+	// Require 'it' or 'manage-realm'
+	if !s.authMw.RequireOneOfRoles(w, r, "it", "manage-realm") {
+		return
+	}
+
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, "invalid unit id", err.Error())
@@ -197,6 +207,10 @@ func (s *Server) handleDeleteUnit(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} APIError
 // @Route /v1/units/{unitID}/status [patch]
 func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) {
+	// Require 'it' or 'manage-realm'
+	if !s.authMw.RequireOneOfRoles(w, r, "it", "manage-realm") {
+		return
+	}
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
@@ -283,6 +297,10 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 // @Failure 500 {object} APIError
 // @Route /v1/units/{unitID}/location [patch]
 func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request) {
+	// Require 'it' or 'manage-realm'
+	if !s.authMw.RequireOneOfRoles(w, r, "it", "manage-realm") {
+		return
+	}
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
@@ -340,6 +358,10 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 // @Failure 500 {object} APIError
 // @Route /v1/units/{unitID}/station [patch]
 func (s *Server) handleUpdateUnitStation(w http.ResponseWriter, r *http.Request) {
+	// Require 'it' or 'manage-realm'
+	if !s.authMw.RequireOneOfRoles(w, r, "it", "manage-realm") {
+		return
+	}
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
@@ -500,6 +522,10 @@ func mapCreateUnitRow(row db.CreateUnitRow) UnitResponse {
 // @Failure 500 {object} APIError
 // @Route /v1/units/{unitID}/microbit [put]
 func (s *Server) handleAssignMicrobit(w http.ResponseWriter, r *http.Request) {
+	// Require 'it' or 'manage-realm'
+	if !s.authMw.RequireOneOfRoles(w, r, "it", "manage-realm") {
+		return
+	}
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
@@ -557,6 +583,10 @@ func (s *Server) handleAssignMicrobit(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} APIError
 // @Route /v1/units/{unitID}/microbit [delete]
 func (s *Server) handleUnassignMicrobit(w http.ResponseWriter, r *http.Request) {
+	// Require 'it' or 'manage-realm'
+	if !s.authMw.RequireOneOfRoles(w, r, "it", "manage-realm") {
+		return
+	}
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())

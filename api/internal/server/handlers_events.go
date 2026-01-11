@@ -223,6 +223,11 @@ func splitCSV(s string) []string {
 // @Failure 500 {object} APIError
 // @Route /v1/events [post]
 func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
+	// Require 'superieur', 'it', or 'manage-events'
+	if !s.authMw.RequireOneOfRoles(w, r, "superieur", "it", "manage-events") {
+		return
+	}
+
 	var req CreateEventRequest
 	if err := s.decodeAndValidate(r, &req); err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
@@ -371,6 +376,11 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} APIError
 // @Route /v1/events/{eventID}/logs [post]
 func (s *Server) handleCreateEventLog(w http.ResponseWriter, r *http.Request) {
+	// Require 'superieur', 'it', or 'manage-events'
+	if !s.authMw.RequireOneOfRoles(w, r, "superieur", "it", "manage-events") {
+		return
+	}
+
 	eventID, err := s.parseUUIDParam(r, "eventID")
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidEventID, err.Error())
