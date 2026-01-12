@@ -20,6 +20,7 @@ import serial.tools.list_ports
 import requests
 from datetime import datetime, timezone
 from typing import Optional, Dict, Tuple
+from crypto import xor_decrypt
 
 
 # Configuration
@@ -58,15 +59,27 @@ def normalize_status(status: str) -> str:
 
 
 def extract_payload(message: str) -> str:
-    """Extract payload from packet format: seq|data|crc|sign
+    """Extract and decrypt payload from packet format: seq|encrypted_data|crc|sign
     
-    Returns the data portion (e.g. 'GPS:MB001,45.76,4.89')
+    Returns the decrypted data portion (e.g. 'GPS:MB001,45.76,4.89')
     If message doesn't match packet format, returns original message.
+    For encrypted packets, the data is XOR decrypted.
     """
     parts = message.split("|")
     if len(parts) >= 2:
-        # Format is: seq|data|crc|sign - we want parts[1]
-        return parts[1]
+        # Format is: seq|encrypted_data|crc|sign - we want parts[1] decrypted
+        encrypted_data = parts[1]
+        # Try to decrypt - if it fails, return as-is (backward compatibility)
+        decrypted = xor_decrypt(encrypted_data)
+        # Verify decryption produced valid command format
+        if decrypted.startswith(("GPS:", "STA:", "MBIT:")):
+            return decrypted
+        # If decryption didn't produce valid format, maybe it's not encrypted
+        # (e.g., MBIT messages from Micro:bit buttons are not encrypted)
+        if encrypted_data.startswith(("GPS:", "STA:", "MBIT:")):
+            return encrypted_data
+        # Return decrypted anyway
+        return decrypted
     return message
 
 

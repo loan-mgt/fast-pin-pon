@@ -82,7 +82,8 @@ INSERT INTO units (
     status,
     location,
     location_id,
-    last_contact_at
+    last_contact_at,
+    microbit_id
 ) VALUES (
     sqlc.arg(call_sign),
     sqlc.arg(unit_type_code),
@@ -95,7 +96,13 @@ INSERT INTO units (
         4326
     )::geography,
     sqlc.narg(location_id),
-    sqlc.arg(last_contact_at)
+    sqlc.arg(last_contact_at),
+    -- Auto-generate next available microbit_id (MB001, MB002, ...)
+    (SELECT 'MB' || LPAD(
+        (COALESCE(MAX(CAST(SUBSTRING(microbit_id FROM 3) AS INTEGER)), 0) + 1)::TEXT,
+        3,
+        '0'
+    ) FROM units WHERE microbit_id ~ '^MB[0-9]{3}$')
 ) RETURNING
     id,
     call_sign,
