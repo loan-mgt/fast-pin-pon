@@ -82,6 +82,7 @@ public final class ApiClient {
         public final Double currentLat;
         public final Double currentLon;
         public final Integer severity;
+        public final Boolean autoSimulated;
 
         @com.fasterxml.jackson.annotation.JsonCreator
         public UnitRouteInfo(@JsonProperty("unit_id") String unitId, 
@@ -91,7 +92,8 @@ public final class ApiClient {
                              @JsonProperty("progress_percent") double progressPercent,
                              @JsonProperty("current_lat") Double currentLat, 
                              @JsonProperty("current_lon") Double currentLon,
-                             @JsonProperty("severity") Integer severity) {
+                             @JsonProperty("severity") Integer severity,
+                             @JsonProperty("auto_simulated") Boolean autoSimulated) {
             this.unitId = unitId;
             this.interventionId = interventionId;
             this.routeLengthMeters = routeLengthMeters;
@@ -100,6 +102,7 @@ public final class ApiClient {
             this.currentLat = currentLat;
             this.currentLon = currentLon;
             this.severity = severity;
+            this.autoSimulated = autoSimulated != null ? autoSimulated : true;
         }
     }
 
@@ -346,7 +349,8 @@ public final class ApiClient {
                 dto.progressPercent,
                 dto.currentLat,
                 dto.currentLon,
-                dto.severity
+                dto.severity,
+                dto.autoSimulated
         );
     }
 
@@ -831,6 +835,8 @@ public final class ApiClient {
         Double currentLon;
         @JsonProperty("severity")
         Integer severity;
+        @JsonProperty("auto_simulated")
+        Boolean autoSimulated;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

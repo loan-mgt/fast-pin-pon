@@ -32,6 +32,7 @@ type EventSummaryResponse struct {
 	Address            string         `json:"address,omitempty"`
 	Location           GeoPoint       `json:"location"`
 	Severity           int32          `json:"severity"`
+	AutoSimulated      bool           `json:"auto_simulated"`
 	InterventionID     *string        `json:"intervention_id,omitempty"`
 	InterventionStatus *string        `json:"intervention_status,omitempty"`
 	EventTypeCode      string         `json:"event_type_code"`

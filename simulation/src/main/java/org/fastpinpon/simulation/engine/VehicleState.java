@@ -13,6 +13,7 @@ public final class VehicleState {
     private final double routeLengthMeters;
     private final Instant startedAt;
     private final Integer severity;
+    private final boolean autoSimulated;
 
     private double progressPercent;
     private double currentLat;
@@ -39,10 +40,11 @@ public final class VehicleState {
         public final double routeLengthMeters;
         public final Integer severity;
         public final InitialPosition initialPosition;
+        public final boolean autoSimulated;
 
         public VehicleConfig(String unitId, String interventionId, String assignmentId,
                              double estimatedDurationSeconds, double routeLengthMeters,
-                             Integer severity, InitialPosition initialPosition) {
+                             Integer severity, InitialPosition initialPosition, boolean autoSimulated) {
             this.unitId = unitId;
             this.interventionId = interventionId;
             this.assignmentId = assignmentId;
@@ -50,6 +52,7 @@ public final class VehicleState {
             this.routeLengthMeters = routeLengthMeters;
             this.severity = severity;
             this.initialPosition = initialPosition;
+            this.autoSimulated = autoSimulated;
         }
     }
 
@@ -65,6 +68,11 @@ public final class VehicleState {
         this.currentLon = config.initialPosition.lon;
         this.arrivedAt = null;
         this.severity = config.severity;
+        this.autoSimulated = config.autoSimulated;
+    }
+
+    public boolean isAutoSimulated() {
+        return autoSimulated;
     }
 
     public Integer getSeverity() {
