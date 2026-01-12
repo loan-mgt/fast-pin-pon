@@ -213,7 +213,7 @@ export function App() {
   const handleLogUnitClick = useCallback((unitId: string) => {
     const unit = units.find((u) => u.id === unitId)
     if (unit?.location?.longitude && unit?.location?.latitude && flyToLocationRef.current) {
-      flyToLocationRef.current(unit.location.longitude, unit.location.latitude, 16)
+      flyToLocationRef.current(unit.location.longitude, unit.location.latitude)
     }
   }, [units])
 

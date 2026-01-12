@@ -214,12 +214,12 @@ function addEventMarkers(
             // Use global unit if found, otherwise use assigned unit data
             const currentUnit = globalUnit ?? assignedUnit
             const status = (currentUnit.status ?? '').toLowerCase().trim()
-            
+
             // Debug: log unit matching
             if (!globalUnit) {
                 console.warn(`[MapContainer] Unit ${assignedUnit.id} (${assignedUnit.call_sign}) not found in global units list`)
             }
-            
+
             if (status === 'on_site') {
                 // Make sure we have a valid unit_type_code
                 if (currentUnit.unit_type_code) {
@@ -305,8 +305,9 @@ export function MapContainer({
             map.resize()
             // Expose flyTo function to parent component
             if (onMapReady) {
-                onMapReady((lng: number, lat: number, zoom = 14) => {
-                    map.flyTo({ center: [lng, lat], zoom, duration: 1500, essential: true })
+                onMapReady((lng: number, lat: number, zoom?: number) => {
+                    const targetZoom = zoom ?? map.getZoom()
+                    map.flyTo({ center: [lng, lat], zoom: targetZoom, duration: 1500, essential: true })
                 })
             }
         })
@@ -369,11 +370,11 @@ export function MapContainer({
         for (const b of buildings) {
             if (!b.location?.longitude || !b.location?.latitude) continue
             const el = createBuildingMarkerElement()
-            
+
             // Add click handler to navigate to dashboard with station filter
             el.addEventListener('click', () => onBuildingSelect?.(b.id))
             el.style.cursor = 'pointer'
-            
+
             const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
                 .setLngLat([b.location.longitude, b.location.latitude])
                 .setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(

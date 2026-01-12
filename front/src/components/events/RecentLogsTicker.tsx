@@ -78,16 +78,16 @@ export function RecentLogsTicker({ logs, loading, error, onUnitClick, onEventCli
                             return (
                                 <li
                                     key={log.id}
-                                    className={`flex items-center gap-2 px-3 py-2 text-xs ${isClickable ? 'cursor-pointer hover:bg-slate-800/40' : ''}`}
+                                    className={`grid grid-cols-[50px_80px_100px_1fr] items-center gap-2 px-3 py-2 text-xs ${isClickable ? 'cursor-pointer hover:bg-slate-800/40' : ''}`}
                                     onClick={() => handleItemClick(log)}
                                 >
                                     {/* Time ago */}
-                                    <span className="w-[50px] text-right text-[11px] font-semibold text-cyan-300 whitespace-nowrap tabular-nums flex-shrink-0">
+                                    <span className="text-left text-[11px] font-semibold text-cyan-300 whitespace-nowrap tabular-nums overflow-hidden">
                                         {formatTimeAgo(log.created_at)}
                                     </span>
 
                                     {/* Entity label (clickable unit or event) */}
-                                    <span className={`min-w-0 flex-1 font-medium truncate ${isClickable ? 'text-blue-300 underline underline-offset-2' : 'text-slate-300'}`}>
+                                    <span className={`min-w-0 font-medium truncate ${isClickable ? 'text-blue-300 underline underline-offset-2' : 'text-slate-300'}`}>
                                         {/* Unit: usually short, but truncating just in case */}
                                         {log.entity_type === 'unit' && log.unit_call_sign
                                             ? truncateMiddle(log.unit_call_sign, 3, 3)
@@ -100,28 +100,25 @@ export function RecentLogsTicker({ logs, loading, error, onUnitClick, onEventCli
 
 
 
-                                    {/* Status transition */}
-                                    {/* Status transition */}
-                                    {/* Status transition */}
-                                    <span className="flex-shrink-0 flex items-center ml-2">
-                                        {log.old_value && (
-                                            <div className="flex items-center gap-1.5 min-w-0 overflow-hidden mr-2">
-                                                <StatusBadge
-                                                    status={log.old_value}
-                                                    type={(log.entity_type as 'unit' | 'intervention') || 'unit'}
-                                                    className="opacity-60 scale-90 origin-left shrink"
-                                                    showDot={false}
-                                                />
-                                                <span className="text-slate-600 text-[10px] flex-shrink-0">→</span>
-                                            </div>
-                                        )}
-                                        <div className="ml-auto flex-shrink-0">
+                                    {/* Old Status */}
+                                    <div className="flex items-center overflow-hidden">
+                                        {log.old_value ? (
                                             <StatusBadge
-                                                status={log.new_value || '?'}
+                                                status={log.old_value}
                                                 type={(log.entity_type as 'unit' | 'intervention') || 'unit'}
+                                                className="opacity-60 scale-90 origin-left shrink"
+                                                showDot={false}
                                             />
-                                        </div>
-                                    </span>
+                                        ) : null}
+                                    </div>
+
+                                    {/* New Status */}
+                                    <div className="flex items-center overflow-hidden">
+                                        <StatusBadge
+                                            status={log.new_value || '?'}
+                                            type={(log.entity_type as 'unit' | 'intervention') || 'unit'}
+                                        />
+                                    </div>
                                 </li>
                             )
                         })}
