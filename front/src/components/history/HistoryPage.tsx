@@ -26,29 +26,52 @@ function formatTime(dateString: string): string {
     })
 }
 
-function calculateDuration(startedAt?: string, completedAt?: string): string {
-    if (!startedAt || !completedAt) return '—'
-    
-    const start = new Date(startedAt).getTime()
-    const end = new Date(completedAt).getTime()
-    const durationMs = end - start
-    
-    if (durationMs < 0) return '—'
-    
-    const minutes = Math.floor(durationMs / (1000 * 60))
-    const hours = Math.floor(minutes / 60)
-    const remainingMinutes = minutes % 60
-    
-    if (hours > 0) {
-        return `${hours}h ${remainingMinutes}min`
-    }
-    return `${minutes}min`
+function resolveStart(event: EventSummary): string | null {
+    return event.started_at ?? event.reported_at ?? null
 }
 
-function getDurationMinutes(startedAt?: string, completedAt?: string): number {
-    if (!startedAt || !completedAt) return Number.MAX_SAFE_INTEGER
-    const start = new Date(startedAt).getTime()
-    const end = new Date(completedAt).getTime()
+function resolveEnd(event: EventSummary): string | null {
+    if (event.completed_at) return event.completed_at
+    if (event.closed_at) return event.closed_at
+    if (event.intervention_status === 'completed' && event.updated_at) return event.updated_at
+    return null
+}
+
+function parseDate(value?: string | null): number | null {
+    if (!value) return null
+    const ts = new Date(value).getTime()
+    return Number.isFinite(ts) ? ts : null
+}
+
+function calculateDuration(event: EventSummary): string {
+    const start = parseDate(resolveStart(event))
+    let end = parseDate(resolveEnd(event))
+    if (start !== null && end === null) end = Date.now()
+    if (start === null || end === null) return '—'
+
+    const durationMs = end - start
+    if (durationMs < 0) return '—'
+
+    const totalSeconds = Math.floor(durationMs / 1000)
+    const seconds = totalSeconds % 60
+    const totalMinutes = Math.floor(totalSeconds / 60)
+    const minutes = totalMinutes % 60
+    const hours = Math.floor(totalMinutes / 60)
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}min ${seconds}s`
+    }
+    if (totalMinutes > 0) {
+        return `${totalMinutes}min ${seconds}s`
+    }
+    return `${seconds}s`
+}
+
+function getDurationMinutes(event: EventSummary): number {
+    const start = parseDate(resolveStart(event))
+    let end = parseDate(resolveEnd(event))
+    if (start !== null && end === null) end = Date.now()
+    if (start === null || end === null) return Number.MAX_SAFE_INTEGER
     return Math.floor((end - start) / (1000 * 60))
 }
 
@@ -92,12 +115,15 @@ function SortIcon({ field, currentField, direction }: Readonly<SortIconProps>): 
 
 export function HistoryPage(): JSX.Element {
     const { token } = useAuth()
+    const PAGE_SIZE = 10
     const [events, setEvents] = useState<EventSummary[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [sortField, setSortField] = useState<SortField>('date')
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
     const [filterType, setFilterType] = useState<string>('all')
+    const [filterSeverity, setFilterSeverity] = useState<'all' | 'low' | 'medium' | 'high'>('all')
+    const [page, setPage] = useState(0)
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -105,7 +131,7 @@ export function HistoryPage(): JSX.Element {
             setError(null)
             try {
                 // Fetch all events including completed ones
-                const data = await fastPinPonService.getEvents(100, token ?? undefined)
+                const data = await fastPinPonService.getEvents(500, token ?? undefined)
                 setEvents(data)
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load history')
@@ -124,14 +150,21 @@ export function HistoryPage(): JSX.Element {
     const sortedAndFilteredEvents = useMemo(() => {
         let filtered = events
         if (filterType !== 'all') {
-            filtered = events.filter((e) => e.event_type_code === filterType)
+            filtered = filtered.filter((e) => e.event_type_code === filterType)
+        }
+        if (filterSeverity !== 'all') {
+            filtered = filtered.filter((e) => {
+                if (filterSeverity === 'low') return e.severity <= 2
+                if (filterSeverity === 'medium') return e.severity === 3
+                return e.severity >= 4
+            })
         }
 
         return [...filtered].sort((a, b) => {
             let comparison = 0
             switch (sortField) {
                 case 'date':
-                    comparison = new Date(a.reported_at).getTime() - new Date(b.reported_at).getTime()
+                    comparison = (parseDate(a.reported_at) ?? 0) - (parseDate(b.reported_at) ?? 0)
                     break
                 case 'type':
                     comparison = a.event_type_code.localeCompare(b.event_type_code)
@@ -140,12 +173,12 @@ export function HistoryPage(): JSX.Element {
                     comparison = a.severity - b.severity
                     break
                 case 'duration':
-                    comparison = getDurationMinutes(a.started_at, a.completed_at) - getDurationMinutes(b.started_at, b.completed_at)
+                    comparison = getDurationMinutes(a) - getDurationMinutes(b)
                     break
             }
             return sortDirection === 'asc' ? comparison : -comparison
         })
-    }, [events, filterType, sortField, sortDirection])
+    }, [events, filterType, filterSeverity, sortField, sortDirection])
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -155,6 +188,11 @@ export function HistoryPage(): JSX.Element {
             setSortDirection('desc')
         }
     }
+
+    // Paginate after filtering/sorting so filters apply to the full list
+    const startIndex = page * PAGE_SIZE
+    const pageEvents = sortedAndFilteredEvents.slice(startIndex, startIndex + PAGE_SIZE)
+    const totalPages = Math.max(1, Math.ceil(sortedAndFilteredEvents.length / PAGE_SIZE))
 
     if (loading) {
         return (
@@ -191,6 +229,18 @@ export function HistoryPage(): JSX.Element {
                                     {type}
                                 </option>
                             ))}
+                        </select>
+                        <label htmlFor="filter-severity" className="text-slate-400 text-sm">Severity:</label>
+                        <select
+                            id="filter-severity"
+                            value={filterSeverity}
+                            onChange={(e) => setFilterSeverity(e.target.value as typeof filterSeverity)}
+                            className="bg-slate-800/80 px-3 py-2 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                        >
+                            <option value="all">All</option>
+                            <option value="low">Low (1-2)</option>
+                            <option value="medium">Medium (3)</option>
+                            <option value="high">High (4-5)</option>
                         </select>
                     </div>
                 </div>
@@ -252,7 +302,7 @@ export function HistoryPage(): JSX.Element {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/50">
-                            {sortedAndFilteredEvents.map((event) => (
+                            {pageEvents.map((event) => (
                                 <tr key={event.id} className="hover:bg-slate-800/30 transition-colors">
                                     <td className="px-4 py-3">
                                         <div className="text-white text-sm">{formatDate(event.reported_at)}</div>
@@ -279,7 +329,7 @@ export function HistoryPage(): JSX.Element {
                                     </td>
                                     <td className="px-4 py-3">
                                         <span className="text-slate-300 text-sm">
-                                            {calculateDuration(event.started_at, event.completed_at)}
+                                            {calculateDuration(event)}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">
@@ -300,8 +350,28 @@ export function HistoryPage(): JSX.Element {
                     )}
                 </div>
 
-                <div className="mt-4 text-slate-500 text-sm">
-                    Showing {sortedAndFilteredEvents.length} of {events.length} incidents
+                <div className="mt-4 flex items-center justify-between text-slate-500 text-sm">
+                    <span>
+                        Page {page + 1} / {totalPages} • Showing {pageEvents.length} of {sortedAndFilteredEvents.length} incidents
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setPage((p) => Math.max(p - 1, 0))}
+                            disabled={page === 0 || loading}
+                            className="px-3 py-1.5 rounded border border-slate-700 bg-slate-800 text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                        >
+                            Previous
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+                            disabled={page >= totalPages - 1 || loading}
+                            className="px-3 py-1.5 rounded border border-slate-700 bg-slate-800 text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -316,7 +316,7 @@ export function App() {
             permissions={permissions}
             onRefresh={refreshData}
             onTogglePauseRefresh={setIsPaused}
-            onLocateEvent={(lng, lat) => flyToLocationRef.current?.(lng, lat, 14)}
+            onLocateEvent={(lng, lat, zoom) => flyToLocationRef.current?.(lng, lat, zoom)}
           />
         </main>
       )}
