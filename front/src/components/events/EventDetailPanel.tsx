@@ -99,11 +99,10 @@ export function EventDetailPanel({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className={`p-2 rounded-md border transition-colors ${
-                canLocateEvent
+              className={`p-2 rounded-md border transition-colors ${canLocateEvent
                   ? 'border-sky-500/40 text-sky-200 hover:bg-sky-500/10 cursor-pointer'
                   : 'border-slate-700 text-slate-500 cursor-not-allowed'
-              }`}
+                }`}
               aria-label="Centrer sur l'incident"
               title="Centrer sur l'incident"
               disabled={!canLocateEvent}
@@ -125,23 +124,17 @@ export function EventDetailPanel({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <circle cx="12" cy="12" r="10" />
-                <circle cx="12" cy="12" r="6" />
-                <circle cx="12" cy="12" r="2" />
-                <line x1="12" y1="2" x2="12" y2="4" />
-                <line x1="12" y1="20" x2="12" y2="22" />
-                <line x1="2" y1="12" x2="4" y2="12" />
-                <line x1="20" y1="12" x2="22" y2="12" />
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0Z" />
+                <circle cx="12" cy="10" r="3" />
               </svg>
             </button>
 
             <button
               type="button"
-              className={`p-2 rounded-md border transition-colors ${
-                canDelete
+              className={`p-2 rounded-md border transition-colors ${canDelete
                   ? 'border-rose-500/40 text-rose-200 hover:bg-rose-500/10 cursor-pointer'
                   : 'border-slate-700 text-slate-500 cursor-not-allowed'
-              }`}
+                }`}
               aria-label="Clore l'incident"
               title="Clore l'incident"
               disabled={!canDelete || isDeleting}
@@ -208,11 +201,10 @@ export function EventDetailPanel({
 
             <button
               type="button"
-              className={`p-2 rounded-md border transition-colors ${
-                canAssign
+              className={`p-2 rounded-md border transition-colors ${canAssign
                   ? 'border-blue-500/40 text-blue-200 hover:bg-blue-500/10 cursor-pointer'
                   : 'border-slate-700 text-slate-500 cursor-not-allowed'
-              }`}
+                }`}
               aria-label="Assigner une unité"
               title="Assigner une unité"
               disabled={!canAssign}
@@ -266,11 +258,10 @@ export function EventDetailPanel({
                     <div className="flex items-center gap-2 py-2 pr-3">
                       <button
                         type="button"
-                        className={`p-1.5 border rounded-full h-fit transition-colors ${
-                          canLocateUnit
+                        className={`p-1.5 border rounded-full h-fit transition-colors ${canLocateUnit
                             ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 cursor-pointer'
                             : 'border-slate-700 text-slate-500 cursor-not-allowed'
-                        }`}
+                          }`}
                         title="Centrer sur l'unité"
                         disabled={!canLocateUnit}
                         onClick={() => {
