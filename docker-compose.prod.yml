@@ -12,6 +12,8 @@ services:
     environment:
       - LOG_FILE=/var/log/fast-pin-pon/api.log
       - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
       - ENGINE_CALLBACK_URL=http://engine:8081
       - DB_URL=${DB_URL}
       - DB_RUN_MIGRATIONS=${DB_RUN_MIGRATIONS}
