@@ -218,7 +218,7 @@ public final class SimulationEngine {
                     route.routeLengthMeters,
                     route.severity,
                     new VehicleState.InitialPosition(initialLat, initialLon, route.progressPercent),
-                    route.autoSimulated != null ? route.autoSimulated : true
+                    route.autoSimulated != null ? route.autoSimulated : Boolean.TRUE
             ));
 
             vehicleStates.put(unit.id, state);

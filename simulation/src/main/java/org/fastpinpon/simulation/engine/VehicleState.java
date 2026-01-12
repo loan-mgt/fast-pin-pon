@@ -42,6 +42,7 @@ public final class VehicleState {
         public final InitialPosition initialPosition;
         public final boolean autoSimulated;
 
+        @SuppressWarnings("java:S107") // Suppress "too many parameters" - config object pattern is intentional
         public VehicleConfig(String unitId, String interventionId, String assignmentId,
                              double estimatedDurationSeconds, double routeLengthMeters,
                              Integer severity, InitialPosition initialPosition, boolean autoSimulated) {

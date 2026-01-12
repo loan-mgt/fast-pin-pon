@@ -102,7 +102,7 @@ public final class ApiClient {
             this.currentLat = currentLat;
             this.currentLon = currentLon;
             this.severity = severity;
-            this.autoSimulated = autoSimulated != null ? autoSimulated : true;
+            this.autoSimulated = autoSimulated != null ? autoSimulated : Boolean.TRUE;
         }
     }
 
