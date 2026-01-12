@@ -17,6 +17,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      keycloak_web:
+        condition: service_healthy
     ports:
       - "8081:8080"
 
@@ -56,6 +58,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      keycloak_web:
+        condition: service_healthy
     restart: on-failure
     environment:
       - API_BASE_URL=http://api:8080
@@ -79,6 +83,8 @@ services:
       dockerfile: Dockerfile
     depends_on:
       api:
+        condition: service_healthy
+      keycloak_web:
         condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
@@ -131,8 +137,7 @@ services:
       args:
         - GRAFANA_URL=http://localhost:3000
     environment:
-      - KC_HOSTNAME=localhost
-      - KC_HOSTNAME_PORT=8082
+      - KC_HOSTNAME=http://localhost:8082
       - KEYCLOAK_URL=http://localhost:8082
       - KEYCLOAK_REALM=sdmis-realm
       - KEYCLOAK_CLIENT_ID=sdmis-api
