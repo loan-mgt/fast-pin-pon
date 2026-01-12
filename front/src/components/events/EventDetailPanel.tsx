@@ -108,8 +108,10 @@ export function EventDetailPanel({
               title="Centrer sur l'incident"
               disabled={!canLocateEvent}
               onClick={() => {
-                if (!canLocateEvent) return
-                onLocateEvent?.(event.location!.longitude, event.location!.latitude)
+                const lng = event.location?.longitude
+                const lat = event.location?.latitude
+                if (!canLocateEvent || lng === undefined || lat === undefined) return
+                onLocateEvent?.(lng, lat)
               }}
             >
               <svg

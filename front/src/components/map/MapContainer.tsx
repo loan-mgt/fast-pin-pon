@@ -219,7 +219,7 @@ function addEventMarkers(
             const status = (currentUnit.status ?? '').toLowerCase().trim()
 
             // Debug: log unit matching
-            if (!globalUnit) {
+            if (globalUnit === undefined) {
                 console.warn(`[MapContainer] Unit ${assignedUnit.id} (${assignedUnit.call_sign}) not found in global units list`)
             }
 
