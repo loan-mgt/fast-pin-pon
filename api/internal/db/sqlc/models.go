@@ -220,6 +220,7 @@ type Event struct {
 	ReportedAt    pgtype.Timestamptz `json:"reported_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	ClosedAt      pgtype.Timestamptz `json:"closed_at"`
+	AutoSimulated bool               `json:"auto_simulated"`
 }
 
 type EventType struct {

@@ -483,6 +483,7 @@ func mapEventSummary(row db.ListEventsRow, assignedUnits []UnitResponse) EventSu
 		Address:            optionalString(row.Address),
 		Location:           GeoPoint{Latitude: row.Latitude, Longitude: row.Longitude},
 		Severity:           row.Severity,
+		AutoSimulated:      row.AutoSimulated,
 		InterventionID:     intID,
 		InterventionStatus: intStatus,
 		EventTypeCode:      row.EventTypeCode,
@@ -508,6 +509,7 @@ func mapCreateEventRow(row db.CreateEventRow) EventSummaryResponse {
 			Longitude: row.Longitude,
 		},
 		Severity:      row.Severity,
+		AutoSimulated: row.AutoSimulated,
 		EventTypeCode: row.EventTypeCode,
 		ReportedAt:    row.ReportedAt.Time,
 		UpdatedAt:     row.UpdatedAt.Time,
@@ -535,6 +537,7 @@ func mapEventDetail(event db.GetEventRow, interventions []db.Intervention, logs 
 		Address:            optionalString(event.Address),
 		Location:           GeoPoint{Latitude: event.Latitude, Longitude: event.Longitude},
 		Severity:           event.Severity,
+		AutoSimulated:      event.AutoSimulated,
 		InterventionID:     intID,
 		InterventionStatus: intStatus,
 		EventTypeCode:      event.EventTypeCode,
@@ -590,4 +593,68 @@ func mapActivityLogToEventLogResponse(row db.ListRecentActivityLogsRow) EventLog
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+// UpdateEventAutoSimulatedRequest is the request payload for toggling auto_simulated.
+type UpdateEventAutoSimulatedRequest struct {
+	AutoSimulated bool `json:"auto_simulated"`
+}
+
+// UpdateEventAutoSimulatedResponse is the response when toggling auto_simulated.
+type UpdateEventAutoSimulatedResponse struct {
+	ID            string    `json:"id"`
+	AutoSimulated bool      `json:"auto_simulated"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// handleUpdateEventAutoSimulated godoc
+// @Title Toggle auto simulation mode
+// @Description Toggles automatic simulation mode for an event. When disabled, the event won't be processed by the dispatch engine or simulation.
+// @Resource Events
+// @Accept json
+// @Produce json
+// @Param eventID path string true "Event ID"
+// @Param request body UpdateEventAutoSimulatedRequest true "Auto simulated payload"
+// @Success 200 {object} UpdateEventAutoSimulatedResponse
+// @Failure 400 {object} APIError
+// @Failure 403 {object} APIError
+// @Failure 404 {object} APIError
+// @Failure 500 {object} APIError
+// @Route /v1/events/{eventID}/auto-simulated [patch]
+func (s *Server) handleUpdateEventAutoSimulated(w http.ResponseWriter, r *http.Request) {
+	// Require 'superieur' or 'it' role
+	if !s.authMw.RequireOneOfRoles(w, r, "superieur", "it") {
+		return
+	}
+
+	eventID, err := s.parseUUIDParam(r, "eventID")
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidEventID, err.Error())
+		return
+	}
+
+	var req UpdateEventAutoSimulatedRequest
+	if err := s.decodeAndValidate(r, &req); err != nil {
+		s.writeError(w, http.StatusBadRequest, errInvalidPayload, err.Error())
+		return
+	}
+
+	row, err := s.queries.UpdateEventAutoSimulated(r.Context(), db.UpdateEventAutoSimulatedParams{
+		ID:            eventID,
+		AutoSimulated: req.AutoSimulated,
+	})
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, "event not found", nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to update event", err.Error())
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, UpdateEventAutoSimulatedResponse{
+		ID:            uuidString(row.ID),
+		AutoSimulated: row.AutoSimulated,
+		UpdatedAt:     row.UpdatedAt.Time,
+	})
 }

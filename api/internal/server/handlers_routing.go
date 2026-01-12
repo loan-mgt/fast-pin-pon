@@ -54,6 +54,7 @@ type UnitRouteResponse struct {
 	RemainingMeters          *float64 `json:"remaining_meters,omitempty"`
 	RemainingSeconds         *float64 `json:"remaining_seconds,omitempty"`
 	Severity                 *int32   `json:"severity,omitempty"`
+	AutoSimulated            bool     `json:"auto_simulated"`
 }
 
 // UpdateProgressRequest updates the progress percentage
@@ -181,6 +182,7 @@ func (s *Server) handleGetUnitRoute(w http.ResponseWriter, r *http.Request) {
 		RemainingMeters:          &remainingMeters,
 		RemainingSeconds:         &remainingSeconds,
 		Severity:                 route.Severity,
+		AutoSimulated:            route.AutoSimulated,
 	}
 
 	if route.InterventionID.Valid {

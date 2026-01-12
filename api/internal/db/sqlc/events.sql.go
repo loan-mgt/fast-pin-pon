@@ -44,6 +44,7 @@ INSERT INTO events (
     ST_Y(location::geometry)::double precision AS latitude,
     severity,
     event_type_code,
+    auto_simulated,
     reported_at,
     updated_at,
     closed_at
@@ -70,6 +71,7 @@ type CreateEventRow struct {
 	Latitude      float64            `json:"latitude"`
 	Severity      int32              `json:"severity"`
 	EventTypeCode string             `json:"event_type_code"`
+	AutoSimulated bool               `json:"auto_simulated"`
 	ReportedAt    pgtype.Timestamptz `json:"reported_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	ClosedAt      pgtype.Timestamptz `json:"closed_at"`
@@ -97,173 +99,12 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Creat
 		&i.Latitude,
 		&i.Severity,
 		&i.EventTypeCode,
+		&i.AutoSimulated,
 		&i.ReportedAt,
 		&i.UpdatedAt,
 		&i.ClosedAt,
 	)
 	return i, err
-}
-
-const getEvent = `-- name: GetEvent :one
-SELECT
-    e.id,
-    e.title,
-    e.description,
-    e.report_source,
-    e.address,
-    ST_X(e.location::geometry)::double precision AS longitude,
-    ST_Y(e.location::geometry)::double precision AS latitude,
-    e.severity,
-    e.event_type_code,
-    et.name AS event_type_name,
-    et.default_severity,
-    et.recommended_unit_types,
-    e.reported_at,
-    e.updated_at,
-    e.closed_at,
-    i.id AS intervention_id,
-    i.status AS intervention_status
-FROM events e
-JOIN event_types et ON et.code = e.event_type_code
-LEFT JOIN interventions i ON i.event_id = e.id
-WHERE e.id = $1
-`
-
-type GetEventRow struct {
-	ID                   pgtype.UUID            `json:"id"`
-	Title                string                 `json:"title"`
-	Description          *string                `json:"description"`
-	ReportSource         *string                `json:"report_source"`
-	Address              *string                `json:"address"`
-	Longitude            float64                `json:"longitude"`
-	Latitude             float64                `json:"latitude"`
-	Severity             int32                  `json:"severity"`
-	EventTypeCode        string                 `json:"event_type_code"`
-	EventTypeName        string                 `json:"event_type_name"`
-	DefaultSeverity      int32                  `json:"default_severity"`
-	RecommendedUnitTypes []string               `json:"recommended_unit_types"`
-	ReportedAt           pgtype.Timestamptz     `json:"reported_at"`
-	UpdatedAt            pgtype.Timestamptz     `json:"updated_at"`
-	ClosedAt             pgtype.Timestamptz     `json:"closed_at"`
-	InterventionID       pgtype.UUID            `json:"intervention_id"`
-	InterventionStatus   NullInterventionStatus `json:"intervention_status"`
-}
-
-func (q *Queries) GetEvent(ctx context.Context, id pgtype.UUID) (GetEventRow, error) {
-	row := q.db.QueryRow(ctx, getEvent, id)
-	var i GetEventRow
-	err := row.Scan(
-		&i.ID,
-		&i.Title,
-		&i.Description,
-		&i.ReportSource,
-		&i.Address,
-		&i.Longitude,
-		&i.Latitude,
-		&i.Severity,
-		&i.EventTypeCode,
-		&i.EventTypeName,
-		&i.DefaultSeverity,
-		&i.RecommendedUnitTypes,
-		&i.ReportedAt,
-		&i.UpdatedAt,
-		&i.ClosedAt,
-		&i.InterventionID,
-		&i.InterventionStatus,
-	)
-	return i, err
-}
-
-const listEvents = `-- name: ListEvents :many
-SELECT
-    e.id,
-    e.title,
-    e.description,
-    e.report_source,
-    e.address,
-    ST_X(e.location::geometry)::double precision AS longitude,
-    ST_Y(e.location::geometry)::double precision AS latitude,
-    e.severity,
-    e.event_type_code,
-    et.name AS event_type_name,
-    et.default_severity,
-    e.reported_at,
-    e.updated_at,
-    e.closed_at,
-    i.id AS intervention_id,
-    i.status AS intervention_status,
-    i.started_at AS intervention_started_at,
-    i.completed_at AS intervention_completed_at
-FROM events e
-JOIN event_types et ON et.code = e.event_type_code
-LEFT JOIN interventions i ON i.event_id = e.id
-ORDER BY e.reported_at DESC
-LIMIT $1 OFFSET $2
-`
-
-type ListEventsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-type ListEventsRow struct {
-	ID                      pgtype.UUID            `json:"id"`
-	Title                   string                 `json:"title"`
-	Description             *string                `json:"description"`
-	ReportSource            *string                `json:"report_source"`
-	Address                 *string                `json:"address"`
-	Longitude               float64                `json:"longitude"`
-	Latitude                float64                `json:"latitude"`
-	Severity                int32                  `json:"severity"`
-	EventTypeCode           string                 `json:"event_type_code"`
-	EventTypeName           string                 `json:"event_type_name"`
-	DefaultSeverity         int32                  `json:"default_severity"`
-	ReportedAt              pgtype.Timestamptz     `json:"reported_at"`
-	UpdatedAt               pgtype.Timestamptz     `json:"updated_at"`
-	ClosedAt                pgtype.Timestamptz     `json:"closed_at"`
-	InterventionID          pgtype.UUID            `json:"intervention_id"`
-	InterventionStatus      NullInterventionStatus `json:"intervention_status"`
-	InterventionStartedAt   pgtype.Timestamptz     `json:"intervention_started_at"`
-	InterventionCompletedAt pgtype.Timestamptz     `json:"intervention_completed_at"`
-}
-
-func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]ListEventsRow, error) {
-	rows, err := q.db.Query(ctx, listEvents, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListEventsRow
-	for rows.Next() {
-		var i ListEventsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Title,
-			&i.Description,
-			&i.ReportSource,
-			&i.Address,
-			&i.Longitude,
-			&i.Latitude,
-			&i.Severity,
-			&i.EventTypeCode,
-			&i.EventTypeName,
-			&i.DefaultSeverity,
-			&i.ReportedAt,
-			&i.UpdatedAt,
-			&i.ClosedAt,
-			&i.InterventionID,
-			&i.InterventionStatus,
-			&i.InterventionStartedAt,
-			&i.InterventionCompletedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const getAllEventLocations = `-- name: GetAllEventLocations :many
@@ -312,4 +153,201 @@ func (q *Queries) GetAllEventLocations(ctx context.Context) ([]GetAllEventLocati
 		return nil, err
 	}
 	return items, nil
+}
+
+const getEvent = `-- name: GetEvent :one
+SELECT
+    e.id,
+    e.title,
+    e.description,
+    e.report_source,
+    e.address,
+    ST_X(e.location::geometry)::double precision AS longitude,
+    ST_Y(e.location::geometry)::double precision AS latitude,
+    e.severity,
+    e.event_type_code,
+    et.name AS event_type_name,
+    et.default_severity,
+    et.recommended_unit_types,
+    e.auto_simulated,
+    e.reported_at,
+    e.updated_at,
+    e.closed_at,
+    i.id AS intervention_id,
+    i.status AS intervention_status
+FROM events e
+JOIN event_types et ON et.code = e.event_type_code
+LEFT JOIN interventions i ON i.event_id = e.id
+WHERE e.id = $1
+`
+
+type GetEventRow struct {
+	ID                   pgtype.UUID            `json:"id"`
+	Title                string                 `json:"title"`
+	Description          *string                `json:"description"`
+	ReportSource         *string                `json:"report_source"`
+	Address              *string                `json:"address"`
+	Longitude            float64                `json:"longitude"`
+	Latitude             float64                `json:"latitude"`
+	Severity             int32                  `json:"severity"`
+	EventTypeCode        string                 `json:"event_type_code"`
+	EventTypeName        string                 `json:"event_type_name"`
+	DefaultSeverity      int32                  `json:"default_severity"`
+	RecommendedUnitTypes []string               `json:"recommended_unit_types"`
+	AutoSimulated        bool                   `json:"auto_simulated"`
+	ReportedAt           pgtype.Timestamptz     `json:"reported_at"`
+	UpdatedAt            pgtype.Timestamptz     `json:"updated_at"`
+	ClosedAt             pgtype.Timestamptz     `json:"closed_at"`
+	InterventionID       pgtype.UUID            `json:"intervention_id"`
+	InterventionStatus   NullInterventionStatus `json:"intervention_status"`
+}
+
+func (q *Queries) GetEvent(ctx context.Context, id pgtype.UUID) (GetEventRow, error) {
+	row := q.db.QueryRow(ctx, getEvent, id)
+	var i GetEventRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.ReportSource,
+		&i.Address,
+		&i.Longitude,
+		&i.Latitude,
+		&i.Severity,
+		&i.EventTypeCode,
+		&i.EventTypeName,
+		&i.DefaultSeverity,
+		&i.RecommendedUnitTypes,
+		&i.AutoSimulated,
+		&i.ReportedAt,
+		&i.UpdatedAt,
+		&i.ClosedAt,
+		&i.InterventionID,
+		&i.InterventionStatus,
+	)
+	return i, err
+}
+
+const listEvents = `-- name: ListEvents :many
+SELECT
+    e.id,
+    e.title,
+    e.description,
+    e.report_source,
+    e.address,
+    ST_X(e.location::geometry)::double precision AS longitude,
+    ST_Y(e.location::geometry)::double precision AS latitude,
+    e.severity,
+    e.event_type_code,
+    et.name AS event_type_name,
+    et.default_severity,
+    e.auto_simulated,
+    e.reported_at,
+    e.updated_at,
+    e.closed_at,
+    i.id AS intervention_id,
+    i.status AS intervention_status,
+    i.started_at AS intervention_started_at,
+    i.completed_at AS intervention_completed_at
+FROM events e
+JOIN event_types et ON et.code = e.event_type_code
+LEFT JOIN interventions i ON i.event_id = e.id
+ORDER BY e.reported_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListEventsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListEventsRow struct {
+	ID                      pgtype.UUID            `json:"id"`
+	Title                   string                 `json:"title"`
+	Description             *string                `json:"description"`
+	ReportSource            *string                `json:"report_source"`
+	Address                 *string                `json:"address"`
+	Longitude               float64                `json:"longitude"`
+	Latitude                float64                `json:"latitude"`
+	Severity                int32                  `json:"severity"`
+	EventTypeCode           string                 `json:"event_type_code"`
+	EventTypeName           string                 `json:"event_type_name"`
+	DefaultSeverity         int32                  `json:"default_severity"`
+	AutoSimulated           bool                   `json:"auto_simulated"`
+	ReportedAt              pgtype.Timestamptz     `json:"reported_at"`
+	UpdatedAt               pgtype.Timestamptz     `json:"updated_at"`
+	ClosedAt                pgtype.Timestamptz     `json:"closed_at"`
+	InterventionID          pgtype.UUID            `json:"intervention_id"`
+	InterventionStatus      NullInterventionStatus `json:"intervention_status"`
+	InterventionStartedAt   pgtype.Timestamptz     `json:"intervention_started_at"`
+	InterventionCompletedAt pgtype.Timestamptz     `json:"intervention_completed_at"`
+}
+
+func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]ListEventsRow, error) {
+	rows, err := q.db.Query(ctx, listEvents, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEventsRow
+	for rows.Next() {
+		var i ListEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.ReportSource,
+			&i.Address,
+			&i.Longitude,
+			&i.Latitude,
+			&i.Severity,
+			&i.EventTypeCode,
+			&i.EventTypeName,
+			&i.DefaultSeverity,
+			&i.AutoSimulated,
+			&i.ReportedAt,
+			&i.UpdatedAt,
+			&i.ClosedAt,
+			&i.InterventionID,
+			&i.InterventionStatus,
+			&i.InterventionStartedAt,
+			&i.InterventionCompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateEventAutoSimulated = `-- name: UpdateEventAutoSimulated :one
+UPDATE events
+SET auto_simulated = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING
+    id,
+    auto_simulated,
+    updated_at
+`
+
+type UpdateEventAutoSimulatedParams struct {
+	ID            pgtype.UUID `json:"id"`
+	AutoSimulated bool        `json:"auto_simulated"`
+}
+
+type UpdateEventAutoSimulatedRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	AutoSimulated bool               `json:"auto_simulated"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpdateEventAutoSimulated(ctx context.Context, arg UpdateEventAutoSimulatedParams) (UpdateEventAutoSimulatedRow, error) {
+	row := q.db.QueryRow(ctx, updateEventAutoSimulated, arg.ID, arg.AutoSimulated)
+	var i UpdateEventAutoSimulatedRow
+	err := row.Scan(&i.ID, &i.AutoSimulated, &i.UpdatedAt)
+	return i, err
 }
