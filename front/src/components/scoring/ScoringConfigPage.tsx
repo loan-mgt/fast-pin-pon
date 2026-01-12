@@ -76,7 +76,7 @@ const PREDEFINED_SCENARIOS: TestScenario[] = [
         targetSeverity: 3,
         candidates: [
             { id: '1', callSign: 'VSAV-01', travelTimeSeconds: 420, otherUnitsAtBase: 0, isAvailable: true, isCurrentlyAssigned: false },
-            { id: '2', callSign: 'VSAV-02', travelTimeSeconds: 960, otherUnitsAtBase: 3, isAvailable: true, isCurrentlyAssigned: false },
+            { id: '2', callSign: 'VSAV-02', travelTimeSeconds: 600, otherUnitsAtBase: 3, isAvailable: true, isCurrentlyAssigned: false },
         ],
     },
     {
