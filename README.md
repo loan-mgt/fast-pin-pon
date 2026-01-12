@@ -15,62 +15,128 @@
 ## Architecture
 
 ```mermaid
-graph TD
-    subgraph Monitoring [Observability Stack]
-        Grafana
-        Prometheus
-        Loki
-    end
-
-    subgraph UI [User Interface]
-        Front[React Frontend]
-    end
-
-    subgraph Core [Core Backend]
-        API[Go API]
-        DB[(PostGIS)]
-        Auth[Keycloak]
-    end
-
-    subgraph Agents [Automated Agents]
-        Engine[Decision Engine Java]
-        Sim[Simulation Java]
-        Gen[Incident Generator]
-    end
-
-    subgraph Network [Radio Bridge Python]
-        BridgeE[Emitter]
-        BridgeR[Receiver]
-        Radio{{Micro:bit}}
-    end
-
-    %% Monitoring Connections
-    Prometheus -->|Scrape| API
-    Grafana -->|Query| Prometheus
-    Grafana -->|Query| Loki
-
-    %% UI Connections
-    Front -->|REST| API
-    Front -->|OIDC| Auth
-
-    %% Core Connections
-    API -->|SQL| DB
-    API -->|Verify Token| Auth
-
-    %% Agents Connections
-    Gen -->|POST /events| API
+flowchart TD
+    %% Global Styling
+    linkStyle default stroke:#a8a8a8,stroke-width:1px,fill:none;
+    classDef box fill:#ffffff,stroke:#e5e7eb,stroke-width:1px,color:#1f2937,rx:5,ry:5;
+    classDef cluster fill:#f9fafb,stroke:#e5e7eb,stroke-width:1px,color:#374151,rx:10,ry:10;
     
+    %% --- ARCHITECTURE DIAGRAM ---
+    subgraph UI_Layer [Frontend Layer]
+        direction TB
+        Front("<img src='https://cdn.simpleicons.org/react/61DAFB' width='30' /> <br/><b>Reac Application</b><br/>User Interface"):::box
+    end
+
+    subgraph Core_Layer [Core Services]
+        direction TB
+        API("<img src='https://cdn.simpleicons.org/go/00ADD8' width='30' /> <br/><b>Main API</b><br/>Business Logic"):::box
+        Engine("<img src='https://cdn.simpleicons.org/openjdk/5382a1' width='30' /> <br/><b>Decision Engine</b><br/>Dispatch Optimization"):::box
+        Auth("<img src='https://cdn.simpleicons.org/keycloak/00b4a0' width='30' /> <br/><b>Keycloak</b><br/>IAM Provider"):::box
+    end
+
+    subgraph Data_Layer [Data Persistence]
+        direction TB
+        DB("<img src='https://cdn.simpleicons.org/postgresql/4169E1' width='30' /> <br/><b>PostgreSQL</b><br/>PostGIS + pgRouting"):::box
+    end
+
+    subgraph Edge_Layer [Simulation & IoT]
+        direction TB
+        Sim("<img src='https://cdn.simpleicons.org/openjdk/5382a1' width='30' /> <br/><b>Simulation</b><br/>Vehicle Physics"):::box
+        Gen("<img src='https://cdn.simpleicons.org/openjdk/5382a1' width='30' /> <br/><b>Generator</b><br/>Random Incidents"):::box
+        Bridge("<img src='https://cdn.simpleicons.org/python/3776AB' width='30' /> <br/><b>Radio Bridge</b><br/>Hardware Interface"):::box
+    end
+
+    subgraph Obs_Layer [Observability]
+        direction LR
+        Prom("<img src='https://cdn.simpleicons.org/prometheus/E6522C' width='30' /> <br/>Prometheus"):::box
+        Graf("<img src='https://cdn.simpleicons.org/grafana/F46800' width='30' /> <br/>Grafana"):::box
+        Loki("<img src='https://cdn.simpleicons.org/grafana/F46800' width='30' /> <br/>Loki"):::box
+    end
+
+    %% --- CONNECTIONS ---
+    
+    %% Main Flow
+    Front -->|REST /v1| API
+    API -->|Query| DB
+    API -.->|Auth Check| Auth
+    
+    %% Agent Loop
+    Gen -->|Create Event| API
     API -->|Webhook| Engine
-    Engine -->|POST /assignments| API
+    Engine -->|Assign| API
     
-    Sim -->|GET /units Positions| API
-    Sim -->|GET /routes Path| API
-    Sim -->|Telemetry| BridgeE
+    %% Sim Flow
+    Sim -->|Update State| API
+    Sim -.->|Telemetry| Bridge
+    
+    %% Monitoring (Simplified)
+    Prom -.->|Scrape| API
+    Graf -.->|Read| Prom & Loki
+    API -.->|Logs| Loki
+```
 
-    %% Network Connections
-    BridgeE -->|Serial| Radio
-    Radio -->|Serial| BridgeR
-    BridgeR -->|POST /telemetry| API
+## Docker Infrastructure
+
+The project involves tightly connected microservices. This diagram outlines the network boundaries and exposed ports.
+
+```mermaid
+flowchart TD
+    linkStyle default stroke:#a8a8a8,stroke-width:1px,fill:none;
+    classDef container fill:#ffffff,stroke:#3b82f6,stroke-width:2px,color:#1f2937,rx:5,ry:5;
+    classDef db fill:#ffffff,stroke:#10b981,stroke-width:2px,color:#1f2937,rx:5,ry:5;
+    classDef ext fill:#f3f4f6,stroke:#9ca3af,stroke-width:2px,stroke-dasharray: 5 5,color:#374151;
+
+    %% External Entry Points
+    subgraph Host [Host Machine Access]
+        direction LR
+        P8080(User Browser<br/>:8080):::ext
+        P8081(Admin Tools<br/>:8081):::ext
+        P3000(Ops Dashboard<br/>:3000):::ext
+    end
+
+    %% Main Network
+    subgraph Net_Int [Network: internal]
+        direction TB
+        API(<b>API</b><br/>Go):::container
+        Sim(<b>Simulation</b><br/>Java):::container
+        Engine(<b>Engine</b><br/>Java):::container
+        DB[(<b>Postgres</b><br/>DB)]:::db
+    end
+
+    %% Auth Network
+    subgraph Net_KC [Network: internal-keycloak]
+        KC(<b>Keycloak</b><br/>Auth Server):::container
+        KC_DB[(<b>KC DB</b><br/>Postgres)]:::db
+    end
+
+    %% Monitoring Network
+    subgraph Net_Mon [Network: internal-grafana]
+        Graf(<b>Grafana</b>):::container
+        Prom(<b>Prometheus</b>):::container
+        Loki(<b>Loki</b>):::container
+    end
+    
+    %% UI (Bridge)
+    Front(<b>Frontend</b><br/>React):::container
+
+    %% Flows & Port Binding
+    P8080 --> Front
+    P8081 --> API
+    P3000 --> Graf
+    
+    %% Service Communications
+    Front -->|API Call| API
+    Front -.->|Redirect| KC
+    
+    API -->|Read/Write| DB
+    API -.->|Validate| KC
+    
+    Sim & Engine -->|REST| API
+    KC --> KC_DB
+    
+    %% Observability Links
+    Prom -.->|Scrape| API
+    Graf -.->|Query| Prom & Loki
 ```
 
 ## Project structure
