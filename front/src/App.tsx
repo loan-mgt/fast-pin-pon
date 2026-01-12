@@ -120,18 +120,19 @@ export function App() {
 
   useEffect(() => {
     ; (async () => {
+      if (!isAuthenticated || !token) return
       try {
-        const types = await fastPinPonService.getEventTypes()
+        const types = await fastPinPonService.getEventTypes(token)
         setEventTypes(types)
-        const uTypes = await fastPinPonService.getUnitTypes()
+        const uTypes = await fastPinPonService.getUnitTypes(token)
         setUnitTypes(uTypes)
-        const blds = await fastPinPonService.getBuildings()
+        const blds = await fastPinPonService.getBuildings(token)
         setBuildings(blds)
       } catch (err) {
         console.error(err)
       }
     })()
-  }, [])
+  }, [isAuthenticated, token])
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -170,7 +171,7 @@ export function App() {
 
   const handleCreateEvent = useCallback(
     async (payload: CreateEventRequest) => {
-      const newEvent = await fastPinPonService.createEvent(payload, true)
+      const newEvent = await fastPinPonService.createEvent(payload, true, token ?? undefined)
 
       // Update local state immediately so selection works even before refresh completes
       // We look up the event type name to avoid showing an empty label
@@ -184,7 +185,7 @@ export function App() {
 
       await refreshData()
     },
-    [refreshData, eventTypes],
+    [refreshData, eventTypes, token],
   )
 
   const handleAddUnit = useCallback(
@@ -245,13 +246,14 @@ export function App() {
         onNavigate={setView}
         onLogout={logout}
         userLabel={userLabel}
-        onAddUnit={() => setIsAddUnitOpen(true)}
+        onAddUnit={permissions?.canCreateUnit ? () => setIsAddUnitOpen(true) : undefined}
         canCreateWithAddress={permissions?.canUseAddressSearch ?? false}
-        onCreateIncident={() => {
+        canViewDashboard={permissions?.canViewDashboard ?? false}
+        onCreateIncident={permissions?.canCreateIncident ? () => {
           setIsAddressRequired(true)
           setPendingLocation(null)
           setIsCreateOpen(true)
-        }}
+        } : undefined}
       />
 
       {view === 'dashboard' && (
@@ -287,11 +289,15 @@ export function App() {
             onEventSelect={handleEventSelect}
             onBuildingSelect={handleBuildingSelect}
             selectedEventId={selectedEventId}
-            onCreateAtLocation={(coords) => {
-              setIsAddressRequired(false)
-              setPendingLocation(coords)
-              setIsCreateOpen(true)
-            }}
+            onCreateAtLocation={
+              permissions?.canCreateIncident
+                ? (coords) => {
+                  setIsAddressRequired(false)
+                  setPendingLocation(coords)
+                  setIsCreateOpen(true)
+                }
+                : undefined
+            }
             onMapReady={(flyTo) => {
               flyToLocationRef.current = flyTo
             }}

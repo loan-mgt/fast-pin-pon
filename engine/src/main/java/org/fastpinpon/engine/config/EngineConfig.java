@@ -19,6 +19,12 @@ public final class EngineConfig {
     // API Configuration
     private final String apiBaseUrl;
     
+    // Keycloak Configuration
+    private final String keycloakUrl;
+    private final String keycloakRealm;
+    private final String clientId;
+    private final String clientSecret;
+    
     // Callback Server Configuration
     private final int callbackPort;
     
@@ -32,6 +38,10 @@ public final class EngineConfig {
 
     private EngineConfig(Builder builder) {
         this.apiBaseUrl = builder.apiBaseUrl;
+        this.keycloakUrl = builder.keycloakUrl;
+        this.keycloakRealm = builder.keycloakRealm;
+        this.clientId = builder.clientId;
+        this.clientSecret = builder.clientSecret;
         this.callbackPort = builder.callbackPort;
         this.dispatchIntervalSeconds = builder.dispatchIntervalSeconds;
         this.schedulerEnabled = builder.schedulerEnabled;
@@ -45,6 +55,10 @@ public final class EngineConfig {
     public static EngineConfig fromEnvironment() {
         return new Builder()
                 .apiBaseUrl(getEnv("API_BASE_URL", DEFAULT_API_URL))
+                .keycloakUrl(getEnv("KEYCLOAK_URL", ""))
+                .keycloakRealm(getEnv("KEYCLOAK_REALM", ""))
+                .clientId(getEnv("KEYCLOAK_CLIENT_ID", ""))
+                .clientSecret(getEnv("KEYCLOAK_CLIENT_SECRET", ""))
                 .callbackPort(getEnvInt("ENGINE_CALLBACK_PORT", DEFAULT_CALLBACK_PORT))
                 .dispatchIntervalSeconds(getEnvInt("DISPATCH_INTERVAL_SECONDS", DEFAULT_DISPATCH_INTERVAL))
                 .schedulerEnabled(getEnvBoolean("DISPATCH_SCHEDULER_ENABLED", true))
@@ -56,6 +70,22 @@ public final class EngineConfig {
     // Getters
     public String getApiBaseUrl() {
         return apiBaseUrl;
+    }
+
+    public String getKeycloakUrl() {
+        return keycloakUrl;
+    }
+
+    public String getKeycloakRealm() {
+        return keycloakRealm;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public String getClientSecret() {
+        return clientSecret;
     }
 
     public int getCallbackPort() {
@@ -113,6 +143,7 @@ public final class EngineConfig {
     public String toString() {
         return "EngineConfig{" +
                 "apiBaseUrl='" + apiBaseUrl + '\'' +
+                ", keycloakUrl='" + keycloakUrl + '\'' +
                 ", callbackPort=" + callbackPort +
                 ", dispatchIntervalSeconds=" + dispatchIntervalSeconds +
                 ", schedulerEnabled=" + schedulerEnabled +
@@ -125,6 +156,10 @@ public final class EngineConfig {
      */
     public static final class Builder {
         private String apiBaseUrl = DEFAULT_API_URL;
+        private String keycloakUrl = "";
+        private String keycloakRealm = "";
+        private String clientId = "";
+        private String clientSecret = "";
         private int callbackPort = DEFAULT_CALLBACK_PORT;
         private int dispatchIntervalSeconds = DEFAULT_DISPATCH_INTERVAL;
         private boolean schedulerEnabled = true;
@@ -133,6 +168,26 @@ public final class EngineConfig {
 
         public Builder apiBaseUrl(String apiBaseUrl) {
             this.apiBaseUrl = Objects.requireNonNull(apiBaseUrl, "apiBaseUrl must not be null");
+            return this;
+        }
+
+        public Builder keycloakUrl(String keycloakUrl) {
+            this.keycloakUrl = keycloakUrl;
+            return this;
+        }
+
+        public Builder keycloakRealm(String keycloakRealm) {
+            this.keycloakRealm = keycloakRealm;
+            return this;
+        }
+
+        public Builder clientId(String clientId) {
+            this.clientId = clientId;
+            return this;
+        }
+
+        public Builder clientSecret(String clientSecret) {
+            this.clientSecret = clientSecret;
             return this;
         }
 

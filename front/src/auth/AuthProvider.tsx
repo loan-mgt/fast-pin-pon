@@ -23,11 +23,13 @@ const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? 'sdmis-fro
 
 export type Permissions = {
   canCreateIncident: boolean
+  canCreateUnit: boolean
   canAssignUnits: boolean
   canUpdateIncidentStatus: boolean
   canDeleteIncident: boolean
   canDeleteUnit: boolean
   canUseAddressSearch: boolean
+  canViewDashboard: boolean
 }
 
 function extractRoles(kc: Keycloak): string[] {
@@ -42,12 +44,14 @@ function derivePermissions(roles: string[]): Permissions {
   const isSuperieur = normalized.has('superieur')
 
   return {
-    canCreateIncident: true, // Tous les profils peuvent créer
+    canCreateIncident: isIt || isSuperieur,
+    canCreateUnit: isIt,
     canAssignUnits: isIt || isSuperieur,
     canUpdateIncidentStatus: isIt,
     canDeleteIncident: isIt,
     canDeleteUnit: isIt,
     canUseAddressSearch: isIt || isSuperieur,
+    canViewDashboard: isIt || isSuperieur,
   }
 }
 

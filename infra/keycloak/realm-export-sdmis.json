@@ -149,7 +149,12 @@
         "id": "ba2b85cf-7989-449f-ae5c-7eab63c2bccf",
         "name": "classic",
         "description": "Map",
-        "composite": false,
+        "composite": true,
+        "composites": {
+          "realm": [
+            "api-access"
+          ]
+        },
         "clientRole": false,
         "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
         "attributes": {}
@@ -202,6 +207,15 @@
         "id": "7524bd26-a2f8-4453-a98e-1de657297d07",
         "name": "offline_access",
         "description": "${role_offline-access}",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
+        "attributes": {}
+      },
+      {
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "name": "api-access",
+        "description": "Role for API authentication - grants access to all API endpoints",
         "composite": false,
         "clientRole": false,
         "containerId": "475c06b1-8881-4843-ad72-f217e1358a6b",
@@ -595,7 +609,10 @@
       "realmRoles": [
         "view-identity-providers",
         "default-roles-sdmis-realm",
-        "view-users"
+        "view-users",
+        "api-access",
+        "manage-events",
+        "manage-realm"
       ],
       "notBefore": 0,
       "groups": []
@@ -667,6 +684,29 @@
         "classic",
         "superieur",
         "it"
+      ],
+      "requiredActions": [],
+      "groups": [],
+      "disableableCredentialTypes": []
+    },
+    {
+      "id": "2a3b4c5d-6e7f-8901-bcde-f23456789012",
+      "username": "api-user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "API",
+      "lastName": "User",
+      "email": "api-user@fast-pin-pon.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${PASSWORD_USER}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-sdmis-realm",
+        "api-access"
       ],
       "requiredActions": [],
       "groups": [],
@@ -1019,7 +1059,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "sdmis-api-secret-123",
       "redirectUris": [
         "/*"
       ],
@@ -1091,7 +1131,7 @@
       "consentRequired": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "publicClient": true,
       "frontchannelLogout": true,

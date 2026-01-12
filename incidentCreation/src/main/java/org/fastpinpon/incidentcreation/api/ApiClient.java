@@ -27,18 +27,24 @@ import java.util.logging.Logger;
  */
 public final class ApiClient {
     private static final Logger LOG = Logger.getLogger(ApiClient.class.getName());
-    private static final OkHttpClient HTTP = new OkHttpClient();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final List<String> eventTypeCodes = new ArrayList<>();
     private final ApiService api;
 
-    public ApiClient(String baseUrlRaw) {
+    public ApiClient(String baseUrlRaw, String tokenUrl, String clientId, String clientSecret) {
         String normalized = baseUrlRaw.endsWith("/") ? baseUrlRaw : baseUrlRaw + "/";
+
+        OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
+        
+        if (tokenUrl != null && !tokenUrl.isEmpty() && clientId != null && !clientId.isEmpty()) {
+             TokenManager tokenManager = new TokenManager(tokenUrl, clientId, clientSecret);
+             httpClientBuilder.addInterceptor(new AuthInterceptor(tokenManager));
+        }
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(normalized)
                 .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
-                .client(HTTP)
+                .client(httpClientBuilder.build())
                 .build();
         this.api = retrofit.create(ApiService.class);
 
