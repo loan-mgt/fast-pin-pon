@@ -37,20 +37,17 @@ export function StatusBadge({ status, type = 'unit', className = '', showDot = t
         colors = INTERVENTION_STATUS_COLORS[normalized] ?? 'bg-slate-600/20 text-slate-200 border-slate-300/20'
     }
 
-    // Format display text (replace underscores with spaces)
-    // Format display text (replace underscores with spaces) 
-    // DashboardPage used {unit.status} directly, which might be "available" or "available_hidden".
-    // RecentLogsTicker formatted it. 
-    // I will just display `status` as passed, or maybe formatted? 
-    // DashboardPage displayed raw `unit.status`. 
-    // Let's display raw `status` to be safe, but the user might prefer formatted. I'll stick to raw for now as it matches Dashboard.
+    const formatStatus = (s: string) => {
+        if (s === 'available_hidden') return 'home base'
+        return s.replaceAll(/[-\s_]/g, ' ')
+    }
 
     return (
         <span className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold border rounded-full ${colors} ${className}`}>
             {showDot && (
                 <span className="inline-flex w-2 h-2 rounded-full bg-current opacity-80" aria-hidden="true" />
             )}
-            <span className="truncate">{status}</span>
+            <span className="truncate">{formatStatus(status)}</span>
         </span>
     )
 }
