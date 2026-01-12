@@ -21,6 +21,13 @@ import requests
 from datetime import datetime, timezone
 from typing import Optional, Dict, Tuple
 from crypto import xor_decrypt
+from token_manager import create_authenticated_session, AuthenticatedSession, load_dotenv
+
+# Load .env file at module import
+load_dotenv()
+
+# Global authenticated session (initialized in main)
+_session: Optional[AuthenticatedSession] = None
 
 
 # Configuration
@@ -134,8 +141,12 @@ def parse_mbit_message(message: str) -> Optional[Tuple[str, str]]:
 
 def load_microbit_cache(api_url: str) -> Tuple[Dict[str, str], Dict[str, str]]:
     """Load mapping microbit_id -> unit_id"""
+    global _session
     try:
-        response = requests.get(f"{api_url.rstrip('/')}/v1/units", timeout=8)
+        if _session:
+            response = _session.get(f"{api_url.rstrip('/')}/v1/units", timeout=8)
+        else:
+            response = requests.get(f"{api_url.rstrip('/')}/v1/units", timeout=8)
         response.raise_for_status()
         microbit_to_unit = {}
         unit_to_microbit = {}
@@ -146,11 +157,13 @@ def load_microbit_cache(api_url: str) -> Tuple[Dict[str, str], Dict[str, str]]:
                 microbit_to_unit[microbit_id] = unit_id
                 unit_to_microbit[unit_id] = microbit_id
         return microbit_to_unit, unit_to_microbit
-    except requests.RequestException:
+    except requests.RequestException as e:
+        print(f"[ERROR] Failed to load microbit cache: {e}")
         return {}, {}
 
 
 def update_unit_location(api_url: str, unit_id: str, lat: float, lon: float) -> bool:
+    global _session
     try:
         url = f"{api_url.rstrip('/')}/v1/units/{unit_id}/location"
         payload = {
@@ -158,17 +171,24 @@ def update_unit_location(api_url: str, unit_id: str, lat: float, lon: float) -> 
             "longitude": lon,
             "recorded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
-        response = requests.patch(url, json=payload, timeout=5)
+        if _session:
+            response = _session.patch(url, json=payload, timeout=5)
+        else:
+            response = requests.patch(url, json=payload, timeout=5)
         return response.status_code < 400
     except requests.RequestException:
         return False
 
 
 def update_unit_status(api_url: str, unit_id: str, status: str) -> bool:
+    global _session
     try:
         new_status = normalize_status(status)
         url = f"{api_url.rstrip('/')}/v1/units/{unit_id}/status"
-        response = requests.patch(url, json={"status": new_status}, timeout=5)
+        if _session:
+            response = _session.patch(url, json={"status": new_status}, timeout=5)
+        else:
+            response = requests.patch(url, json={"status": new_status}, timeout=5)
         return response.status_code < 400
     except requests.RequestException:
         print(f"[ERROR] Failed to update status for {unit_id}")
@@ -305,11 +325,16 @@ def run_main_loop(ser: serial.Serial, api_url: str,
 
 
 def main() -> None:
+    global _session
+    
     serial_port = get_env("SERIAL_PORT", "")
     baud_rate = int(get_env("BAUD_RATE", "115200"))
     api_url = get_env("API_URL", API_DEFAULT_URL)
 
     print_config(api_url, baud_rate)
+
+    # Initialize authenticated session
+    _session = create_authenticated_session()
 
     ser = setup_serial(serial_port, baud_rate)
     if ser is None:

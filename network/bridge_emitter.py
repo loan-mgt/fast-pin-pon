@@ -21,6 +21,13 @@ import serial.tools.list_ports
 import requests
 from typing import Optional, Dict, List, Tuple
 from crypto import xor_encrypt
+from token_manager import create_authenticated_session, AuthenticatedSession, load_dotenv
+
+# Load .env file at module import
+load_dotenv()
+
+# Global authenticated session (initialized in main)
+_session: Optional[AuthenticatedSession] = None
 
 # Configuration
 SIMULATOR_DEFAULT_URL = "http://localhost:8090"
@@ -112,8 +119,12 @@ def send_status_command(ser: serial.Serial, microbit_id: str, status: str, call_
 
 def load_microbit_mapping(api_url: str) -> Tuple[Dict[str, str], Dict[str, str]]:
     """Load mapping of unit_id -> microbit_id and unit_id -> call_sign from API"""
+    global _session
     try:
-        response = requests.get(f"{api_url.rstrip('/')}/v1/units", timeout=8)
+        if _session:
+            response = _session.get(f"{api_url.rstrip('/')}/v1/units", timeout=8)
+        else:
+            response = requests.get(f"{api_url.rstrip('/')}/v1/units", timeout=8)
         response.raise_for_status()
         unit_to_microbit = {}
         unit_to_callsign = {}
@@ -125,7 +136,8 @@ def load_microbit_mapping(api_url: str) -> Tuple[Dict[str, str], Dict[str, str]]
                 unit_to_microbit[unit_id] = microbit_id
                 unit_to_callsign[unit_id] = call_sign
         return unit_to_microbit, unit_to_callsign
-    except requests.RequestException:
+    except requests.RequestException as e:
+        print(f"[ERROR] Failed to load microbit mapping: {e}")
         return {}, {}
 
 
@@ -278,6 +290,8 @@ def run_main_loop(ser: serial.Serial, simulator_url: str, poll_interval: float,
 
 
 def main() -> None:
+    global _session
+    
     serial_port = get_env("SERIAL_PORT", "")
     baud_rate = int(get_env("BAUD_RATE", "115200"))
     simulator_url = get_env("SIMULATOR_URL", SIMULATOR_DEFAULT_URL)
@@ -285,6 +299,9 @@ def main() -> None:
     poll_interval = float(get_env("SIM_POLL_INTERVAL", "5"))
 
     print_config(simulator_url, api_url, baud_rate, poll_interval)
+
+    # Initialize authenticated session
+    _session = create_authenticated_session()
 
     ser = setup_serial(serial_port, baud_rate)
     if ser is None:
