@@ -27,6 +27,7 @@ export type Permissions = {
   canUpdateIncidentStatus: boolean
   canDeleteIncident: boolean
   canDeleteUnit: boolean
+  canUseAddressSearch: boolean
 }
 
 function extractRoles(kc: Keycloak): string[] {
@@ -46,6 +47,7 @@ function derivePermissions(roles: string[]): Permissions {
     canUpdateIncidentStatus: isIt,
     canDeleteIncident: isIt,
     canDeleteUnit: isIt,
+    canUseAddressSearch: isIt || isSuperieur,
   }
 }
 

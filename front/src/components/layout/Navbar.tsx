@@ -18,6 +18,10 @@ interface NavbarProps {
     onLogout?: () => void
     userLabel?: string
     onAddUnit?: () => void
+    /** Callback to open incident creation modal via address search */
+    onCreateIncident?: () => void
+    /** Whether the user can create incidents via address search */
+    canCreateWithAddress?: boolean
 }
 
 export function Navbar({
@@ -31,6 +35,8 @@ export function Navbar({
     onLogout,
     userLabel,
     onAddUnit,
+    onCreateIncident,
+    canCreateWithAddress = false,
 }: Readonly<NavbarProps>): JSX.Element {
     const navRef = useRef<HTMLElement | null>(null)
 
@@ -79,14 +85,29 @@ export function Navbar({
                     </button>
                 )}
 
+                {/* Create incident button - only visible for superieur/it roles in live view */}
+                {currentView === 'live' && canCreateWithAddress && onCreateIncident && (
+                    <button
+                        type="button"
+                        onClick={onCreateIncident}
+                        className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700/50 hover:border-cyan-500/30 px-3 py-1.5 rounded-lg text-slate-200 hover:text-white text-sm font-medium transition-all duration-150"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Nouvel incident
+                    </button>
+                )}
+
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2 bg-slate-900/70 border border-slate-800 rounded-full px-1 py-1">
                         <button
                             type="button"
                             onClick={() => onNavigate('live')}
                             className={`px-3 py-1 text-xs font-semibold rounded-full transition ${currentView === 'live'
-                                    ? 'bg-slate-100 text-slate-950 shadow'
-                                    : 'text-slate-300 hover:text-white'
+                                ? 'bg-slate-100 text-slate-950 shadow'
+                                : 'text-slate-300 hover:text-white'
                                 }`}
                             aria-pressed={currentView === 'live'}
                         >
@@ -96,8 +117,8 @@ export function Navbar({
                             type="button"
                             onClick={() => onNavigate('dashboard')}
                             className={`px-3 py-1 text-xs font-semibold rounded-full transition ${currentView === 'dashboard'
-                                    ? 'bg-slate-100 text-slate-950 shadow'
-                                    : 'text-slate-300 hover:text-white'
+                                ? 'bg-slate-100 text-slate-950 shadow'
+                                : 'text-slate-300 hover:text-white'
                                 }`}
                             aria-pressed={currentView === 'dashboard'}
                         >
@@ -107,8 +128,8 @@ export function Navbar({
                             type="button"
                             onClick={() => onNavigate('history')}
                             className={`px-3 py-1 text-xs font-semibold rounded-full transition ${currentView === 'history'
-                                    ? 'bg-slate-100 text-slate-950 shadow'
-                                    : 'text-slate-300 hover:text-white'
+                                ? 'bg-slate-100 text-slate-950 shadow'
+                                : 'text-slate-300 hover:text-white'
                                 }`}
                             aria-pressed={currentView === 'history'}
                         >
