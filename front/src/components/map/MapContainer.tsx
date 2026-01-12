@@ -125,7 +125,7 @@ function buildConnectionLines(
     const selectedEvent = eventById.get(selectedEventId)
     const hasLon = selectedEvent?.location?.longitude !== undefined
     const hasLat = selectedEvent?.location?.latitude !== undefined
-    if (!hasLon || !hasLat) return []
+    if (hasLon === false || hasLat === false) return []
 
     return unitLocations
         .filter((loc) => unitToEvent.get(loc.unit.id) === selectedEventId)
@@ -283,7 +283,7 @@ export function MapContainer({
     const arrowLayerId = 'unit-event-arrows'
 
     useEffect(() => {
-        if (!mapContainerRef.current) return
+        if (mapContainerRef.current === null) return
 
         // Load saved state from localStorage if available
         const savedState = localStorage.getItem(MAP_STATE_KEY)
@@ -370,26 +370,28 @@ export function MapContainer({
         for (const marker of buildingMarkersRef.current) marker.remove()
         buildingMarkersRef.current = []
 
-        if (!buildings || buildings.length === 0) return
+        if (Array.isArray(buildings) && buildings.length > 0) {
+            for (const b of buildings) {
+                const hasCoords = b.location?.longitude !== undefined && b.location?.latitude !== undefined
+                if (hasCoords) {
+                    const el = createBuildingMarkerElement()
 
-        for (const b of buildings) {
-            if (!b.location?.longitude || !b.location?.latitude) continue
-            const el = createBuildingMarkerElement()
+                    // Add click handler to navigate to dashboard with station filter
+                    el.addEventListener('click', () => onBuildingSelect?.(b.id))
+                    el.style.cursor = 'pointer'
 
-            // Add click handler to navigate to dashboard with station filter
-            el.addEventListener('click', () => onBuildingSelect?.(b.id))
-            el.style.cursor = 'pointer'
-
-            const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-                .setLngLat([b.location.longitude, b.location.latitude])
-                .setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(
-                    `<div style="font-family: system-ui, sans-serif;">
-                        <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${b.name}</div>
-                        <div style="font-size: 12px; color: #666;">Cliquer pour voir les unités</div>
-                    </div>`
-                ))
-                .addTo(map)
-            buildingMarkersRef.current.push(marker)
+                    const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+                        .setLngLat([b.location.longitude, b.location.latitude])
+                        .setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(
+                            `<div style="font-family: system-ui, sans-serif;">
+                                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${b.name}</div>
+                                <div style="font-size: 12px; color: #666;">Cliquer pour voir les unités</div>
+                            </div>`
+                        ))
+                        .addTo(map)
+                    buildingMarkersRef.current.push(marker)
+                }
+            }
         }
     }, [buildings, onBuildingSelect])
 
