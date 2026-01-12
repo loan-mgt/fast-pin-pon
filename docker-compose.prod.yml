@@ -47,6 +47,10 @@ services:
         condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
+      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - KEYCLOAK_REALM=sdmis-realm
+      - KEYCLOAK_CLIENT_ID=sdmis-api
+      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
     networks:
       - internal
     volumes:
@@ -67,6 +71,10 @@ services:
     environment:
       - API_BASE_URL=http://api:8080
       - INCIDENT_INTERVAL_SECONDS=180
+      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - KEYCLOAK_REALM=sdmis-realm
+      - KEYCLOAK_CLIENT_ID=sdmis-api
+      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
     networks:
       - internal
     volumes:
@@ -89,6 +97,10 @@ services:
       - ENGINE_CALLBACK_PORT=8081
       - DISPATCH_SCHEDULER_ENABLED=true
       - DISPATCH_INTERVAL_SECONDS=30
+      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - KEYCLOAK_REALM=sdmis-realm
+      - KEYCLOAK_CLIENT_ID=sdmis-api
+      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
     networks:
       - internal
     volumes:
