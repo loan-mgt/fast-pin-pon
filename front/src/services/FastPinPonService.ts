@@ -245,6 +245,22 @@ class FastPinPonService {
   }
 
   /**
+   * Toggle auto simulation mode for an event.
+   * When disabled, the event won't be processed by the dispatch engine or simulation.
+   */
+  async toggleEventAutoSimulated(eventId: string, autoSimulated: boolean, token?: string): Promise<{ id: string, auto_simulated: boolean, updated_at: string }> {
+    const response = await fetch(`${this.API_BASE_URL}/events/${eventId}/auto-simulated`, {
+      method: 'PATCH',
+      headers: this.buildHeaders(token),
+      body: JSON.stringify({ auto_simulated: autoSimulated }),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to toggle auto simulation: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+
+  /**
    * Filter units by status - useful for excluding available_hidden from map display
    */
   getVisibleUnits(units: UnitSummary[]): UnitSummary[] {

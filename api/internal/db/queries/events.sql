@@ -31,6 +31,7 @@ INSERT INTO events (
     ST_Y(location::geometry)::double precision AS latitude,
     severity,
     event_type_code,
+    auto_simulated,
     reported_at,
     updated_at,
     closed_at;
@@ -48,6 +49,7 @@ SELECT
     e.event_type_code,
     et.name AS event_type_name,
     et.default_severity,
+    e.auto_simulated,
     e.reported_at,
     e.updated_at,
     e.closed_at,
@@ -75,6 +77,7 @@ SELECT
     et.name AS event_type_name,
     et.default_severity,
     et.recommended_unit_types,
+    e.auto_simulated,
     e.reported_at,
     e.updated_at,
     e.closed_at,
@@ -87,19 +90,6 @@ WHERE e.id = $1;
 
 
 
--- name: ListEventLogs :many
-SELECT
-    id,
-    event_id,
-    created_at,
-    code,
-    actor,
-    payload
-FROM event_logs
-WHERE event_id = $1
-ORDER BY created_at DESC
-LIMIT $2 OFFSET $3;
-
 -- name: GetAllEventLocations :many
 SELECT
     e.id,
@@ -110,3 +100,13 @@ SELECT
     e.reported_at
 FROM events e
 ORDER BY e.reported_at DESC;
+
+-- name: UpdateEventAutoSimulated :one
+UPDATE events
+SET auto_simulated = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING
+    id,
+    auto_simulated,
+    updated_at;

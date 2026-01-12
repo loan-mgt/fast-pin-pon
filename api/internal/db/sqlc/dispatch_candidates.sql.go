@@ -209,6 +209,7 @@ FROM interventions i
 JOIN events e ON i.event_id = e.id
 JOIN event_types et ON e.event_type_code = et.code
 WHERE i.status = 'created'
+  AND e.auto_simulated = true
 ORDER BY e.severity DESC, i.created_at ASC
 `
 

@@ -217,7 +217,8 @@ public final class SimulationEngine {
                     route.estimatedDurationSeconds,
                     route.routeLengthMeters,
                     route.severity,
-                    new VehicleState.InitialPosition(initialLat, initialLon, route.progressPercent)
+                    new VehicleState.InitialPosition(initialLat, initialLon, route.progressPercent),
+                    route.autoSimulated != null ? route.autoSimulated : Boolean.TRUE
             ));
 
             vehicleStates.put(unit.id, state);
@@ -336,7 +337,10 @@ public final class SimulationEngine {
     private Map<String, List<VehicleState>> groupArrivedVehiclesByIntervention() {
         Map<String, List<VehicleState>> byIntervention = new HashMap<>();
         for (VehicleState state : vehicleStates.values()) {
-            if (state.hasArrived() && state.getInterventionId() != null && !movingAvailableUnits.contains(state.getUnitId())) {
+            // Only consider auto-simulated interventions for automatic completion.
+            // Manual interventions (autoSimulated = false) must be completed manually.
+            if (state.hasArrived() && state.getInterventionId() != null && 
+                    !movingAvailableUnits.contains(state.getUnitId()) && state.isAutoSimulated()) {
                 byIntervention.computeIfAbsent(state.getInterventionId(), k -> new ArrayList<>())
                         .add(state);
             }
