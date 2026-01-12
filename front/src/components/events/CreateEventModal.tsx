@@ -182,7 +182,7 @@ export function CreateEventModal({
           {/* Address search bar - only shown in navbar button mode (addressRequired) */}
           {addressRequired && canUseAddressSearch && (
             <div className="space-y-2">
-              <label className="text-slate-300 text-sm">
+              <label className="text-slate-300 text-sm" htmlFor="address-search">
                 Rechercher une adresse *
               </label>
               <AddressSearchBar

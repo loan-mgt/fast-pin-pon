@@ -48,8 +48,9 @@ export function AddressSearchBar({
             setSuggestions(results)
             setIsOpen(results.length > 0)
             setHighlightedIndex(-1)
-        } catch (err) {
-            setError('Erreur lors de la recherche')
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Erreur lors de la recherche'
+            setError(message)
             setSuggestions([])
         } finally {
             setIsLoading(false)
@@ -72,7 +73,7 @@ export function AddressSearchBar({
 
             // Set new debounced search
             debounceTimerRef.current = setTimeout(() => {
-                void performSearch(newQuery)
+                performSearch(newQuery).catch(() => { /* error handled in performSearch */ })
             }, DEBOUNCE_DELAY)
         },
         [performSearch, onInputChange],
@@ -145,7 +146,9 @@ export function AddressSearchBar({
             <div className="relative">
                 <input
                     ref={inputRef}
+                    id="address-search"
                     type="text"
+                    role="combobox"
                     value={query}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
@@ -155,6 +158,8 @@ export function AddressSearchBar({
                     aria-label="Rechercher une adresse"
                     aria-expanded={isOpen}
                     aria-haspopup="listbox"
+                    aria-controls="address-suggestions-list"
+                    aria-autocomplete="list"
                     autoComplete="off"
                 />
                 {/* Search icon or loading spinner */}
@@ -198,6 +203,7 @@ export function AddressSearchBar({
             {/* Suggestions dropdown */}
             {isOpen && suggestions.length > 0 && (
                 <ul
+                    id="address-suggestions-list"
                     className="z-50 absolute bg-slate-800/95 backdrop-blur-sm shadow-lg mt-1 border border-blue-500/20 rounded-xl w-full max-h-60 overflow-auto"
                     role="listbox"
                 >
@@ -206,11 +212,13 @@ export function AddressSearchBar({
                             key={`${suggestion.latitude}-${suggestion.longitude}`}
                             role="option"
                             aria-selected={highlightedIndex === index}
+                            tabIndex={-1}
                             className={`px-3 py-2 cursor-pointer text-sm transition-colors ${highlightedIndex === index
                                 ? 'bg-sky-500/20 text-white'
                                 : 'text-slate-300 hover:bg-slate-700/50'
                                 }`}
                             onClick={() => handleSelect(suggestion)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSelect(suggestion)}
                             onMouseEnter={() => setHighlightedIndex(index)}
                         >
                             <div className="font-medium">{suggestion.label}</div>
