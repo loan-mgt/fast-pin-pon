@@ -250,6 +250,7 @@ export function App() {
         onAddUnit={permissions?.canCreateUnit ? () => setIsAddUnitOpen(true) : undefined}
         canCreateWithAddress={permissions?.canUseAddressSearch ?? false}
         canViewDashboard={permissions?.canViewDashboard ?? false}
+        canAccessSettings={permissions?.canAccessSettings ?? false}
         onCreateIncident={permissions?.canCreateIncident ? () => {
           setIsAddressRequired(true)
           setPendingLocation(null)
@@ -275,7 +276,7 @@ export function App() {
         </main>
       )}
 
-      {view === 'settings' && (
+      {view === 'settings' && permissions?.canAccessSettings && (
         <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-hidden">
           <SettingsPage onClose={() => setView('live')} />
         </main>
