@@ -58,6 +58,9 @@ func (s *Server) Close() {
 
 // Run starts the HTTP server and blocks until the context is cancelled or an unrecoverable error occurs.
 func (s *Server) Run(ctx context.Context) error {
+	// Start background incident metrics sync (syncs every 30 seconds)
+	StartIncidentMetricsSync(ctx, s.queries, s.log, 30*time.Second)
+
 	httpServer := &http.Server{
 		Addr:         s.cfg.HTTP.Address,
 		Handler:      s.routes(),

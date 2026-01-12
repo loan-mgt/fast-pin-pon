@@ -78,7 +78,6 @@ services:
     environment:
       - API_BASE_URL=http://api:8080
       - INCIDENT_INTERVAL_SECONDS=180
-
   engine:
     extends:
       file: docker-compose.prod.yml

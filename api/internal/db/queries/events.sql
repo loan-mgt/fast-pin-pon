@@ -87,3 +87,26 @@ WHERE e.id = $1;
 
 
 
+-- name: ListEventLogs :many
+SELECT
+    id,
+    event_id,
+    created_at,
+    code,
+    actor,
+    payload
+FROM event_logs
+WHERE event_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetAllEventLocations :many
+SELECT
+    e.id,
+    ST_X(e.location::geometry)::double precision AS longitude,
+    ST_Y(e.location::geometry)::double precision AS latitude,
+    e.severity,
+    e.event_type_code,
+    e.reported_at
+FROM events e
+ORDER BY e.reported_at DESC;

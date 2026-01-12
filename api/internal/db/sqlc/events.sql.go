@@ -265,3 +265,51 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]ListE
 	}
 	return items, nil
 }
+
+const getAllEventLocations = `-- name: GetAllEventLocations :many
+SELECT
+    e.id,
+    ST_X(e.location::geometry)::double precision AS longitude,
+    ST_Y(e.location::geometry)::double precision AS latitude,
+    e.severity,
+    e.event_type_code,
+    e.reported_at
+FROM events e
+ORDER BY e.reported_at DESC
+`
+
+type GetAllEventLocationsRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	Longitude     float64            `json:"longitude"`
+	Latitude      float64            `json:"latitude"`
+	Severity      int32              `json:"severity"`
+	EventTypeCode string             `json:"event_type_code"`
+	ReportedAt    pgtype.Timestamptz `json:"reported_at"`
+}
+
+func (q *Queries) GetAllEventLocations(ctx context.Context) ([]GetAllEventLocationsRow, error) {
+	rows, err := q.db.Query(ctx, getAllEventLocations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllEventLocationsRow
+	for rows.Next() {
+		var i GetAllEventLocationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Longitude,
+			&i.Latitude,
+			&i.Severity,
+			&i.EventTypeCode,
+			&i.ReportedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -18,7 +18,6 @@ import retrofit2.http.Query;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,7 +29,6 @@ public final class ApiClient {
     private static final Logger LOG = Logger.getLogger(ApiClient.class.getName());
     private static final OkHttpClient HTTP = new OkHttpClient();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private final Random random = new Random();
     private final List<String> eventTypeCodes = new ArrayList<>();
     private final ApiService api;
 
@@ -65,8 +63,9 @@ public final class ApiClient {
 
     /**
      * Create an event from raw parameters.
+     * Uses the incident type directly as the event type code.
      * 
-     * @param type incident type
+     * @param type incident type (used as event_type_code)
      * @param number incident sequence number
      * @param lat latitude
      * @param lon longitude
@@ -74,16 +73,13 @@ public final class ApiClient {
      * @return created event id or null on failure
      */
     public String createEvent(IncidentType type, int number, double lat, double lon, int severity) {
-        String typeCode = pickEventType();
-        if (typeCode == null) {
-            LOG.warning("[API] No event type code available; cannot create event.");
-            return null;
-        }
-        String title = "SIM-" + type + "-" + number;
+        // Use the incident type enum name directly as the event type code
+        String typeCode = type.name();
+        String title = "SIM-" + typeCode + "-" + number;
         CreateEventRequest payload = new CreateEventRequest(title, typeCode, lat, lon, severity, "incident-generator");
         IdDto created = execute(api.createEvent(payload, "true"), "POST /v1/events");
         if (created != null && created.getId() != null) {
-            LOG.log(Level.INFO, "[API] Event created (id={0})", created.getId());
+            LOG.log(Level.INFO, "[API] Event created (id={0}, type={1})", new Object[]{created.getId(), typeCode});
             return created.getId();
         }
         return null;
@@ -137,13 +133,6 @@ public final class ApiClient {
         if (!eventTypeCodes.isEmpty()) {
             LOG.log(Level.INFO, "[API] Event types: {0}", eventTypeCodes);
         }
-    }
-
-    private String pickEventType() {
-        if (eventTypeCodes.isEmpty()) {
-            return null;
-        }
-        return eventTypeCodes.get(random.nextInt(eventTypeCodes.size()));
     }
 
     private <T> T execute(Call<T> call, String action) {
