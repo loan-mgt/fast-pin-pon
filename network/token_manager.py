@@ -12,27 +12,42 @@ import threading
 from pathlib import Path
 
 
-def load_dotenv():
-    """Load environment variables from .env file in project root."""
-    # Find .env file (look in current dir and parent dirs)
+def _parse_env_line(line: str) -> tuple:
+    """Parse a single .env line and return (key, value) or (None, None)."""
+    line = line.strip()
+    if not line or line.startswith('#') or '=' not in line:
+        return None, None
+    key, _, value = line.partition('=')
+    key = key.strip()
+    value = value.strip().strip('"').strip("'")
+    return (key, value) if key else (None, None)
+
+
+def _find_env_file() -> Optional[Path]:
+    """Find .env file in current or parent directories (up to 3 levels)."""
     current = Path(__file__).parent
-    for _ in range(3):  # Check up to 3 levels up
+    for _ in range(3):
         env_file = current / ".env"
         if env_file.exists():
-            print(f"[ENV] Loading {env_file}")
-            with open(env_file, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#') and '=' in line:
-                        key, _, value = line.partition('=')
-                        key = key.strip()
-                        value = value.strip().strip('"').strip("'")
-                        if key and key not in os.environ:  # Don't override existing env vars
-                            os.environ[key] = value
-            return True
+            return env_file
         current = current.parent
-    print("[ENV] No .env file found")
-    return False
+    return None
+
+
+def load_dotenv() -> bool:
+    """Load environment variables from .env file in project root."""
+    env_file = _find_env_file()
+    if not env_file:
+        print("[ENV] No .env file found")
+        return False
+    
+    print(f"[ENV] Loading {env_file}")
+    with open(env_file, 'r') as f:
+        for line in f:
+            key, value = _parse_env_line(line)
+            if key and key not in os.environ:
+                os.environ[key] = value
+    return True
 
 
 class TokenManager:
