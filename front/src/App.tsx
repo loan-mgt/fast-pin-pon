@@ -12,13 +12,14 @@ import { CreateEventModal } from './components/events/CreateEventModal'
 import { DashboardPage } from './components/dashboard/DashboardPage'
 import { AddUnitModal } from './components/dashboard/AddUnitModal'
 import { HistoryPage } from './components/history/HistoryPage'
+import { MonitoringPage } from './components/dashboard/MonitoringPage'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
 import type { EventSummary, UnitSummary, Building, UnitType, ActivityLog } from './types'
 import { useAuth } from './auth/AuthProvider'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
 const MIN_SPIN_DURATION = 500
-type ViewMode = 'live' | 'dashboard' | 'history'
+type ViewMode = 'live' | 'dashboard' | 'history' | 'monitoring'
 
 export function App() {
   const [events, setEvents] = useState<EventSummary[]>([])
@@ -271,6 +272,12 @@ export function App() {
       {view === 'history' && (
         <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-auto">
           <HistoryPage />
+        </main>
+      )}
+
+      {view === 'monitoring' && (
+        <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-auto">
+          <MonitoringPage />
         </main>
       )}
 

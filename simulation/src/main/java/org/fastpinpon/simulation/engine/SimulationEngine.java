@@ -59,6 +59,10 @@ public final class SimulationEngine {
         log.info("Simulation engine initialized (updatingEnabled={}, speedMultiplier={})", updatingEnabled, movementSpeedMultiplier);
     }
 
+    public boolean isUpdatingEnabled() {
+        return updatingEnabled;
+    }
+
     /**
      * Main simulation tick - called periodically.
      */

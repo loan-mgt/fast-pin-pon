@@ -28,6 +28,7 @@ func (s *Server) routes() http.Handler {
 	}))
 
 	r.Get("/healthz", s.handleHealth)
+	r.Get("/v1/admin/health", s.handleAdminHealth) // Protected by middleware inside handler check or could be moved
 	r.Route("/v1", func(v1 chi.Router) {
 		// Apply JWT authentication to all v1 routes
 		v1.Use(s.authMw.Middleware)

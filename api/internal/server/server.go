@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"fast/pin/internal/config"
@@ -28,6 +29,9 @@ type Server struct {
 	startedAt time.Time
 	// repairLocks prevents concurrent repair attempts for the same unit
 	repairLocks sync.Map
+
+	// lastMicrobitMessage tracks the timestamp of the last update received from the bridge
+	lastMicrobitMessage atomic.Value
 }
 
 // New instantiates the HTTP server, runs DB migrations and prepares shared dependencies.

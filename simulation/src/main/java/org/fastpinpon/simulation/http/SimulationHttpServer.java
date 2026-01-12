@@ -39,6 +39,7 @@ public final class SimulationHttpServer {
         server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/tick", this::handleTick);
         server.createContext("/units", this::handleUnits);
+        server.createContext("/status", this::handleStatus);
         server.setExecutor(Executors.newCachedThreadPool());
         server.start();
         LOG.log(Level.INFO, "[SIM] HTTP server listening on port {0}", port);
@@ -96,6 +97,37 @@ public final class SimulationHttpServer {
         } catch (Exception e) {
             LOG.log(Level.WARNING, "[HTTP] --> 500 Error: {0}", e.getMessage());
             sendPlain(exchange, 500, "units failed: " + e.getMessage());
+        }
+    }
+
+    private void handleStatus(HttpExchange exchange) throws IOException {
+        String clientIP = exchange.getRemoteAddress().toString();
+        LOG.log(Level.INFO, "[HTTP] <-- {0} {1} from {2}",
+                new Object[]{exchange.getRequestMethod(), "/status", clientIP});
+
+        try {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendPlain(exchange, 405, "Method Not Allowed");
+                return;
+            }
+
+            Map<String, Object> status = new HashMap<>();
+            status.put("updating_enabled", engine.isUpdatingEnabled());
+            status.put("vehicle_count", engine.snapshotVehicles().size());
+            // uptime can be calculated if we tracked start time, but for now simple availability is enough
+            // or we could add start time to Engine.
+            status.put("status", "UP");
+
+            byte[] body = MAPPER.writeValueAsBytes(status);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+            LOG.log(Level.INFO, "[HTTP] --> 200 OK | Status returned");
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "[HTTP] --> 500 Error: {0}", e.getMessage());
+            sendPlain(exchange, 500, "status failed: " + e.getMessage());
         }
     }
 
