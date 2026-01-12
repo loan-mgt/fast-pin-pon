@@ -324,7 +324,7 @@ export function MapContainer({
             if (onMapReady) {
                 onMapReady((lng: number, lat: number, zoom?: number) => {
                     const targetZoom = zoom ?? map.getZoom()
-                    const duration = zoom !== undefined ? 1600 : 1000
+                    const duration = zoom === undefined ? 1000 : 1600
                     map.easeTo({ center: [lng, lat], zoom: targetZoom, duration, essential: true })
                 })
             }
