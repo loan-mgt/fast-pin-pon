@@ -64,7 +64,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
+        "h": 8,
         "w": 12,
         "x": 0,
         "y": 0
@@ -88,8 +88,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
-          "legendFormat": "p50",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "P50",
           "range": true,
           "refId": "A"
         },
@@ -99,8 +99,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
-          "legendFormat": "p95",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "P95",
           "range": true,
           "refId": "B"
         },
@@ -110,24 +110,13 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
-          "legendFormat": "p99",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "P99",
           "range": true,
           "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_sum{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_count{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range]))",
-          "legendFormat": "avg travel {{event_type}}/{{unit_type}}",
-          "range": true,
-          "refId": "D"
         }
       ],
-      "title": "Assignment travel (s)",
+      "title": "Assignment travel - Percentiles globaux (s)",
       "type": "timeseries"
     },
     {
@@ -166,7 +155,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
+        "h": 8,
         "w": 12,
         "x": 12,
         "y": 0
@@ -190,8 +179,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
-          "legendFormat": "p50",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "P50",
           "range": true,
           "refId": "A"
         },
@@ -201,8 +190,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
-          "legendFormat": "p95",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "P95",
           "range": true,
           "refId": "B"
         },
@@ -212,9 +201,138 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
-          "legendFormat": "p99",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "P99",
           "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Assignment on-site - Percentiles globaux (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300
+              },
+              {
+                "color": "red",
+                "value": 600
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "event_type"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "unit_type"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le, event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le, event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le, event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
           "refId": "C"
         },
         {
@@ -223,14 +341,216 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_sum{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_count{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range]))",
-          "legendFormat": "avg on-site {{event_type}}/{{unit_type}}",
-          "range": true,
+          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_sum{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_count{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval]))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
           "refId": "D"
         }
       ],
-      "title": "Assignment on-site (s)",
-      "type": "timeseries"
+      "title": "Assignment travel - Détails par type (s)",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "le": true
+            },
+            "indexByName": {
+              "event_type": 0,
+              "unit_type": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5
+            },
+            "renameByName": {
+              "Value #A": "P50",
+              "Value #B": "P95",
+              "Value #C": "P99",
+              "Value #D": "Moyenne"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 900
+              },
+              {
+                "color": "red",
+                "value": 1800
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "event_type"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "unit_type"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le, event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le, event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le, event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_sum{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_count{event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval]))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "D"
+        }
+      ],
+      "title": "Assignment on-site - Détails par type (s)",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "le": true
+            },
+            "indexByName": {
+              "event_type": 0,
+              "unit_type": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5
+            },
+            "renameByName": {
+              "Value #A": "P50",
+              "Value #B": "P95",
+              "Value #C": "P99",
+              "Value #D": "Moyenne"
+            }
+          }
+        }
+      ],
+      "type": "table"
     },
     {
       "datasource": {
@@ -268,10 +588,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
+        "h": 8,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 16
       },
       "id": 3,
       "options": {
@@ -292,8 +612,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range])))",
-          "legendFormat": "p50",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "P50",
           "range": true,
           "refId": "A"
         },
@@ -303,8 +623,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range])))",
-          "legendFormat": "p95",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "P95",
           "range": true,
           "refId": "B"
         },
@@ -314,24 +634,13 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range])))",
-          "legendFormat": "p99",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "legendFormat": "P99",
           "range": true,
           "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum by (event_type) (rate(api_event_resolution_duration_seconds_sum{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range])) / sum by (event_type) (rate(api_event_resolution_duration_seconds_count{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range]))",
-          "legendFormat": "avg {{event_type}}",
-          "range": true,
-          "refId": "D"
         }
       ],
-      "title": "Event resolution (s)",
+      "title": "Event resolution - Percentiles globaux (s)",
       "type": "timeseries"
     }
   ],
@@ -356,14 +665,14 @@
           "uid": "prometheus"
         },
         "allValue": ".*",
-        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, event_id)",
+        "definition": "label_values({__name__=~\"api_intervention_assignment_.*\"}, event_id)",
         "hide": 0,
         "includeAll": true,
         "label": "event_id",
         "multi": false,
         "name": "event_id",
         "options": [],
-        "query": "label_values(api_intervention_assignment_travel_duration_seconds, event_id)",
+        "query": "label_values({__name__=~\"api_intervention_assignment_.*\"}, event_id)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -380,14 +689,14 @@
           "uid": "prometheus"
         },
         "allValue": ".*",
-        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, intervention_id)",
+        "definition": "label_values({__name__=~\"api_intervention_assignment_.*\"}, intervention_id)",
         "hide": 0,
         "includeAll": true,
         "label": "intervention_id",
         "multi": false,
         "name": "intervention_id",
         "options": [],
-        "query": "label_values(api_intervention_assignment_travel_duration_seconds, intervention_id)",
+        "query": "label_values({__name__=~\"api_intervention_assignment_.*\"}, intervention_id)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -404,14 +713,14 @@
           "uid": "prometheus"
         },
         "allValue": ".*",
-        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, event_type)",
+        "definition": "label_values({__name__=~\"api_intervention_assignment_.*\"}, event_type)",
         "hide": 0,
         "includeAll": true,
         "label": "event_type",
         "multi": false,
         "name": "event_type",
         "options": [],
-        "query": "label_values(api_intervention_assignment_travel_duration_seconds, event_type)",
+        "query": "label_values({__name__=~\"api_intervention_assignment_.*\"}, event_type)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -428,14 +737,14 @@
           "uid": "prometheus"
         },
         "allValue": ".*",
-        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, unit_type)",
+        "definition": "label_values({__name__=~\"api_intervention_assignment_.*\"}, unit_type)",
         "hide": 0,
         "includeAll": true,
         "label": "unit_type",
         "multi": false,
         "name": "unit_type",
         "options": [],
-        "query": "label_values(api_intervention_assignment_travel_duration_seconds, unit_type)",
+        "query": "label_values({__name__=~\"api_intervention_assignment_.*\"}, unit_type)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -452,14 +761,14 @@
           "uid": "prometheus"
         },
         "allValue": ".*",
-        "definition": "label_values(api_intervention_assignment_travel_duration_seconds, severity)",
+        "definition": "label_values({__name__=~\"api_intervention_assignment_.*\"}, severity)",
         "hide": 0,
         "includeAll": true,
         "label": "severity",
         "multi": false,
         "name": "severity",
         "options": [],
-        "query": "label_values(api_intervention_assignment_travel_duration_seconds, severity)",
+        "query": "label_values({__name__=~\"api_intervention_assignment_.*\"}, severity)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -475,6 +784,6 @@
   "timezone": "browser",
   "title": "Map dispatch metrics",
   "uid": "map-dispatch-metrics",
-  "version": 1,
+  "version": 3,
   "weekStart": ""
 }

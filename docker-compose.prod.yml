@@ -16,7 +16,7 @@ services:
     volumes:
       - logs:/var/log:rw
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -103,7 +103,7 @@ services:
     image: ghcr.io/loan-mgt/fast-pin-pon/database:main
     container_name: fast-pin-pon-postgres
     restart: unless-stopped
-    shm_size: 256mb 
+    shm_size: 256mb
     environment:
       POSTGRES_DB: fastpinpon
       POSTGRES_USER: fastpinpon
@@ -145,9 +145,7 @@ services:
       KC_DB_USERNAME: ${KC_POSTGRES_USER}
       KC_DB_PASSWORD: ${KC_POSTGRES_PASSWORD}
       KC_HOSTNAME: ${KC_HOSTNAME}
-      KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
       KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
       KC_LOG_LEVEL: info
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
@@ -162,13 +160,23 @@ services:
       PROXY_ADDRESS_FORWARDING: true
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
       PASSWORD_USER: ${PASSWORD_USER}
+      KC_HTTP_MANAGEMENT_PORT: 9000
+      KC_HEALTH_PATH: /health/ready
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; timeout 3 cat <&3 | grep -m 1 'UP' || exit 1" ]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 20
     depends_on:
-      - keycloakdb
+      keycloakdb:
+        condition: service_healthy
     volumes:
       - logs:/opt/keycloak/data/logs:rw
     ports:
       - 8082:8080
       - 9000:9000
+
   keycloakdb:
     image: postgres:16
     container_name: fast-pin-pon-keycloak-db
@@ -181,6 +189,13 @@ services:
       POSTGRES_DB: ${KC_POSTGRES_DB}
       POSTGRES_USER: ${KC_POSTGRES_USER}
       POSTGRES_PASSWORD: ${KC_POSTGRES_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${KC_POSTGRES_USER} -d ${KC_POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   grafana:
     image: ghcr.io/loan-mgt/fast-pin-pon/infra/grafana:latest
     container_name: fast-pin-pon-grafana
@@ -243,7 +258,7 @@ services:
       - internal
       - internal-keycloak
       - internal-grafana
-      
+
 networks:
   internal: null
   internal-keycloak: null
