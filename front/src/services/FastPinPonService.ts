@@ -14,8 +14,8 @@ class FastPinPonService {
     return headers
   }
 
-  async getEvents(limit = 25, token?: string, denyStatuses?: string[]): Promise<EventSummary[]> {
-    const params = new URLSearchParams({ limit: String(limit) })
+  async getEvents(limit = 10, token?: string, denyStatuses?: string[], offset = 0): Promise<EventSummary[]> {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
     if (denyStatuses && denyStatuses.length > 0) {
       params.set('deny_status', denyStatuses.join(','))
     }

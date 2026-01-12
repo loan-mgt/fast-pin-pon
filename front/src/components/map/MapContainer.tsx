@@ -27,7 +27,7 @@ type EventLocation = {
 
 function loadStoredMapState(): StoredMapState | null {
     const savedState = localStorage.getItem(MAP_STATE_KEY)
-    if (!savedState) return null
+    if (savedState === null) return null
 
     try {
         const parsed = JSON.parse(savedState) as StoredMapState
@@ -70,7 +70,7 @@ function flyToInitialLocation(
     eventLocations: EventLocation[],
     isFirstLoad: MutableRefObject<boolean>,
 ): void {
-    if (!isFirstLoad.current || !eventLocations.length) return
+    if (!isFirstLoad.current || eventLocations.length === 0) return
 
     const savedState = loadStoredMapState()
     const { center, zoom } = getInitialView(eventLocations, savedState)
@@ -101,12 +101,25 @@ function buildUnitEventMaps(events: EventSummary[]): {
 }
 
 function getUnitLocations(units: UnitSummary[]): UnitLocation[] {
+    const normalizeStatus = (status: string) => status?.toLowerCase().replaceAll(/[-\s]/g, '_') ?? ''
+    const allowedStatuses = new Set([
+        'available',
+        'under_way',
+        'on_site',
+        'unavailable',
+        'offline',
+        'created',
+        'planned',
+        'completed',
+        'cancelled',
+    ])
+
     return units
-        // Exclude units with status 'available_hidden' from map display
-        .filter((unit) => unit.status !== 'available_hidden')
-        .filter((unit) => unit.location?.longitude && unit.location?.latitude)
-        .filter((unit) => unit.location.longitude !== 0 && unit.location.latitude !== 0)
-        .map((unit) => ({
+        .map((unit) => ({ unit, normalizedStatus: normalizeStatus(unit.status) }))
+        .filter(({ normalizedStatus }) => allowedStatuses.has(normalizedStatus))
+        .filter(({ unit }) => unit.location?.longitude && unit.location?.latitude)
+        .filter(({ unit }) => unit.location.longitude !== 0 && unit.location.latitude !== 0)
+        .map(({ unit }) => ({
             unit,
             longitude: unit.location.longitude,
             latitude: unit.location.latitude,
@@ -119,15 +132,18 @@ function buildConnectionLines(
     unitLocations: UnitLocation[],
     unitToEvent: Map<string, string>,
 ): GeoJSON.Feature<GeoJSON.LineString>[] {
-    if (!selectedEventId) return []
+    if (selectedEventId === null || selectedEventId === undefined) return []
 
     const selectedEvent = eventById.get(selectedEventId)
-    if (!selectedEvent?.location?.longitude || !selectedEvent?.location?.latitude) return []
+    const longitude = selectedEvent?.location?.longitude
+    const latitude = selectedEvent?.location?.latitude
+    if (longitude === undefined || latitude === undefined) return []
+
+    const connectionEligibleStatuses = new Set(['available', 'under_way', 'unavailable', 'offline', 'created', 'planned', 'completed', 'cancelled'])
 
     return unitLocations
         .filter((loc) => unitToEvent.get(loc.unit.id) === selectedEventId)
-        // Exclude on_site units - they are displayed under the event icon
-        .filter((loc) => loc.unit.status.toLowerCase() !== 'on_site')
+        .filter((loc) => connectionEligibleStatuses.has(loc.unit.status.toLowerCase()))
         .map((loc) => ({
             type: 'Feature' as const,
             properties: { unitId: loc.unit.id, eventId: selectedEventId },
@@ -135,7 +151,7 @@ function buildConnectionLines(
                 type: 'LineString' as const,
                 coordinates: [
                     [loc.longitude, loc.latitude],
-                    [selectedEvent.location.longitude, selectedEvent.location.latitude],
+                    [longitude, latitude],
                 ],
             },
         }))
@@ -216,7 +232,7 @@ function addEventMarkers(
             const status = (currentUnit.status ?? '').toLowerCase().trim()
 
             // Debug: log unit matching
-            if (!globalUnit) {
+            if (globalUnit === undefined) {
                 console.warn(`[MapContainer] Unit ${assignedUnit.id} (${assignedUnit.call_sign}) not found in global units list`)
             }
 
@@ -235,7 +251,7 @@ function addEventMarkers(
             isSelected,
             location.event.severity,
             onSiteUnits,
-            !location.event.auto_simulated, // isManual = inverse of auto_simulated
+            location.event.auto_simulated === false, // isManual = inverse of auto_simulated
         )
 
         // Anchor at center so connection lines point to the event icon center
@@ -280,7 +296,7 @@ export function MapContainer({
     const arrowLayerId = 'unit-event-arrows'
 
     useEffect(() => {
-        if (!mapContainerRef.current) return
+        if (mapContainerRef.current === null) return
 
         // Load saved state from localStorage if available
         const savedState = localStorage.getItem(MAP_STATE_KEY)
@@ -308,7 +324,8 @@ export function MapContainer({
             if (onMapReady) {
                 onMapReady((lng: number, lat: number, zoom?: number) => {
                     const targetZoom = zoom ?? map.getZoom()
-                    map.flyTo({ center: [lng, lat], zoom: targetZoom, duration: 1500, essential: true })
+                    const duration = zoom === undefined ? 1000 : 1600
+                    map.easeTo({ center: [lng, lat], zoom: targetZoom, duration, essential: true })
                 })
             }
         })
@@ -346,12 +363,12 @@ export function MapContainer({
     // Effect for event markers
     useEffect(() => {
         const map = mapRef.current
-        if (!map) return
+        if (map === null) return
 
         clearMarkers(eventMarkersRef)
 
         const eventLocations = getEventLocations(events)
-        if (!eventLocations.length) return
+        if (eventLocations.length === 0) return
 
         flyToInitialLocation(map, eventLocations, isFirstLoad)
         addEventMarkers(map, eventLocations, selectedEventId, onEventSelect, eventMarkersRef, units)
@@ -360,39 +377,41 @@ export function MapContainer({
     // Effect for building markers (casernes)
     useEffect(() => {
         const map = mapRef.current
-        if (!map) return
+        if (map === null) return
 
         // Clear existing
         for (const marker of buildingMarkersRef.current) marker.remove()
         buildingMarkersRef.current = []
 
-        if (!buildings || buildings.length === 0) return
+        if (Array.isArray(buildings) && buildings.length > 0) {
+            for (const b of buildings) {
+                const hasCoords = b.location?.longitude !== undefined && b.location?.latitude !== undefined
+                if (hasCoords) {
+                    const el = createBuildingMarkerElement()
 
-        for (const b of buildings) {
-            if (!b.location?.longitude || !b.location?.latitude) continue
-            const el = createBuildingMarkerElement()
+                    // Add click handler to navigate to dashboard with station filter
+                    el.addEventListener('click', () => onBuildingSelect?.(b.id))
+                    el.style.cursor = 'pointer'
 
-            // Add click handler to navigate to dashboard with station filter
-            el.addEventListener('click', () => onBuildingSelect?.(b.id))
-            el.style.cursor = 'pointer'
-
-            const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-                .setLngLat([b.location.longitude, b.location.latitude])
-                .setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(
-                    `<div style="font-family: system-ui, sans-serif;">
-                        <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${b.name}</div>
-                        <div style="font-size: 12px; color: #666;">Cliquer pour voir les unités</div>
-                    </div>`
-                ))
-                .addTo(map)
-            buildingMarkersRef.current.push(marker)
+                    const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+                        .setLngLat([b.location.longitude, b.location.latitude])
+                        .setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(
+                            `<div style="font-family: system-ui, sans-serif;">
+                                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${b.name}</div>
+                                <div style="font-size: 12px; color: #666;">Cliquer pour voir les unités</div>
+                            </div>`
+                        ))
+                        .addTo(map)
+                    buildingMarkersRef.current.push(marker)
+                }
+            }
         }
     }, [buildings, onBuildingSelect])
 
     // Effect for unit markers and connection lines
     useEffect(() => {
         const map = mapRef.current
-        if (!map) return
+        if (map === null) return
 
         // Wait for style to be loaded before adding sources/layers
         const updateUnitsAndConnections = () => {
