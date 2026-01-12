@@ -1,8 +1,29 @@
 import type { ChangeEvent, FormEvent, JSX } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CreateEventRequest, EventType } from '../../types/eventTypes'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
+import { AddressSearchBar } from './AddressSearchBar'
+import type { AddressSuggestion } from '../../services/AddressSearchService'
+import { useAuth } from '../../auth/AuthProvider'
+
+/**
+ * Map bounds matching the MapContainer maxBounds configuration.
+ * Incidents can only be created within these bounds.
+ */
+const MAP_BOUNDS = {
+  southwest: { lng: 4.290161, lat: 45.375302 },
+  northeast: { lng: 5.386047, lat: 46.0999 },
+}
+
+function isWithinBounds(lng: number, lat: number): boolean {
+  return (
+    lng >= MAP_BOUNDS.southwest.lng &&
+    lng <= MAP_BOUNDS.northeast.lng &&
+    lat >= MAP_BOUNDS.southwest.lat &&
+    lat <= MAP_BOUNDS.northeast.lat
+  )
+}
 
 type CreateEventModalProps = {
   readonly isOpen: boolean
@@ -10,6 +31,8 @@ type CreateEventModalProps = {
   readonly eventTypes: EventType[]
   readonly onSubmit: (payload: CreateEventRequest) => Promise<void> | void
   readonly initialLocation?: { latitude: number; longitude: number } | null
+  /** When true, address search is required (navbar button mode). When false, it's optional (right-click mode) */
+  readonly addressRequired?: boolean
 }
 
 export function CreateEventModal({
@@ -18,7 +41,9 @@ export function CreateEventModal({
   eventTypes,
   onSubmit,
   initialLocation,
+  addressRequired = false,
 }: Readonly<CreateEventModalProps>): JSX.Element | null {
+  const { permissions } = useAuth()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [latitude, setLatitude] = useState('')
@@ -27,6 +52,25 @@ export function CreateEventModal({
   const [eventTypeCode, setEventTypeCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedAddress, setSelectedAddress] = useState<string>('')
+
+  const canUseAddressSearch = permissions?.canUseAddressSearch ?? false
+
+  const handleAddressSelect = useCallback((address: AddressSuggestion) => {
+    setLatitude(address.latitude.toString())
+    setLongitude(address.longitude.toString())
+    setSelectedAddress(address.label)
+  }, [])
+
+  // Clear coordinates and address when user starts typing in search bar
+  // Only in addressRequired mode (navbar button) - in right-click mode, typing doesn't clear coords
+  const handleClearCoordinates = useCallback(() => {
+    if (addressRequired) {
+      setLatitude('')
+      setLongitude('')
+      setSelectedAddress('')
+    }
+  }, [addressRequired])
 
   const hasCoords = latitude.trim() !== '' && longitude.trim() !== ''
 
@@ -58,6 +102,7 @@ export function CreateEventModal({
       setEventTypeCode(defaultEventType)
       setError(null)
       setIsSubmitting(false)
+      setSelectedAddress('')
     }
   }, [isOpen, defaultEventType, initialLocation])
 
@@ -78,6 +123,15 @@ export function CreateEventModal({
       setError('Latitude and longitude are required.')
       return
     }
+
+    // Validate coordinates are within allowed map bounds
+    const lat = Number.parseFloat(latitude)
+    const lng = Number.parseFloat(longitude)
+    if (!isWithinBounds(lng, lat)) {
+      setError('Les coordonnées doivent être dans la zone couverte (région Rhône/Lyon).')
+      return
+    }
+
     if (!eventTypeCode) {
       setError('Pick an event type.')
       return
@@ -125,6 +179,24 @@ export function CreateEventModal({
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
+          {/* Address search bar - only shown in navbar button mode (addressRequired) */}
+          {addressRequired && canUseAddressSearch && (
+            <div className="space-y-2">
+              <label className="text-slate-300 text-sm" htmlFor="address-search">
+                Rechercher une adresse *
+              </label>
+              <AddressSearchBar
+                onSelect={handleAddressSelect}
+                onInputChange={handleClearCoordinates}
+              />
+              {selectedAddress && (
+                <p className="text-emerald-400 text-xs">
+                  📍 {selectedAddress}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-slate-300 text-sm" htmlFor="title">
               Title *

@@ -88,7 +88,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
           "legendFormat": "p50",
           "range": true,
           "refId": "A"
@@ -99,7 +99,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
           "legendFormat": "p95",
           "range": true,
           "refId": "B"
@@ -110,7 +110,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_travel_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "C"
@@ -121,7 +121,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_sum{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_count{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval]))",
+          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_sum{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_travel_duration_seconds_count{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range]))",
           "legendFormat": "avg travel {{event_type}}/{{unit_type}}",
           "range": true,
           "refId": "D"
@@ -190,7 +190,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
           "legendFormat": "p50",
           "range": true,
           "refId": "A"
@@ -201,7 +201,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
           "legendFormat": "p95",
           "range": true,
           "refId": "B"
@@ -212,7 +212,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_intervention_assignment_on_site_duration_seconds_bucket{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "C"
@@ -223,7 +223,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_sum{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_count{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__rate_interval]))",
+          "expr": "sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_sum{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range])) / sum by (event_type, unit_type) (rate(api_intervention_assignment_on_site_duration_seconds_count{event_id=~\"$event_id\", intervention_id=~\"$intervention_id\", event_type=~\"$event_type\", unit_type=~\"$unit_type\", severity=~\"$severity\"}[$__range]))",
           "legendFormat": "avg on-site {{event_type}}/{{unit_type}}",
           "range": true,
           "refId": "D"
@@ -292,7 +292,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range])))",
           "legendFormat": "p50",
           "range": true,
           "refId": "A"
@@ -303,7 +303,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range])))",
           "legendFormat": "p95",
           "range": true,
           "refId": "B"
@@ -314,7 +314,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(api_event_resolution_duration_seconds_bucket{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "C"
@@ -325,7 +325,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (event_type) (rate(api_event_resolution_duration_seconds_sum{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval])) / sum by (event_type) (rate(api_event_resolution_duration_seconds_count{event_type=~\"$event_type\", severity=~\"$severity\"}[$__rate_interval]))",
+          "expr": "sum by (event_type) (rate(api_event_resolution_duration_seconds_sum{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range])) / sum by (event_type) (rate(api_event_resolution_duration_seconds_count{event_type=~\"$event_type\", severity=~\"$severity\"}[$__range]))",
           "legendFormat": "avg {{event_type}}",
           "range": true,
           "refId": "D"

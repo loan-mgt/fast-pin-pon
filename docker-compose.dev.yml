@@ -133,6 +133,8 @@ services:
       context: ./infra/grafana
       dockerfile: Dockerfile
     profiles: [ "monitoring" ]
+    volumes:
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       GF_SERVER_ROOT_URL: http://localhost:3000
       GF_AUTH_GENERIC_OAUTH_AUTH_URL: http://localhost:8082/realms/sdmis-realm/protocol/openid-connect/auth
@@ -171,6 +173,10 @@ services:
       context: ./infra/prometheus
       dockerfile: Dockerfile
     profiles: [ "monitoring" ]
+    networks:
+      - internal
+      - internal-keycloak
+      - internal-grafana
     ports:
       - "9090:9090"
 
