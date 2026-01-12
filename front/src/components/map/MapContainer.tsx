@@ -136,9 +136,9 @@ function buildConnectionLines(
     if (selectedEventId === null || selectedEventId === undefined) return []
 
     const selectedEvent = eventById.get(selectedEventId)
-    const hasLon = selectedEvent?.location?.longitude !== undefined
-    const hasLat = selectedEvent?.location?.latitude !== undefined
-    if (!hasLon || !hasLat) return []
+    const longitude = selectedEvent?.location?.longitude
+    const latitude = selectedEvent?.location?.latitude
+    if (longitude === undefined || latitude === undefined) return []
 
     const connectionEligibleStatuses = new Set(['available', 'under_way', 'unavailable', 'offline', 'created', 'planned', 'completed', 'cancelled'])
 
@@ -152,7 +152,7 @@ function buildConnectionLines(
                 type: 'LineString' as const,
                 coordinates: [
                     [loc.longitude, loc.latitude],
-                    [selectedEvent.location.longitude, selectedEvent.location.latitude],
+                    [longitude, latitude],
                 ],
             },
         }))
