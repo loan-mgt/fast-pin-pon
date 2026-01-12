@@ -12,6 +12,16 @@
 | **SonarQube**  | https://sonar.4loop.org/dashboard?id=fast-pin-pon | Code Quality Dashboard       |
 
 
+## Livrables du Projet
+
+Documents techniques et fonctionnels générés pour le projet :
+
+*   **[Spécifications Fonctionnelles Détaillées (SFD)](doc/Specifications_Fonctionnelles_Detaillees.md)** : Acteurs, Cas d'usage, Fonctionnalités.
+*   **[Spécifications Techniques Générales (STG)](doc/Specifications_Techniques_Generales.md)** : Architecture, Stack technique, Schéma BDD.
+*   **[Manuel de Déploiement](doc/Manuel_Deploiement.md)** : Guide d'installation, configuration Docker et Matériel.
+*   **[Protection et Robustesse](doc/Protection_et_Robustesse.md)** : Sécurité (IAM, Radio) et résilience du système.
+*   **[Manuel Utilisateur](doc/Manuel_Utilisateur.md)** : Guide d'utilisation de l'interface Web.
+
 ## Architecture
 
 ```mermaid
