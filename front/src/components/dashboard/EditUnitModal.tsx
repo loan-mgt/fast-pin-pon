@@ -51,11 +51,11 @@ export function EditUnitModal({
     setIsSubmitting(true)
 
     const updates: { status?: UnitStatus; locationId?: string | null } = {}
-    
+
     if (status !== unit?.status) {
       updates.status = status
     }
-    
+
     const newLocationId = locationId || null
     if (newLocationId !== (unit?.location_id ?? null)) {
       updates.locationId = newLocationId

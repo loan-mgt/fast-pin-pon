@@ -144,7 +144,8 @@ while True:
             set_status(0)
     
     # === PART 3: Periodic heartbeat ===
-    if now - last_send > 5000:
-        send_mbit_status()
+    # DISABLED: Only send status on button press to prevent race condition with Simulator
+    # if now - last_send > 5000:
+    #     send_mbit_status()
     
     sleep(5)

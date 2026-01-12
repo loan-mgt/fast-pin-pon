@@ -27,6 +27,7 @@ export type UnitSummary = {
     id: string
     call_sign: string
     unit_type_code: string
+    home_base?: string
     location_id?: string
     status: string
     microbit_id?: string
@@ -35,6 +36,32 @@ export type UnitSummary = {
     last_contact_at: string
     created_at: string
     updated_at: string
+}
+
+export type EventLog = {
+    id: number
+    event_id: string
+    event_title: string
+    event_type_code: string
+    created_at: string
+    code: string
+    actor?: string
+    payload: unknown
+}
+
+export type ActivityLog = {
+    id: number
+    activity_type: string
+    entity_type?: string
+    entity_id?: string
+    actor?: string
+    old_value?: string
+    new_value?: string
+    created_at: string
+    // Enriched fields from API joins
+    unit_call_sign?: string
+    event_title?: string
+    event_id?: string
 }
 
 export type UnitType = {

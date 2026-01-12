@@ -1,4 +1,5 @@
 
+import { useEffect, useRef } from 'react'
 import type { ChangeEvent, JSX } from 'react'
 import { MapLegendModal } from './MapLegendModal'
 
@@ -31,14 +32,33 @@ export function Navbar({
     userLabel,
     onAddUnit,
 }: Readonly<NavbarProps>): JSX.Element {
+    const navRef = useRef<HTMLElement | null>(null)
+
     const getViewTitle = (view: ViewMode): string => {
         if (view === 'live') return 'Live events'
         if (view === 'dashboard') return 'Dashboard'
         return 'History'
     }
 
+    useEffect(() => {
+        const applyNavbarHeight = () => {
+            const height = navRef.current?.offsetHeight
+            if (height) {
+                document.documentElement.style.setProperty('--navbar-height', `${height}px`)
+            }
+        }
+
+        applyNavbarHeight()
+        window.addEventListener('resize', applyNavbarHeight)
+
+        return () => {
+            window.removeEventListener('resize', applyNavbarHeight)
+            document.documentElement.style.removeProperty('--navbar-height')
+        }
+    }, [])
+
     return (
-        <nav className="bg-slate-950/90 border-slate-900/70 border-b">
+        <nav ref={navRef} className="bg-slate-950/90 border-slate-900/70 border-b">
             <div className="flex justify-between items-center gap-4 px-6 py-4">
                 <div>
                     <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Fast Pin Pon</p>
@@ -64,11 +84,10 @@ export function Navbar({
                         <button
                             type="button"
                             onClick={() => onNavigate('live')}
-                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${
-                                currentView === 'live'
+                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${currentView === 'live'
                                     ? 'bg-slate-100 text-slate-950 shadow'
                                     : 'text-slate-300 hover:text-white'
-                            }`}
+                                }`}
                             aria-pressed={currentView === 'live'}
                         >
                             Live
@@ -76,11 +95,10 @@ export function Navbar({
                         <button
                             type="button"
                             onClick={() => onNavigate('dashboard')}
-                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${
-                                currentView === 'dashboard'
+                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${currentView === 'dashboard'
                                     ? 'bg-slate-100 text-slate-950 shadow'
                                     : 'text-slate-300 hover:text-white'
-                            }`}
+                                }`}
                             aria-pressed={currentView === 'dashboard'}
                         >
                             Dashboard
@@ -88,11 +106,10 @@ export function Navbar({
                         <button
                             type="button"
                             onClick={() => onNavigate('history')}
-                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${
-                                currentView === 'history'
+                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${currentView === 'history'
                                     ? 'bg-slate-100 text-slate-950 shadow'
                                     : 'text-slate-300 hover:text-white'
-                            }`}
+                                }`}
                             aria-pressed={currentView === 'history'}
                         >
                             History

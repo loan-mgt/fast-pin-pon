@@ -1,607 +1,468 @@
 package org.fastpinpon.simulation.engine;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.fastpinpon.simulation.api.ApiClient;
-import org.fastpinpon.simulation.model.BaseLocation;
-import org.fastpinpon.simulation.model.Incident;
-import org.fastpinpon.simulation.model.Vehicle;
+import org.fastpinpon.simulation.api.ApiClient.UnitInfo;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Simulation engine that orchestrates incident generation and response decision-making.
+ * Core simulation engine that tracks vehicles in transit and updates their positions.
  * 
- * This engine uses:
- * - An IncidentSource (default: IncidentGenerator) to produce incidents
- * - A DecisionEngine to handle unit dispatch and incident lifecycle
- * 
- * The engine is designed for flexibility:
- * - Replace the IncidentSource to use real events instead of simulation
- * - The DecisionEngine works independently of the incident source
- * - Multiple incident sources can be used simultaneously
+ * Responsibilities:
+ * - Track units with status "under_way" OR "available" (return trips)
+ * - Move them along their stored routes
+ * - Update GPS position via API
+ * - Transition to "on_site" (if under_way) or "available_hidden" (if available) on arrival
+ * - Complete interventions 30s after all responding units arrive
  */
 public final class SimulationEngine {
-    private static final Logger LOG = Logger.getLogger(SimulationEngine.class.getName());
-
-    private final ApiClient api;
-    private final Random random = new Random();
-    private final List<Vehicle> vehicles = new ArrayList<>();
-    private final DecisionEngine decisionEngine;
-        private final List<BaseLocation> bases;
-    private final List<IncidentSource> incidentSources = new ArrayList<>();
-
-    private int tickCounter = 0;
-
-    private static final double CITY_CENTER_LAT = 45.75;
-    private static final double CITY_CENTER_LON = 4.85;
+    private static final Logger log = LoggerFactory.getLogger(SimulationEngine.class);
     
-    // Fleet distribution: 35 total units
-    // Lyon Confluence: 8, Villeurbanne: 8, Cusset: 8, Lyon Part-Dieu: 11
-    private static final int TARGET_FLEET_SIZE = 35;
-    
-    // Units per base (custom distribution)
-    private static final int UNITS_CONFLUENCE = 8;
-    private static final int UNITS_VILLEURBANNE = 8;
-    private static final int UNITS_CUSSET = 8;
-    private static final int UNITS_PART_DIEU = 11;
-
-    // Base names
-    private static final String BASE_VILLEURBANNE = "Villeurbanne";
-    private static final String BASE_CONFLUENCE = "Lyon Confluence";
-    private static final String BASE_PART_DIEU = "Lyon Part-Dieu";
-    private static final String BASE_CUSSET = "Cusset";
-    
-    // Status constants
-    private static final String STATUS_AVAILABLE = "available";
+    // Status Constants
     private static final String STATUS_UNDER_WAY = "under_way";
     private static final String STATUS_ON_SITE = "on_site";
+    private static final String STATUS_AVAILABLE = "available";
+    private static final String STATUS_AVAILABLE_HIDDEN = "available_hidden";
 
-        private static final BaseLocation[] DEFAULT_BASES = new BaseLocation[]{
-            new BaseLocation(BASE_VILLEURBANNE, 45.766180, 4.878770),
-            new BaseLocation(BASE_CONFLUENCE, 45.741054, 4.823733),
-            new BaseLocation(BASE_PART_DIEU, 45.760540, 4.861700),
-            new BaseLocation(BASE_CUSSET, 45.76623, 4.89534),
-    };
+    private final ApiClient api;
+    private final boolean updatingEnabled;
+    private final double movementSpeedMultiplier;
+    private final Map<String, VehicleState> vehicleStates = new ConcurrentHashMap<>();
+    private final Random random = new Random();
+    
+    // Track units that are moving while "available" (Returning to station)
+    // Used to distinguish arrival behavior (Hidden vs On Site)
+    private final Set<String> movingAvailableUnits = ConcurrentHashMap.newKeySet();
 
-    public static final class VehicleSnapshot {
-        private final String unitId;
-        private final String callSign;
-        private final double lat;
-        private final double lon;
-        private final String status;
-        private final String incidentId;
-        private final String unitTypeCode;
-        private final String homeBase;
-        private final Instant lastUpdate;
+    // Track units for which a repair request has been triggered to avoid duplicates
+    private final Set<String> repairRequests = ConcurrentHashMap.newKeySet();
 
-        public VehicleSnapshot(Vehicle v) {
-            this.unitId = v.getUnitId();
-            this.callSign = v.getCallSign();
-            this.lat = v.getLat();
-            this.lon = v.getLon();
-            this.status = snapshotStatus(v.getEtat());
-            String idStr = null;
-            Incident inc = v.getCurrentIncident();
-            if (inc != null) {
-                if (inc.getId() != null) {
-                    idStr = inc.getId().toString();
-                } else {
-                    idStr = inc.getEventId();
-                }
-            }
-            this.incidentId = idStr;
-            this.unitTypeCode = v.getUnitTypeCode();
-            this.homeBase = v.getHomeBase();
-            this.lastUpdate = v.getLastUpdate();
-        }
 
-        public String getUnitId() {
-            return unitId;
-        }
+    private long lastTickTime = System.currentTimeMillis();
+    private long lastSyncTime = 0;
 
-        public String getCallSign() {
-            return callSign;
-        }
-
-        public double getLat() {
-            return lat;
-        }
-
-        public double getLon() {
-            return lon;
-        }
-
-        public String getStatus() {
-            return status;
-        }
-
-        public String getIncidentId() {
-            return incidentId;
-        }
-
-        public String getUnitTypeCode() {
-            return unitTypeCode;
-        }
-
-        public String getHomeBase() {
-            return homeBase;
-        }
-
-        public Instant getLastUpdate() {
-            return lastUpdate;
-        }
-
-        private static String snapshotStatus(org.fastpinpon.simulation.model.VehicleState state) {
-            switch (state) {
-                case DISPONIBLE:
-                    return STATUS_AVAILABLE;
-                case EN_ROUTE:
-                    return STATUS_UNDER_WAY;
-                case SUR_PLACE:
-                    return STATUS_ON_SITE;
-                case RETOUR:
-                    return STATUS_UNDER_WAY;
-                default:
-                    return STATUS_AVAILABLE;
-            }
-        }
-    }
-
-    /**
-     * Create a simulation engine with the default random incident generator.
-     * 
-     * @param api the API client
-     * @param apiBaseUrl the API base URL for routing
-     */
-    public SimulationEngine(ApiClient api, String apiBaseUrl) {
-        this(api, apiBaseUrl, new IncidentGenerator());
-    }
-
-    /**
-     * Create a simulation engine with a custom incident source.
-     * 
-     * @param api the API client
-     * @param apiBaseUrl the API base URL for routing
-     * @param incidentSource the source of incidents
-     */
-    public SimulationEngine(ApiClient api, String apiBaseUrl, IncidentSource incidentSource) {
+    public SimulationEngine(ApiClient api, boolean updatingEnabled, double movementSpeedMultiplier) {
         this.api = api;
-        // Load stations from API; fallback to defaults
-        List<BaseLocation> stations = api.loadStations();
-        this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
-        bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl);
-        if (incidentSource != null) {
-            this.incidentSources.add(incidentSource);
-        }
-    }
-
-    /**
-     * Create a simulation engine without any incident source.
-     * Use addIncidentSource() to add sources, or call processIncident() directly.
-     * 
-     * @param api the API client
-     * @param apiBaseUrl the API base URL for routing
-     * @param noGenerator set to true to create without generator
-     */
-    public SimulationEngine(ApiClient api, String apiBaseUrl, boolean noGenerator) {
-        this.api = api;
-        List<BaseLocation> stations = api.loadStations();
-        this.bases = stations != null && !stations.isEmpty() ? stations : new ArrayList<>(Arrays.asList(DEFAULT_BASES));
-        bootstrapUnits();
-        this.decisionEngine = new DecisionEngine(api, vehicles, this.bases, apiBaseUrl);
-        if (!noGenerator) {
-            this.incidentSources.add(new IncidentGenerator());
-        }
-    }
-
-    /**
-     * Add an incident source to the engine.
-     * Multiple sources can be active simultaneously.
-     * 
-     * @param source the incident source to add
-     */
-    public void addIncidentSource(IncidentSource source) {
-        if (source != null) {
-            incidentSources.add(source);
-        }
-    }
-
-    /**
-     * Remove an incident source from the engine.
-     * 
-     * @param source the incident source to remove
-     */
-    public void removeIncidentSource(IncidentSource source) {
-        incidentSources.remove(source);
-    }
-
-    /**
-     * Clear all incident sources.
-     * Useful when switching from simulation to real events.
-     */
-    public void clearIncidentSources() {
-        incidentSources.clear();
-    }
-
-    /**
-     * Directly process an incident without using a source.
-     * This allows external systems to inject incidents directly.
-     * 
-     * @param incident the incident to process
-     * @return true if the incident was successfully processed
-     */
-    public boolean processIncident(Incident incident) {
-        return decisionEngine.processNewIncident(incident);
-    }
-
-    /**
-     * Process an incident that already exists in the API.
-     * Use this for real events that are already registered.
-     * 
-     * @param incident the incident with eventId already set
-     * @return true if the incident was successfully processed
-     */
-    public boolean processExistingIncident(Incident incident) {
-        return decisionEngine.processExistingIncident(incident);
+        this.updatingEnabled = updatingEnabled;
+        this.movementSpeedMultiplier = movementSpeedMultiplier;
+        log.info("Simulation engine initialized (updatingEnabled={}, speedMultiplier={})", updatingEnabled, movementSpeedMultiplier);
     }
 
     /**
      * Main simulation tick - called periodically.
-     * Checks for new incidents from all sources and advances the simulation state.
      */
-    public synchronized void tick() {
-        if (tickCounter % 3 == 0) {
-            logTickStatus();
+    public void tick() {
+        long now = System.currentTimeMillis();
+        double deltaSeconds = (now - lastTickTime) / 1000.0;
+        lastTickTime = now;
+
+        tick(deltaSeconds);
+    }
+
+    /**
+     * Simulation tick with explicit delta time.
+     * @param deltaSeconds elapsed time since last tick in seconds
+     */
+    public void tick(double deltaSeconds) {
+        try {
+            // 1. Sync tracked vehicles with current API state (throttled to 10s)
+            // This prevents race conditions where the Simulator reads 'stale' status from API 
+            // before the Bridge Emitter/Receiver loop has propagated the new status.
+            long now = System.currentTimeMillis();
+            if (now - lastTickTime > 10000) { // Using lastTickTime as sync timer base here is confusing, better use separate timer
+               // Actually lastTickTime is used for delta calculation.
+            }
+            // Let's use a dedicated timer
+            if (now - lastSyncTime > 10000) {
+                 syncVehicles();
+                 lastSyncTime = now;
+            }
+
+            // 2. Update progress for all tracked vehicles
+            updateVehicleProgress(deltaSeconds);
+
+            // 3. Check for intervention completions (probabilistic)
+            checkInterventionCompletions(deltaSeconds);
+
+        } catch (Exception e) {
+            log.warn("Simulation tick error: {}", e.getMessage());
         }
-        tickCounter++;
-        
-        // Check all incident sources for new incidents
-        pollIncidentSources();
-        
-        // Advance incident and vehicle states
-        decisionEngine.tick();
-        
-        // Push telemetry to API
-        decisionEngine.pushTelemetry();
     }
 
     /**
-     * Get the decision engine for direct access to decision-making capabilities.
-     * 
-     * @return the decision engine
+     * Sync tracked vehicles with API.
+     * Tracks both 'under_way' (intervention) and 'available' (return to station) units.
      */
-    public DecisionEngine getDecisionEngine() {
-        return decisionEngine;
+    private void syncVehicles() {
+        List<ApiClient.UnitInfo> units = api.loadUnits();
+        
+        Map<String, String> latestStatusMap = new HashMap<>();
+        Set<String> currentTrackedIds = new HashSet<>();
+        long underWayCount = 0;
+        long availableCount = 0;
+
+        for (UnitInfo unit : units) {
+            latestStatusMap.put(unit.id, unit.status);
+            boolean isUnderWay = STATUS_UNDER_WAY.equals(unit.status);
+            boolean isAvailable = STATUS_AVAILABLE.equals(unit.status);
+
+            if (isUnderWay || isAvailable) {
+                currentTrackedIds.add(unit.id);
+                if (isUnderWay) underWayCount++;
+                if (isAvailable) {
+                    availableCount++;
+                    movingAvailableUnits.add(unit.id);
+                } else {
+                    movingAvailableUnits.remove(unit.id);
+                }
+                
+                checkAndReloadStaleState(unit, isAvailable, isUnderWay);
+
+                if (!vehicleStates.containsKey(unit.id)) {
+                    tryAddVehicle(unit);
+                }
+            }
+        }
+
+        log.debug("Vehicle sync: {} under_way, {} available (moving), {} total tracked",
+                underWayCount, availableCount, vehicleStates.size());
+
+        cleanupInactiveVehicles(currentTrackedIds, latestStatusMap);
+    }
+
+    private void checkAndReloadStaleState(UnitInfo unit, boolean isAvailable, boolean isUnderWay) {
+        VehicleState existing = vehicleStates.get(unit.id);
+        if (existing != null && isStateStale(existing, isAvailable, isUnderWay)) {
+            log.info("State stale for unit {} (status: {}, arrived: {}), reloading route", 
+                unit.id, unit.status, existing.hasArrived());
+            vehicleStates.remove(unit.id);
+        }
+    }
+
+    private boolean isStateStale(VehicleState state, boolean isAvailable, boolean isUnderWay) {
+        return state.hasArrived() || 
+               (isAvailable && state.getInterventionId() != null) || 
+               (isUnderWay && state.getInterventionId() == null);
+    }
+
+    private void cleanupInactiveVehicles(Set<String> currentTrackedIds, Map<String, String> latestStatusMap) {
+        Set<String> toRemove = new HashSet<>();
+        for (Map.Entry<String, VehicleState> entry : vehicleStates.entrySet()) {
+            String unitId = entry.getKey();
+            if (!currentTrackedIds.contains(unitId)) {
+                VehicleState state = entry.getValue();
+                String currentStatus = latestStatusMap.get(unitId);
+                
+                if (state.hasArrived() && STATUS_ON_SITE.equals(currentStatus) && state.getInterventionId() != null) {
+                    continue;
+                }
+                
+                toRemove.add(unitId);
+                log.info("No longer tracking vehicle {} (status: {}, arrived: {})", 
+                    unitId, currentStatus, state.hasArrived());
+            }
+        }
+        
+        toRemove.forEach(id -> {
+            vehicleStates.remove(id);
+            movingAvailableUnits.remove(id);
+            repairRequests.remove(id);
+        });
     }
 
     /**
-     * Get all managed vehicles.
-     * 
-     * @return list of vehicles
+     * Try to add a new vehicle to tracking by fetching its route.
      */
-    public List<Vehicle> getVehicles() {
-        return new ArrayList<>(vehicles);
+    private void tryAddVehicle(UnitInfo unit) {
+        try {
+            ApiClient.UnitRouteInfo route = api.getUnitRoute(unit.id);
+            if (route == null) {
+                log.debug("No route found for unit {}", unit.id);
+                maybeTriggerRepair(unit);
+                return;
+            }
+
+            // Clear any pending repair flag once a route is present again
+            repairRequests.remove(unit.id);
+
+            double initialLat = 0;
+            if (route.currentLat != null) {
+                initialLat = route.currentLat;
+            } else if (unit.latitude != null) {
+                initialLat = unit.latitude;
+            }
+
+            double initialLon = 0;
+            if (route.currentLon != null) {
+                initialLon = route.currentLon;
+            } else if (unit.longitude != null) {
+                initialLon = unit.longitude;
+            }
+
+            VehicleState state = new VehicleState(new VehicleState.VehicleConfig(
+                    unit.id,
+                    route.interventionId,
+                    null,
+                    route.estimatedDurationSeconds,
+                    route.routeLengthMeters,
+                    route.severity,
+                    new VehicleState.InitialPosition(initialLat, initialLon, route.progressPercent)
+            ));
+
+            vehicleStates.put(unit.id, state);
+            
+            String moveType = movingAvailableUnits.contains(unit.id) ? "Return to Station" : "Intervention";
+            log.info("Started tracking vehicle {} ({}) (duration={}s)",
+                    unit.id, moveType, route.estimatedDurationSeconds);
+
+        } catch (Exception e) {
+            log.warn("Failed to add vehicle {}: {}", unit.id, e.getMessage());
+        }
     }
 
     /**
-     * Snapshot current vehicle telemetry for external consumers (e.g., bridge).
-     * The simulation engine remains the single source of movement; consumers only read.
+     * Update progress for all tracked vehicles based on elapsed time.
      */
-    public synchronized List<VehicleSnapshot> snapshotVehicles() {
-        List<VehicleSnapshot> snapshots = new ArrayList<>(vehicles.size());
-        for (Vehicle v : vehicles) {
-            snapshots.add(new VehicleSnapshot(v));
+    private void updateVehicleProgress(double deltaSeconds) {
+        for (VehicleState state : vehicleStates.values()) {
+            if (state.hasArrived()) {
+                continue; // Already at destination
+            }
+
+            try {
+                // Calculate new progress based on elapsed time and estimated duration
+                double increment = state.calculateProgressIncrement(deltaSeconds * movementSpeedMultiplier);
+                double newProgress = Math.min(100.0, state.getProgressPercent() + increment);
+
+                // Update progress in API and get interpolated position
+                ApiClient.ProgressUpdateResult result = api.updateRouteProgress(state.getUnitId(), newProgress);
+                
+                if (result != null) {
+                    state.setProgressPercent(result.progressPercent);
+                    state.setCurrentLat(result.currentLat);
+                    state.setCurrentLon(result.currentLon);
+
+                    // Update unit location in API only if updating is enabled
+                    if (updatingEnabled) {
+                        api.updateUnitLocation(state.getUnitId(), result.currentLat, result.currentLon, Instant.now());
+                    }
+
+                    // Check if arrived (100% progress)
+                    if (result.progressPercent >= 100.0) {
+                        handleArrival(state);
+                    }
+                }
+
+            } catch (Exception e) {
+                log.warn("Failed to update vehicle {}: {}", 
+                        state.getUnitId(), e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Handle vehicle arrival at destination.
+     * Behavior depends on whether unit is Returning (Available) or Responding (Under Way).
+     */
+    private void handleArrival(VehicleState state) {
+        state.setArrivedAt(Instant.now());
+
+        boolean isReturnTrip = movingAvailableUnits.contains(state.getUnitId());
+        
+        if (isReturnTrip) {
+            handleReturnTripArrival(state);
+        } else {
+            handleInterventionArrival(state);
+        }
+    }
+
+    /**
+     * Handle arrival for "available" units (Return to Station).
+     * Sets status to available_hidden.
+     */
+    private void handleReturnTripArrival(VehicleState state) {
+        log.info("Vehicle {} arrived at station (return trip)", state.getUnitId());
+        
+        if (updatingEnabled) {
+            api.updateUnitStatus(state.getUnitId(), STATUS_AVAILABLE_HIDDEN);
+        }
+        
+        // Clean up immediately as there are no completion timers for return trips
+        movingAvailableUnits.remove(state.getUnitId());
+        vehicleStates.remove(state.getUnitId());
+    }
+
+    /**
+     * Handle arrival for "under_way" units (Intervention).
+     * Sets status to on_site and manages completion timers.
+     */
+    private void handleInterventionArrival(VehicleState state) {
+        log.info("Vehicle {} arrived at intervention site", state.getUnitId());
+
+        if (updatingEnabled) {
+            api.updateUnitStatus(state.getUnitId(), STATUS_ON_SITE);
+        }
+
+        if (state.getInterventionId() != null && updatingEnabled) {
+            api.updateAssignmentStatusByUnit(state.getInterventionId(), state.getUnitId(), "arrived");
+        }
+    }
+
+    /**
+     * Check if any interventions should complete based on random chance, severity, and unit count.
+     */
+    private void checkInterventionCompletions(double deltaSeconds) {
+        Map<String, List<VehicleState>> byIntervention = groupArrivedVehiclesByIntervention();
+
+        for (Map.Entry<String, List<VehicleState>> entry : byIntervention.entrySet()) {
+            if (shouldCompleteIntervention(entry.getKey(), entry.getValue(), deltaSeconds)) {
+                log.info("Probabilistic completion for intervention {}", entry.getKey());
+                completeIntervention(entry.getKey());
+            }
+        }
+    }
+
+    private Map<String, List<VehicleState>> groupArrivedVehiclesByIntervention() {
+        Map<String, List<VehicleState>> byIntervention = new HashMap<>();
+        for (VehicleState state : vehicleStates.values()) {
+            if (state.hasArrived() && state.getInterventionId() != null && !movingAvailableUnits.contains(state.getUnitId())) {
+                byIntervention.computeIfAbsent(state.getInterventionId(), k -> new ArrayList<>())
+                        .add(state);
+            }
+        }
+        return byIntervention;
+    }
+
+    private boolean shouldCompleteIntervention(String interventionId, List<VehicleState> arrivedUnits, double deltaSeconds) {
+        if (arrivedUnits.isEmpty()) return false;
+
+        int severity = arrivedUnits.stream()
+            .map(VehicleState::getSeverity)
+            .filter(java.util.Objects::nonNull)
+            .findFirst()
+            .orElse(3);
+        
+        int unitCount = arrivedUnits.size();
+        double pTick = calculateCompletionProbability(unitCount, severity, deltaSeconds);
+        
+        double roll = random.nextDouble();
+        log.debug("Intervention {} (severity {}, units {}): roll {:.4f} vs threshold {:.4f}", 
+                interventionId, severity, unitCount, roll, pTick);
+
+        return roll < pTick;
+    }
+
+    private double calculateCompletionProbability(int unitCount, int severity, double deltaSeconds) {
+        double baseProbPerc = 2.3;
+        double prob1s = baseProbPerc + (unitCount - 1) * 2.2 - (severity - 3) * 2.2;
+        
+        prob1s = Math.max(0.1, Math.min(99.0, prob1s));
+        double p1s = prob1s / 100.0;
+        return 1.0 - Math.pow(1.0 - p1s, deltaSeconds);
+    }
+
+    private void completeIntervention(String interventionId) {
+        try {
+            log.info("Completing intervention {}", interventionId);
+            api.updateInterventionStatus(interventionId, "completed");
+
+            vehicleStates.entrySet().removeIf(e -> interventionId.equals(e.getValue().getInterventionId()));
+            
+        } catch (Exception e) {
+            log.warn("Failed to complete intervention {}: {}", 
+                    interventionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Trigger a single repair request for a unit that is missing a route.
+     */
+    private void maybeTriggerRepair(UnitInfo unit) {
+        boolean shouldRepair = STATUS_UNDER_WAY.equals(unit.status) || STATUS_AVAILABLE.equals(unit.status);
+        if (!shouldRepair) {
+            return;
+        }
+
+        if (repairRequests.add(unit.id)) {
+            log.info("Triggering route repair for unit {}", unit.id);
+            api.triggerRouteRepair(unit.id);
+        }
+    }
+
+    /**
+     * Get a snapshot of all tracked vehicles for the HTTP endpoint.
+     */
+    public List<VehicleSnapshot> snapshotVehicles() {
+        List<VehicleSnapshot> snapshots = new ArrayList<>();
+        for (VehicleState state : vehicleStates.values()) {
+            String snapshotStatus;
+            
+            boolean isReturnTrip = movingAvailableUnits.contains(state.getUnitId());
+            
+            if (state.hasArrived()) {
+                snapshotStatus = isReturnTrip ? STATUS_AVAILABLE_HIDDEN : STATUS_ON_SITE;
+            } else {
+                snapshotStatus = isReturnTrip ? STATUS_AVAILABLE : STATUS_UNDER_WAY;
+            }
+
+            snapshots.add(new VehicleSnapshot(
+                    state.getUnitId(),
+                    state.getCurrentLat(),
+                    state.getCurrentLon(),
+                    state.getProgressPercent(),
+                    snapshotStatus,
+                    state.getInterventionId(),
+                    0 // Heading placeholder
+            ));
         }
         return snapshots;
     }
 
-    // =========================================================================
-    // Incident Source Management
-    // =========================================================================
-
-    private void pollIncidentSources() {
-        for (IncidentSource source : incidentSources) {
-            while (source.hasNewIncident()) {
-                Incident incident = source.nextIncident();
-                if (incident != null) {
-                    boolean success = decisionEngine.processNewIncident(incident);
-                    if (success) {
-                        source.onIncidentProcessed(incident);
-                    }
-                }
-            }
-        }
-    }
-
-    // =========================================================================
-    // Fleet Management
-    // =========================================================================
-
-    private void bootstrapUnits() {
-        List<ApiClient.UnitInfo> units = api.loadUnits();
-        collectUnitTypes(units);
-        createMissingUnits(units);
-        materializeVehicles(units);
-        logFleetDistribution();
-    }
-
-    private void logFleetDistribution() {
-        if (!LOG.isLoggable(Level.INFO)) {
-            return;
-        }
-        // Count units per base
-        int[] counts = new int[bases.size()];
-        for (Vehicle v : vehicles) {
-            for (int i = 0; i < bases.size(); i++) {
-                if (bases.get(i).name.equals(v.getHomeBase())) {
-                    counts[i]++;
-                    break;
-                }
-            }
-        }
-        StringBuilder sb = new StringBuilder("[SIM] Fleet distribution (").append(vehicles.size()).append(" units): ");
-        for (int i = 0; i < bases.size(); i++) {
-            sb.append(bases.get(i).name).append("=").append(counts[i]);
-            if (i < bases.size() - 1) {
-                sb.append(", ");
-            }
-        }
-        LOG.info(sb.toString());
-    }
-
-    private void collectUnitTypes(List<ApiClient.UnitInfo> units) {
-        if (!api.unitTypeCodes.isEmpty()) {
-            return;
-        }
-        for (ApiClient.UnitInfo u : units) {
-            if (u.unitTypeCode != null && !u.unitTypeCode.isEmpty() && !api.unitTypeCodes.contains(u.unitTypeCode)) {
-                api.unitTypeCodes.add(u.unitTypeCode);
-            }
-        }
-    }
-
-    private void createMissingUnits(List<ApiClient.UnitInfo> units) {
-        // Count how many units already exist per base for positioning
-        Map<String, Integer> baseUnitCounts = new HashMap<>();
-        baseUnitCounts.put(BASE_CONFLUENCE, 0);
-        baseUnitCounts.put(BASE_VILLEURBANNE, 0);
-        baseUnitCounts.put(BASE_CUSSET, 0);
-        baseUnitCounts.put(BASE_PART_DIEU, 0);
+    /**
+     * Snapshot of a vehicle's current state for API responses.
+     */
+    public static final class VehicleSnapshot {
+        @JsonProperty("unit_id")
+        public final String unitId;
         
-        for (ApiClient.UnitInfo u : units) {
-            if (u.homeBase != null && baseUnitCounts.containsKey(u.homeBase)) {
-                baseUnitCounts.put(u.homeBase, baseUnitCounts.get(u.homeBase) + 1);
-            }
-        }
+        @JsonProperty("latitude")
+        public final double latitude;
         
-        // Target units per base
-        Map<String, Integer> targetPerBase = new HashMap<>();
-        targetPerBase.put(BASE_CONFLUENCE, UNITS_CONFLUENCE);
-        targetPerBase.put(BASE_VILLEURBANNE, UNITS_VILLEURBANNE);
-        targetPerBase.put(BASE_CUSSET, UNITS_CUSSET);
-        targetPerBase.put(BASE_PART_DIEU, UNITS_PART_DIEU);
-
-        // Fill each base to its target count
-        for (BaseLocation base : bases) {
-            int target = targetPerBase.getOrDefault(base.name, 8);
-            int current = baseUnitCounts.getOrDefault(base.name, 0);
-            
-            while (current < target && units.size() < TARGET_FLEET_SIZE) {
-                String typeCode = pickUsableType(units);
-                if (typeCode == null) {
-                    return;
-                }
-                
-                // Position units in a horizontal row (East-West line)
-                double spacingMeters = 15.0;
-                double spacingLon = spacingMeters / 78500.0;
-                
-                // Center the row based on number of units at this base
-                double centerOffset = (target - 1) / 2.0;
-                double offsetLon = (current - centerOffset) * spacingLon;
-                double offsetLat = -0.0001;  // ~11m south of base point
-                
-                ApiClient.UnitInfo created = api.createUnit(
-                        String.format("%s-%02d", getBasePrefix(base.name), current + 1),
-                        typeCode,
-                        base.name,
-                        base.lat + offsetLat,
-                        base.lon + offsetLon
-                );
-                if (created == null) {
-                    return;
-                }
-                units.add(created);
-                current++;
-                baseUnitCounts.put(base.name, current);
-            }
-        }
-    }
-
-    private String pickUsableType(List<ApiClient.UnitInfo> units) {
-        String typeCode = api.pickUnitType();
-        if (typeCode != null) {
-            return typeCode;
-        }
-        if (!units.isEmpty()) {
-            return units.get(0).unitTypeCode;
-        }
-        return null;
-    }
-
-    private void materializeVehicles(List<ApiClient.UnitInfo> units) {
-        // Target units per base for centering calculation
-        Map<String, Integer> targetPerBase = new HashMap<>();
-        targetPerBase.put(BASE_CONFLUENCE, UNITS_CONFLUENCE);
-        targetPerBase.put(BASE_VILLEURBANNE, UNITS_VILLEURBANNE);
-        targetPerBase.put(BASE_CUSSET, UNITS_CUSSET);
-        targetPerBase.put(BASE_PART_DIEU, UNITS_PART_DIEU);
+        @JsonProperty("longitude")
+        public final double longitude;
         
-        // Group units by home base and position them in rows
-        Map<String, Integer> baseUnitIndex = new HashMap<>();
-        for (String baseName : new String[]{BASE_CONFLUENCE, BASE_PART_DIEU, BASE_VILLEURBANNE, BASE_CUSSET}) {
-            baseUnitIndex.put(baseName, 0);
-        }
+        @JsonProperty("progress_percent")
+        public final double progressPercent;
         
-        for (ApiClient.UnitInfo u : units) {
-            String home = determineHomeBase(u);
-            
-            // Always position units in a row at their home base for consistent display
-            BaseLocation homeBase = getBaseByName(home);
-            double lat;
-            double lon;
-            
-            if (homeBase != null) {
-                int unitAtBase = baseUnitIndex.getOrDefault(home, 0);
-                int targetUnits = targetPerBase.getOrDefault(home, 8);
-                
-                // Position units in a horizontal row (East-West line)
-                double spacingMeters = 15.0;
-                double spacingLon = spacingMeters / 78500.0;
-                
-                // Center the row based on target unit count at this base
-                double centerOffset = (targetUnits - 1) / 2.0;
-                double offsetLon = (unitAtBase - centerOffset) * spacingLon;
-                double offsetLat = -0.0001;  // ~11m south of base point
-                
-                lat = homeBase.lat + offsetLat;
-                lon = homeBase.lon + offsetLon;
-                
-                baseUnitIndex.put(home, unitAtBase + 1);
-            } else {
-                // Fallback for unknown base
-                lat = CITY_CENTER_LAT + (random.nextDouble() - 0.5) * 0.02;
-                lon = CITY_CENTER_LON + (random.nextDouble() - 0.5) * 0.02;
-            }
-            
-            Vehicle v = new Vehicle(u.id, u.callSign, u.unitTypeCode, home, lat, lon);
-            vehicles.add(v);
-            
-            // Update API with correct position
-            api.updateUnitLocation(u.id, lat, lon, Instant.now());
-        }
-    }
+        @JsonProperty("status")
+        public final String status;
+        
+        @JsonProperty("intervention_id")
+        public final String interventionId;
+        
+        @JsonProperty("heading")
+        public final int heading;
 
-    private BaseLocation getBaseByName(String name) {
-        for (BaseLocation base : bases) {
-            if (base.name.equals(name)) {
-                return base;
-            }
+        public VehicleSnapshot(String unitId, double latitude, double longitude, 
+                               double progressPercent, String status, String interventionId, int heading) {
+            this.unitId = unitId;
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.progressPercent = progressPercent;
+            this.status = status;
+            this.interventionId = interventionId;
+            this.heading = heading;
         }
-        return null;
-    }
-    
-    private String determineHomeBase(ApiClient.UnitInfo u) {
-        if (u.homeBase != null && !u.homeBase.isEmpty()) {
-            return u.homeBase;
-        }
-        double lat = u.latitude != null ? u.latitude : CITY_CENTER_LAT;
-        double lon = u.longitude != null ? u.longitude : CITY_CENTER_LON;
-        return nearestBaseName(lat, lon);
-    }
-
-    private String getBasePrefix(String baseName) {
-        switch (baseName) {
-            case BASE_CONFLUENCE: return "CON";
-            case BASE_PART_DIEU: return "PDI";
-            case BASE_VILLEURBANNE: return "VIL";
-            case BASE_CUSSET: return "CUS";
-            default: return "UNK";
-        }
-    }
-
-    // =========================================================================
-    // Logging
-    // =========================================================================
-
-    private void logTickStatus() {
-        List<Incident> activeIncidents = decisionEngine.getActiveIncidents();
-        if (activeIncidents.isEmpty()) {
-            return;
-        }
-        int activeVehicles = decisionEngine.getActiveVehicleCount();
-        logActiveIncidentSummary(activeIncidents, activeVehicles);
-        logIncidentsSnapshot(activeIncidents);
-    }
-
-    private void logActiveIncidentSummary(List<Incident> activeIncidents, int active) {
-        if (!LOG.isLoggable(Level.INFO)) {
-            return;
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < activeIncidents.size(); i++) {
-            sb.append("{").append(activeIncidents.get(i).getNumber()).append("}");
-            if (i < activeIncidents.size() - 1) {
-                sb.append(",");
-            }
-        }
-        LOG.log(Level.INFO, "[SIM] Treating incident : {0} | Active units = {1}",
-                new Object[]{sb, active});
-    }
-
-    private void logIncidentsSnapshot(List<Incident> scope) {
-        for (Incident incident : scope) {
-            List<Vehicle> involved = new ArrayList<>();
-            for (Vehicle v : vehicles) {
-                if (v.getCurrentIncident() == incident) {
-                    involved.add(v);
-                }
-            }
-            if (involved.isEmpty()) {
-                continue;
-            }
-            involved.sort((a, b) -> a.getCallSign().compareToIgnoreCase(b.getCallSign()));
-            String area = nearestBaseName(incident.getLat(), incident.getLon());
-            StringBuilder line = new StringBuilder();
-            line.append("[SIM] Incident ").append(incident.getNumber()).append(" - ").append(area).append(" : ");
-            for (int i = 0; i < involved.size(); i++) {
-                Vehicle v = involved.get(i);
-                line.append(v.getCallSign()).append(" [").append(readableState(v.getEtat())).append("]");
-                if (i < involved.size() - 1) {
-                    line.append(", ");
-                }
-            }
-            if (LOG.isLoggable(Level.INFO)) {
-                LOG.log(Level.INFO, line.toString());
-            }
-        }
-    }
-
-    private static String readableState(org.fastpinpon.simulation.model.VehicleState state) {
-        switch (state) {
-            case DISPONIBLE:
-                return STATUS_AVAILABLE;
-            case EN_ROUTE:
-                return "under way";
-            case SUR_PLACE:
-                return "on site";
-            case RETOUR:
-                return "return";
-            default:
-                return "unknown";
-        }
-    }
-
-
-
-    private String nearestBaseName(double lat, double lon) {
-        String name = BASE_PART_DIEU;
-        double best = Double.MAX_VALUE;
-        for (BaseLocation b : bases) {
-            double d = Math.pow(lat - b.lat, 2) + Math.pow(lon - b.lon, 2);
-            if (d < best) {
-                best = d;
-                name = b.name;
-            }
-        }
-        return name;
     }
 }

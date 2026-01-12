@@ -126,7 +126,7 @@ SELECT
     u.call_sign,
     u.unit_type_code,
     u.status AS unit_status,
-    u.home_base,
+    l.name AS home_base_name,
     u.microbit_id,
     (COALESCE(ST_X(u.location::geometry)::double precision, 0::double precision))::double precision AS longitude,
     (COALESCE(ST_Y(u.location::geometry)::double precision, 0::double precision))::double precision AS latitude,
@@ -135,6 +135,7 @@ SELECT
     u.updated_at
 FROM intervention_assignments ia
 JOIN units u ON u.id = ia.unit_id
+LEFT JOIN locations l ON u.location_id = l.id
 WHERE ia.intervention_id = $1
 ORDER BY ia.dispatched_at DESC;
 
@@ -143,7 +144,7 @@ SELECT
     u.id,
     u.call_sign,
     u.unit_type_code,
-    u.home_base,
+    l.name AS home_base_name,
     u.status,
     u.microbit_id,
     u.location_id,
@@ -155,6 +156,7 @@ SELECT
 FROM intervention_assignments ia
 JOIN interventions i ON ia.intervention_id = i.id
 JOIN units u ON ia.unit_id = u.id
+LEFT JOIN locations l ON u.location_id = l.id
 WHERE i.event_id = $1 AND ia.released_at IS NULL
 ORDER BY ia.dispatched_at DESC;
 
@@ -165,4 +167,34 @@ SET
     released_at = NOW()
 WHERE intervention_id = $1 AND unit_id = $2 AND released_at IS NULL
 RETURNING id;
+
+-- name: GetAssignmentContext :one
+SELECT
+    ia.id,
+    ia.intervention_id,
+    ia.unit_id,
+    ia.dispatched_at,
+    ia.arrived_at,
+    ia.released_at,
+    u.call_sign,
+    u.unit_type_code,
+    i.event_id,
+    e.event_type_code,
+    e.severity
+FROM intervention_assignments ia
+JOIN interventions i ON i.id = ia.intervention_id
+JOIN events e ON e.id = i.event_id
+JOIN units u ON u.id = ia.unit_id
+WHERE ia.id = $1;
+
+-- name: GetInterventionEventContext :one
+SELECT
+    i.id,
+    e.event_type_code,
+    e.severity,
+    e.reported_at,
+    i.completed_at
+FROM interventions i
+JOIN events e ON e.id = i.event_id
+WHERE i.id = $1;
 

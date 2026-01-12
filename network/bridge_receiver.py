@@ -57,6 +57,19 @@ def normalize_status(status: str) -> str:
     return status.lower()
 
 
+def extract_payload(message: str) -> str:
+    """Extract payload from packet format: seq|data|crc|sign
+    
+    Returns the data portion (e.g. 'GPS:MB001,45.76,4.89')
+    If message doesn't match packet format, returns original message.
+    """
+    parts = message.split("|")
+    if len(parts) >= 2:
+        # Format is: seq|data|crc|sign - we want parts[1]
+        return parts[1]
+    return message
+
+
 def parse_gps_message(message: str) -> Optional[Tuple[str, float, float]]:
     """Parse GPS:microbit_id,lat,lon"""
     try:
@@ -140,11 +153,12 @@ def update_unit_location(api_url: str, unit_id: str, lat: float, lon: float) -> 
 
 def update_unit_status(api_url: str, unit_id: str, status: str) -> bool:
     try:
-        api_status = normalize_status(status)
+        new_status = normalize_status(status)
         url = f"{api_url.rstrip('/')}/v1/units/{unit_id}/status"
-        response = requests.patch(url, json={"status": api_status}, timeout=5)
+        response = requests.patch(url, json={"status": new_status}, timeout=5)
         return response.status_code < 400
     except requests.RequestException:
+        print(f"[ERROR] Failed to update status for {unit_id}")
         return False
 
 
@@ -237,11 +251,14 @@ def process_line(line: str, microbit_to_unit: Dict[str, str],
     """Process a single received line."""
     print(f"[RECV] {line}")
     
-    if handle_gps_message(line, microbit_to_unit, api_url):
+    # Extract payload from packet format (seq|data|crc|sign)
+    payload = extract_payload(line)
+    
+    if handle_gps_message(payload, microbit_to_unit, api_url):
         return
-    if handle_sta_message(line, microbit_to_unit, last_statuses, api_url):
+    if handle_sta_message(payload, microbit_to_unit, last_statuses, api_url):
         return
-    handle_mbit_message(line, microbit_to_unit, last_statuses, api_url)
+    handle_mbit_message(payload, microbit_to_unit, last_statuses, api_url)
 
 
 def run_main_loop(ser: serial.Serial, api_url: str, 

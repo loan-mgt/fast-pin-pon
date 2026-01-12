@@ -86,21 +86,6 @@ LEFT JOIN interventions i ON i.event_id = e.id
 WHERE e.id = $1;
 
 
--- name: CreateEventLog :one
-INSERT INTO event_logs (
-    event_id,
-    code,
-    actor,
-    payload
-) VALUES (
-    $1, $2, $3, $4
-) RETURNING
-    id,
-    event_id,
-    created_at,
-    code,
-    actor,
-    payload;
 
 -- name: ListEventLogs :many
 SELECT

@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { Card } from '../ui/card'
 import type { UnitSummary } from '../../types'
+import { StatusBadge } from '../ui/StatusBadge'
 
 interface UnitPanelProps {
   units: UnitSummary[]
@@ -10,6 +11,8 @@ interface UnitPanelProps {
 
 export function UnitPanel({ units }: Readonly<UnitPanelProps>): JSX.Element {
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(true)
+
+
 
   const normalizeStatus = (status: string) => status?.toLowerCase().replaceAll(/[-\s]/g, '_') ?? ''
 
@@ -56,7 +59,7 @@ export function UnitPanel({ units }: Readonly<UnitPanelProps>): JSX.Element {
                       {unit.unit_type_code}
                     </span>
                   </div>
-                  <p className="text-slate-400 text-xs">{unit.status}</p>
+                  <StatusBadge status={unit.status} type="unit" className="text-[10px]" />
                 </article>
               ))}
             </div>

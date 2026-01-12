@@ -48,13 +48,15 @@ WHERE dispatch_config.key = updates.key;
 
 -- name: ListBases :many
 SELECT DISTINCT 
-    home_base AS name,
-    COUNT(*) FILTER (WHERE status = 'available') AS available_units,
+    l.id,
+    l.name,
+    COUNT(*) FILTER (WHERE u.status = 'available') AS available_units,
     COUNT(*) AS total_units
-FROM units
-WHERE home_base IS NOT NULL AND home_base != ''
-GROUP BY home_base
-ORDER BY home_base;
+FROM units u
+JOIN locations l ON u.location_id = l.id
+WHERE u.location_id IS NOT NULL
+GROUP BY l.id, l.name
+ORDER BY l.name;
 
 -- name: GetBaseMinReserve :one
 SELECT COALESCE(value, 1)::int AS minReserve

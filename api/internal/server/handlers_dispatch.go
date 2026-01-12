@@ -172,12 +172,9 @@ func (s *Server) handleGetDispatchStatic(w http.ResponseWriter, r *http.Request)
 
 	bases := make([]BaseInfo, 0, len(res.bases))
 	for _, b := range res.bases {
-		name := ""
-		if b.Name != nil {
-			name = *b.Name
-		}
 		bases = append(bases, BaseInfo{
-			Name:           name,
+			ID:             uuidToString(b.ID),
+			Name:           b.Name,
 			AvailableUnits: b.AvailableUnits,
 			TotalUnits:     b.TotalUnits,
 		})
@@ -377,7 +374,7 @@ func mapCandidateToDTO(c db.ListDispatchCandidatesRow) DispatchCandidate {
 		ID:                uuidToString(c.ID),
 		CallSign:          c.CallSign,
 		UnitTypeCode:      c.UnitTypeCode,
-		HomeBase:          optionalString(c.HomeBase),
+		HomeBase:          optionalString(c.HomeBaseName),
 		Status:            string(c.Status),
 		Location:          GeoPoint{Latitude: c.Latitude, Longitude: c.Longitude},
 		TravelTimeSeconds: c.TravelTimeSeconds,

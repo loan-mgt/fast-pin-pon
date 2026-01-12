@@ -16,10 +16,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Main entry point for the Decision Engine.
@@ -33,39 +31,36 @@ import java.util.logging.SimpleFormatter;
  */
 public final class Main {
 
-    private static final Logger LOG = Logger.getLogger(Main.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
         try {
             new Main().run();
         } catch (InterruptedException e) {
-            LOG.log(Level.SEVERE, "Engine interrupted", e);
+            log.error("Engine interrupted", e);
             Thread.currentThread().interrupt();
             System.exit(1);
         }
     }
 
     private void run() throws InterruptedException {
-        LOG.info("=== Fast Pin Pon Decision Engine ===");
+        log.info("Starting Fast Pin Pon Decision Engine...");
 
         // Load configuration
         EngineConfig config = EngineConfig.fromEnvironment();
-        LOG.info(() -> "Configuration: " + config);
+        log.info("Configuration loaded: {}", config);
 
-        // Configure logging
-        configureLogging(config);
-
-        // Create API client
+        // API client
         DispatchApiClient apiClient = new DispatchApiClientImpl(config.getApiBaseUrl());
-        LOG.info(() -> "API client configured for: " + config.getApiBaseUrl());
+        log.info("API client configured for: {}", config.getApiBaseUrl());
 
         // Create cache and load static data
         StaticDataCache cache = new StaticDataCacheImpl(apiClient);
-        LOG.info("Loading static data from API...");
+        log.info("Loading static data from API...");
         cache.refresh();
 
         if (!cache.isInitialized()) {
-            LOG.warning("Cache not fully initialized, using defaults");
+            log.warn("Cache not fully initialized, using defaults");
         }
 
         // Create services
@@ -75,61 +70,37 @@ public final class Main {
         // Start callback server
         CallbackServer callbackServer = new CallbackServer(config.getCallbackPort(), cache, dispatchService);
         callbackServer.start();
-        LOG.info(() -> "Callback server started on port " + config.getCallbackPort());
+        log.info("Callback server started on port {}", config.getCallbackPort());
 
         // Start scheduler if enabled
         DispatchScheduler scheduler = null;
         if (config.isSchedulerEnabled()) {
             scheduler = new DispatchScheduler(dispatchService, config.getDispatchIntervalSeconds());
             scheduler.start();
-            LOG.info(() -> "Dispatch scheduler started with interval: " + config.getDispatchIntervalSeconds() + "s");
+            log.info("Dispatch scheduler started with interval {}s", config.getDispatchIntervalSeconds());
         } else {
-            LOG.info("Dispatch scheduler disabled");
+            log.info("Dispatch scheduler disabled");
         }
 
         // Register shutdown hook
         final DispatchScheduler finalScheduler = scheduler;
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            LOG.info("Shutting down engine...");
+            log.info("Shutting down engine...");
             callbackServer.stop();
             if (finalScheduler != null) {
                 finalScheduler.stop();
             }
-            LOG.info("Engine shutdown complete");
+            log.info("Engine shutdown complete");
         }));
 
-        LOG.info("=== Decision Engine started successfully ===");
-        LOG.info("Endpoints:");
-        LOG.info(() -> "  - Health: http://localhost:" + config.getCallbackPort() + "/health");
-        LOG.info(() -> "  - Refresh: POST http://localhost:" + config.getCallbackPort() + "/refresh");
-        LOG.info(() -> "  - Dispatch: POST http://localhost:" + config.getCallbackPort() + "/dispatch/{interventionId}");
+        log.info("Decision engine started successfully");
+        log.info("Endpoints:");
+        log.info("  - Health: http://localhost:{}/health", config.getCallbackPort());
+        log.info("  - Refresh: POST http://localhost:{}/refresh", config.getCallbackPort());
+        log.info("  - Dispatch: POST http://localhost:{}/dispatch/{{interventionId}}", config.getCallbackPort());
 
         // Keep main thread alive
         Thread.currentThread().join();
     }
 
-    /**
-     * Configure file logging if enabled.
-     */
-    private void configureLogging(EngineConfig config) {
-        Logger root = Logger.getLogger("");
-        root.setLevel(Level.INFO);
-
-        if (!config.isFileLoggingEnabled()) {
-            return;
-        }
-
-        String logFilePath = config.getLogFilePath();
-        Path target = Paths.get(logFilePath).toAbsolutePath();
-
-        try {
-            Files.createDirectories(target.getParent());
-            FileHandler handler = new FileHandler(target.toString(), 5 * 1024 * 1024, 3, true);
-            handler.setFormatter(new SimpleFormatter());
-            root.addHandler(handler);
-            LOG.info(() -> "File logging enabled: " + target);
-        } catch (IOException e) {
-            LOG.log(Level.WARNING, "Failed to setup file logging", e);
-        }
-    }
 }

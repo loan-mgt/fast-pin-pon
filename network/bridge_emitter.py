@@ -19,7 +19,7 @@ import time
 import serial
 import serial.tools.list_ports
 import requests
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 
 # Configuration
 SIMULATOR_DEFAULT_URL = "http://localhost:8090"
@@ -86,34 +86,39 @@ def fetch_simulator_tick(sim_url: str, tick_count: int) -> Optional[List[Dict]]:
         return None
 
 
-def send_gps_command(ser: serial.Serial, microbit_id: str, lat: float, lon: float) -> None:
+def send_gps_command(ser: serial.Serial, microbit_id: str, lat: float, lon: float, call_sign: str = "") -> None:
     cmd = f"GPS:{microbit_id},{lat:.6f},{lon:.6f}"
     packet = build_packet(cmd)
     ser.write((packet + "\n").encode("utf-8"))
-    print(f"[EMIT] {cmd}")
+    display_name = call_sign if call_sign else microbit_id
+    print(f"[EMIT] GPS:{display_name},{lat:.6f},{lon:.6f}")
 
 
-def send_status_command(ser: serial.Serial, microbit_id: str, status: str) -> None:
+def send_status_command(ser: serial.Serial, microbit_id: str, status: str, call_sign: str = "") -> None:
     cmd = f"STA:{microbit_id},{status}"
     packet = build_packet(cmd)
     ser.write((packet + "\n").encode("utf-8"))
-    print(f"[EMIT] {cmd}")
+    display_name = call_sign if call_sign else microbit_id
+    print(f"[EMIT] STA:{display_name},{status}")
 
 
-def load_microbit_mapping(api_url: str) -> Dict[str, str]:
-    """Load mapping of unit_id -> microbit_id from API"""
+def load_microbit_mapping(api_url: str) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """Load mapping of unit_id -> microbit_id and unit_id -> call_sign from API"""
     try:
         response = requests.get(f"{api_url.rstrip('/')}/v1/units", timeout=8)
         response.raise_for_status()
-        mapping = {}
+        unit_to_microbit = {}
+        unit_to_callsign = {}
         for unit in response.json():
             microbit_id = unit.get("microbit_id")
             unit_id = unit.get("id")
+            call_sign = unit.get("call_sign", "")
             if microbit_id and unit_id:
-                mapping[unit_id] = microbit_id
-        return mapping
+                unit_to_microbit[unit_id] = microbit_id
+                unit_to_callsign[unit_id] = call_sign
+        return unit_to_microbit, unit_to_callsign
     except requests.RequestException:
-        return {}
+        return {}, {}
 
 
 def print_config(simulator_url: str, api_url: str, baud_rate: int, poll_interval: float) -> None:
@@ -175,7 +180,8 @@ def process_state(state: Dict, unit_to_microbit: Dict[str, str],
     microbit_latest[microbit_id] = {
         "lat": float(lat),
         "lon": float(lon),
-        "status": state.get("status")
+        "status": state.get("status"),
+        "call_sign": state.get("callSign") or state.get("call_sign", "")
     }
     
     if microbit_id not in microbit_ids:
@@ -189,9 +195,10 @@ def send_all_microbits(ser: serial.Serial, microbit_ids: List[str],
     for microbit_id in microbit_ids:
         data = microbit_latest.get(microbit_id)
         if data:
-            send_gps_command(ser, microbit_id, data["lat"], data["lon"])
+            call_sign = data.get("call_sign", "")
+            send_gps_command(ser, microbit_id, data["lat"], data["lon"], call_sign)
             if data.get("status"):
-                send_status_command(ser, microbit_id, data["status"])
+                send_status_command(ser, microbit_id, data["status"], call_sign)
             time.sleep(0.2)
     print("[INFO] Envoi terminé")
 
@@ -229,15 +236,31 @@ def handle_poll(ser: serial.Serial, simulator_url: str, unit_to_microbit: Dict[s
 
 
 def run_main_loop(ser: serial.Serial, simulator_url: str, poll_interval: float,
-                  unit_to_microbit: Dict[str, str]) -> None:
+                  unit_to_microbit: Dict[str, str], api_url: str) -> None:
     """Run the main polling loop."""
     microbit_ids: List[str] = list(set(unit_to_microbit.values()))
     microbit_latest: Dict[str, Dict] = {}
     rotation_idx = 0
     last_poll = 0.0
+    last_mapping_refresh = time.time()
+    mapping_refresh_interval = 60  # Refresh mapping every 60 seconds
 
     while True:
         now = time.time()
+        
+        # Refresh mapping periodically to pick up newly assigned microbits
+        if now - last_mapping_refresh > mapping_refresh_interval:
+            print("[INFO] Rafraîchissement du mapping unités -> microbits...")
+            new_mapping, _ = load_microbit_mapping(api_url)
+            if len(new_mapping) != len(unit_to_microbit):
+                print(f"[INFO] Mapping mis à jour: {len(new_mapping)} unités avec microbit assigné")
+                print_mapping_debug(new_mapping)
+            unit_to_microbit.clear()
+            unit_to_microbit.update(new_mapping)
+            microbit_ids.clear()
+            microbit_ids.extend(list(set(new_mapping.values())))
+            last_mapping_refresh = now
+        
         if now - last_poll >= poll_interval:
             rotation_idx = handle_poll(ser, simulator_url, unit_to_microbit, 
                                        microbit_latest, microbit_ids, rotation_idx)
@@ -260,7 +283,7 @@ def main() -> None:
         return
 
     print("[INFO] Chargement du mapping unités -> microbits...")
-    unit_to_microbit = load_microbit_mapping(api_url)
+    unit_to_microbit, _ = load_microbit_mapping(api_url)
     print(f"[INFO] {len(unit_to_microbit)} unités avec microbit assigné")
     
     print("\n[INFO] Bridge émetteur prêt. Envoi des données du simulateur...")
@@ -269,7 +292,7 @@ def main() -> None:
     print_mapping_debug(unit_to_microbit)
 
     try:
-        run_main_loop(ser, simulator_url, poll_interval, unit_to_microbit)
+        run_main_loop(ser, simulator_url, poll_interval, unit_to_microbit, api_url)
     except KeyboardInterrupt:
         print("\n[INFO] Arrêt du bridge émetteur")
     finally:

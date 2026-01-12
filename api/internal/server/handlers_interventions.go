@@ -87,6 +87,9 @@ func (s *Server) handleCreateIntervention(w http.ResponseWriter, r *http.Request
 		go s.notifyEngineDispatch(context.Background(), uuidString(row.ID))
 	}
 
+	// Log the creation
+	s.logInterventionStatusChange(r.Context(), row.ID, row.EventID, "", string(db.InterventionStatusCreated), req.CreatedBy)
+
 	s.writeJSON(w, http.StatusCreated, mapIntervention(row))
 }
 
@@ -158,9 +161,23 @@ func (s *Server) handleUpdateInterventionStatus(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Fetch current intervention to get old status and event context for logging
+	currentIntervention, err := s.queries.GetIntervention(r.Context(), interventionID)
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, "intervention not found", nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to fetch intervention", err.Error())
+		return
+	}
+
+	oldStatus := string(currentIntervention.Status)
+	newStatus := req.Status
+
 	row, err := s.queries.UpdateInterventionStatus(r.Context(), db.UpdateInterventionStatusParams{
 		ID:      interventionID,
-		Column2: db.InterventionStatus(req.Status),
+		Column2: db.InterventionStatus(newStatus),
 	})
 	if err != nil {
 		if isNotFound(err) {
@@ -171,12 +188,23 @@ func (s *Server) handleUpdateInterventionStatus(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Log the status change if it actually changed
+	if oldStatus != newStatus {
+		if logErr := s.logInterventionStatusChange(r.Context(), interventionID, currentIntervention.EventID, oldStatus, newStatus, nil); logErr != nil {
+			s.log.Error().Err(logErr).Msg("failed to log intervention status change")
+			// Don't fail the request if logging fails
+		}
+	}
+
 	// When an intervention is completed, release all assignments and set units available.
 	if req.Status == string(db.InterventionStatusCompleted) {
+		s.log.Info().Str("intervention_id", uuidString(interventionID)).Msg("intervention completed, releasing all assigned units")
 		if err := s.releaseInterventionUnits(r.Context(), interventionID); err != nil {
 			s.writeError(w, http.StatusInternalServerError, "failed to release assignments", err.Error())
 			return
 		}
+
+		s.observeEventResolution(r.Context(), interventionID, row.CompletedAt)
 	}
 
 	s.writeJSON(w, http.StatusOK, mapIntervention(row))
@@ -188,6 +216,8 @@ func (s *Server) releaseInterventionUnits(ctx context.Context, interventionID pg
 		return err
 	}
 
+	s.log.Info().Str("intervention_id", uuidString(interventionID)).Int("assignment_count", len(assignments)).Msg("releasing intervention units")
+
 	for _, a := range assignments {
 		if a.Status != db.AssignmentStatusReleased {
 			if _, err := s.queries.UpdateAssignmentStatus(ctx, db.UpdateAssignmentStatusParams{
@@ -196,6 +226,13 @@ func (s *Server) releaseInterventionUnits(ctx context.Context, interventionID pg
 			}); err != nil {
 				return err
 			}
+			s.log.Debug().Str("assignment_id", uuidString(a.ID)).Str("unit_id", uuidString(a.UnitID)).Msg("assignment released")
+		}
+
+		// Fetch unit for logging
+		unit, err := s.queries.GetUnit(ctx, a.UnitID)
+		if err != nil {
+			s.log.Error().Err(err).Str("unit_id", uuidString(a.UnitID)).Msg("failed to fetch unit for logging")
 		}
 
 		if _, err := s.queries.UpdateUnitStatus(ctx, db.UpdateUnitStatusParams{
@@ -204,6 +241,16 @@ func (s *Server) releaseInterventionUnits(ctx context.Context, interventionID pg
 		}); err != nil {
 			return err
 		}
+
+		if unit.CallSign != "" {
+			s.logUnitStatusChange(ctx, a.UnitID, unit.CallSign, string(unit.Status), string(db.UnitStatusAvailable), nil)
+		}
+
+		s.observeAssignmentOnSite(ctx, a.ID)
+		s.log.Debug().Str("unit_id", uuidString(a.UnitID)).Msg("unit status set to available")
+
+		// Trigger return to station routing
+		go s.calculateAndSaveRouteToStation(context.Background(), a.UnitID)
 	}
 	return nil
 }
@@ -288,6 +335,12 @@ func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Fetch unit for logging
+	unit, err := s.queries.GetUnit(r.Context(), unitID)
+	if err != nil {
+		s.log.Error().Err(err).Str("unit_id", req.UnitID).Msg("failed to fetch unit for logging")
+	}
+
 	// Update unit status to 'under_way' when assigned
 	if _, err := s.queries.UpdateUnitStatus(r.Context(), db.UpdateUnitStatusParams{
 		ID:     unitID,
@@ -295,7 +348,12 @@ func (s *Server) handleCreateAssignment(w http.ResponseWriter, r *http.Request) 
 	}); err != nil {
 		s.log.Error().Err(err).Str("unit_id", req.UnitID).Msg("failed to update unit status after assignment")
 		// We don't fail the whole request because the assignment was created
+	} else if unit.CallSign != "" {
+		s.logUnitStatusChange(r.Context(), unitID, unit.CallSign, string(unit.Status), string(db.UnitStatusUnderWay), nil)
 	}
+
+	// Calculate and save route for the unit
+	go s.calculateAndSaveRouteForAssignment(context.Background(), interventionID, unitID)
 
 	s.writeJSON(w, http.StatusCreated, mapAssignment(row))
 }
@@ -324,7 +382,7 @@ func (s *Server) handleReleaseAssignment(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err = s.queries.ReleaseUnitFromIntervention(r.Context(), db.ReleaseUnitFromInterventionParams{
+	releasedID, err := s.queries.ReleaseUnitFromIntervention(r.Context(), db.ReleaseUnitFromInterventionParams{
 		InterventionID: interventionID,
 		UnitID:         unitID,
 	})
@@ -337,13 +395,25 @@ func (s *Server) handleReleaseAssignment(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Fetch unit for logging
+	unit, err := s.queries.GetUnit(r.Context(), unitID)
+	if err != nil {
+		s.log.Error().Err(err).Str("unit_id", uuidString(unitID)).Msg("failed to fetch unit for logging")
+	}
+
 	// Set unit available again
 	if _, err := s.queries.UpdateUnitStatus(r.Context(), db.UpdateUnitStatusParams{
 		ID:     unitID,
 		Status: db.UnitStatusAvailable,
 	}); err != nil {
 		s.log.Error().Err(err).Str("unit_id", uuidString(unitID)).Msg("failed to update unit status after release")
+	} else if unit.CallSign != "" {
+		s.logUnitStatusChange(r.Context(), unitID, unit.CallSign, string(unit.Status), string(db.UnitStatusAvailable), nil)
 	}
+
+	s.observeAssignmentOnSite(r.Context(), releasedID)
+	// Trigger return to station routing
+	go s.calculateAndSaveRouteToStation(context.Background(), unitID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -416,6 +486,14 @@ func (s *Server) handleUpdateAssignmentStatus(w http.ResponseWriter, r *http.Req
 		}
 		s.writeError(w, http.StatusInternalServerError, "failed to update assignment", err.Error())
 		return
+	}
+
+	if row.Status == db.AssignmentStatusArrived {
+		s.observeAssignmentTravel(r.Context(), assignmentID)
+	}
+
+	if row.Status == db.AssignmentStatusReleased {
+		s.observeAssignmentOnSite(r.Context(), assignmentID)
 	}
 
 	s.writeJSON(w, http.StatusOK, mapAssignment(row))

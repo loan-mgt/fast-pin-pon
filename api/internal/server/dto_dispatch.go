@@ -38,6 +38,7 @@ type BatchUpdateDispatchConfigRequest struct {
 
 // BaseInfo represents a unit parking base with coverage info.
 type BaseInfo struct {
+	ID             string `json:"id"`
 	Name           string `json:"name"`
 	AvailableUnits int64  `json:"available_units"`
 	TotalUnits     int64  `json:"total_units"`

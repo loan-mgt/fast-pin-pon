@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,7 +18,6 @@ const errUnitNotFound = "unit not found"
 type CreateUnitRequest struct {
 	CallSign     string  `json:"call_sign" validate:"required"`
 	UnitTypeCode string  `json:"unit_type_code" validate:"required"`
-	HomeBase     *string `json:"home_base"`
 	LocationID   *string `json:"location_id"`
 	Status       string  `json:"status" validate:"required,oneof=available available_hidden under_way on_site unavailable offline"`
 	Latitude     float64 `json:"latitude" validate:"required,latitude"`
@@ -71,7 +71,7 @@ func (s *Server) handleListUnits(w http.ResponseWriter, r *http.Request) {
 			ID:           row.ID,
 			CallSign:     row.CallSign,
 			UnitTypeCode: row.UnitTypeCode,
-			HomeBase:     row.HomeBase,
+			HomeBaseName: row.HomeBaseName,
 			LocationID:   row.LocationID,
 			Status:       row.Status,
 			MicrobitID:   row.MicrobitID,
@@ -125,9 +125,9 @@ func (s *Server) handleCreateUnit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params := db.CreateUnitParams{
-		CallSign:      req.CallSign,
-		UnitTypeCode:  req.UnitTypeCode,
-		HomeBase:      req.HomeBase,
+		CallSign:     req.CallSign,
+		UnitTypeCode: req.UnitTypeCode,
+
 		LocationID:    locationID,
 		Status:        db.UnitStatus(req.Status),
 		Longitude:     req.Longitude,
@@ -209,9 +209,23 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Fetch current unit to get old status for logging
+	currentUnit, err := s.queries.GetUnit(r.Context(), unitID)
+	if err != nil {
+		if isNotFound(err) {
+			s.writeError(w, http.StatusNotFound, errUnitNotFound, nil)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, "failed to fetch unit", err.Error())
+		return
+	}
+
+	oldStatus := string(currentUnit.Status)
+	newStatus := req.Status
+
 	row, err := s.queries.UpdateUnitStatus(r.Context(), db.UpdateUnitStatusParams{
 		ID:     unitID,
-		Status: db.UnitStatus(req.Status),
+		Status: db.UnitStatus(newStatus),
 	})
 	if err != nil {
 		if isNotFound(err) {
@@ -222,16 +236,28 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Auto-delete route when unit status changes to something other than under_way or on_site
-	if req.Status != "under_way" && req.Status != "on_site" {
-		_ = s.queries.DeleteUnitRoute(r.Context(), unitID) // Ignore error - route may not exist
+	// Log the status change if it actually changed
+	if oldStatus != newStatus {
+		if logErr := s.logUnitStatusChange(r.Context(), unitID, currentUnit.CallSign, oldStatus, newStatus, nil); logErr != nil {
+			s.log.Error().Err(logErr).Msg("failed to log unit status change")
+			// Don't fail the request if logging fails
+		}
+	}
+
+	// Manage routes based on status change
+	if req.Status == "available" {
+		// Unit is returning to station -> calculate return route
+		go s.calculateAndSaveRouteToStation(context.Background(), unitID)
+	} else if req.Status != "under_way" {
+		// Delete route when unit arrives on_site, at station (available_hidden), or goes offline
+		_ = s.queries.DeleteUnitRoute(r.Context(), unitID) // Ignore error
 	}
 
 	s.writeJSON(w, http.StatusOK, mapUnitRow(unitRowData{
 		ID:           row.ID,
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
-		HomeBase:     row.HomeBase,
+		HomeBaseName: &row.HomeBaseName,
 		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
@@ -288,7 +314,7 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 		ID:           row.ID,
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
-		HomeBase:     row.HomeBase,
+		HomeBaseName: &row.HomeBaseName,
 		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
@@ -343,7 +369,7 @@ func (s *Server) handleUpdateUnitStation(w http.ResponseWriter, r *http.Request)
 		ID:           row.ID,
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
-		HomeBase:     row.HomeBase,
+		HomeBaseName: &row.HomeBaseName,
 		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
@@ -411,7 +437,7 @@ type unitRowData struct {
 	ID             pgtype.UUID
 	CallSign       string
 	UnitTypeCode   string
-	HomeBase       *string
+	HomeBaseName   *string
 	LocationID     pgtype.UUID
 	Status         db.UnitStatus
 	MicrobitID     *string
@@ -428,7 +454,7 @@ func mapUnitRow(data unitRowData) UnitResponse {
 		ID:             uuidString(data.ID),
 		CallSign:       data.CallSign,
 		UnitTypeCode:   data.UnitTypeCode,
-		HomeBase:       optionalString(data.HomeBase),
+		HomeBase:       optionalString(data.HomeBaseName),
 		LocationID:     uuidStringOptional(data.LocationID),
 		Status:         string(data.Status),
 		MicrobitID:     optionalString(data.MicrobitID),
@@ -445,7 +471,7 @@ func mapCreateUnitRow(row db.CreateUnitRow) UnitResponse {
 		ID:           uuidString(row.ID),
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
-		HomeBase:     optionalString(row.HomeBase),
+		HomeBase:     row.HomeBaseName,
 		LocationID:   uuidStringOptional(row.LocationID),
 		Status:       string(row.Status),
 		MicrobitID:   optionalString(row.MicrobitID),
@@ -507,7 +533,7 @@ func (s *Server) handleAssignMicrobit(w http.ResponseWriter, r *http.Request) {
 		ID:           row.ID,
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
-		HomeBase:     row.HomeBase,
+		HomeBaseName: &row.HomeBaseName,
 		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
@@ -551,7 +577,7 @@ func (s *Server) handleUnassignMicrobit(w http.ResponseWriter, r *http.Request) 
 		ID:           row.ID,
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
-		HomeBase:     row.HomeBase,
+		HomeBaseName: &row.HomeBaseName,
 		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
@@ -594,7 +620,7 @@ func (s *Server) handleGetUnitByMicrobit(w http.ResponseWriter, r *http.Request)
 		ID:           row.ID,
 		CallSign:     row.CallSign,
 		UnitTypeCode: row.UnitTypeCode,
-		HomeBase:     row.HomeBase,
+		HomeBaseName: row.HomeBaseName,
 		LocationID:   row.LocationID,
 		Status:       row.Status,
 		MicrobitID:   row.MicrobitID,
@@ -663,7 +689,7 @@ func (s *Server) handleListUnitsNearby(w http.ResponseWriter, r *http.Request) {
 			ID:             row.ID,
 			CallSign:       row.CallSign,
 			UnitTypeCode:   row.UnitTypeCode,
-			HomeBase:       row.HomeBase,
+			HomeBaseName:   row.HomeBaseName,
 			LocationID:     row.LocationID,
 			Status:         row.Status,
 			MicrobitID:     row.MicrobitID,

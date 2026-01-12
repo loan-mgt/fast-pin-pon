@@ -21,16 +21,106 @@ func (q *Queries) DeleteUnitRoute(ctx context.Context, unitID pgtype.UUID) error
 	return err
 }
 
+const getActiveRouteRepairData = `-- name: GetActiveRouteRepairData :one
+SELECT
+        ia.intervention_id,
+        u.id AS unit_id,
+        COALESCE(ST_X(u.location::geometry), 0)::float8 AS unit_lon,
+        COALESCE(ST_Y(u.location::geometry), 0)::float8 AS unit_lat,
+        e.id AS event_id,
+        ST_X(e.location::geometry)::float8 AS event_lon,
+        ST_Y(e.location::geometry)::float8 AS event_lat
+FROM intervention_assignments ia
+JOIN interventions i ON i.id = ia.intervention_id
+JOIN events e ON e.id = i.event_id
+JOIN units u ON u.id = ia.unit_id
+WHERE ia.unit_id = $1
+    AND ia.released_at IS NULL
+    AND ia.status IN ('dispatched', 'arrived')
+ORDER BY ia.dispatched_at DESC
+LIMIT 1
+`
+
+type GetActiveRouteRepairDataRow struct {
+	InterventionID pgtype.UUID `json:"intervention_id"`
+	UnitID         pgtype.UUID `json:"unit_id"`
+	UnitLon        float64     `json:"unit_lon"`
+	UnitLat        float64     `json:"unit_lat"`
+	EventID        pgtype.UUID `json:"event_id"`
+	EventLon       float64     `json:"event_lon"`
+	EventLat       float64     `json:"event_lat"`
+}
+
+// Finds the latest active assignment for a unit to repair a missing route
+// Returns both the intervention id and coordinates needed for routing
+func (q *Queries) GetActiveRouteRepairData(ctx context.Context, unitID pgtype.UUID) (GetActiveRouteRepairDataRow, error) {
+	row := q.db.QueryRow(ctx, getActiveRouteRepairData, unitID)
+	var i GetActiveRouteRepairDataRow
+	err := row.Scan(
+		&i.InterventionID,
+		&i.UnitID,
+		&i.UnitLon,
+		&i.UnitLat,
+		&i.EventID,
+		&i.EventLon,
+		&i.EventLat,
+	)
+	return i, err
+}
+
+const getRouteCalculationData = `-- name: GetRouteCalculationData :one
+SELECT
+    u.id AS unit_id,
+    COALESCE(ST_X(u.location::geometry), 0)::float8 AS unit_lon,
+    COALESCE(ST_Y(u.location::geometry), 0)::float8 AS unit_lat,
+    e.id AS event_id,
+    ST_X(e.location::geometry)::float8 AS event_lon,
+    ST_Y(e.location::geometry)::float8 AS event_lat
+FROM interventions i
+JOIN events e ON e.id = i.event_id
+JOIN units u ON u.id = $1
+WHERE i.id = $2
+`
+
+type GetRouteCalculationDataParams struct {
+	UnitID         pgtype.UUID `json:"unit_id"`
+	InterventionID pgtype.UUID `json:"intervention_id"`
+}
+
+type GetRouteCalculationDataRow struct {
+	UnitID   pgtype.UUID `json:"unit_id"`
+	UnitLon  float64     `json:"unit_lon"`
+	UnitLat  float64     `json:"unit_lat"`
+	EventID  pgtype.UUID `json:"event_id"`
+	EventLon float64     `json:"event_lon"`
+	EventLat float64     `json:"event_lat"`
+}
+
+// Gets all data needed to calculate a route for an assignment (unit position + event destination)
+func (q *Queries) GetRouteCalculationData(ctx context.Context, arg GetRouteCalculationDataParams) (GetRouteCalculationDataRow, error) {
+	row := q.db.QueryRow(ctx, getRouteCalculationData, arg.UnitID, arg.InterventionID)
+	var i GetRouteCalculationDataRow
+	err := row.Scan(
+		&i.UnitID,
+		&i.UnitLon,
+		&i.UnitLat,
+		&i.EventID,
+		&i.EventLon,
+		&i.EventLat,
+	)
+	return i, err
+}
+
 const getRoutePosition = `-- name: GetRoutePosition :one
 SELECT
-    ST_X(ST_LineInterpolatePoint(route_geometry, LEAST($1::double precision / 100.0, 1.0)))::double precision AS lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST($1::double precision / 100.0, 1.0)))::double precision AS lat
+    ST_X(ST_LineInterpolatePoint(route_geometry, $1 / 100.0))::float8 AS lon,
+    ST_Y(ST_LineInterpolatePoint(route_geometry, $1 / 100.0))::float8 AS lat
 FROM unit_routes
 WHERE unit_id = $2
 `
 
 type GetRoutePositionParams struct {
-	ProgressPercent float64     `json:"progress_percent"`
+	ProgressPercent interface{} `json:"progress_percent"`
 	UnitID          pgtype.UUID `json:"unit_id"`
 }
 
@@ -40,6 +130,7 @@ type GetRoutePositionRow struct {
 }
 
 // Gets just the interpolated position for a given progress (for simulation)
+// Optimized: Removed redundant cast and LEAST call
 func (q *Queries) GetRoutePosition(ctx context.Context, arg GetRoutePositionParams) (GetRoutePositionRow, error) {
 	row := q.db.QueryRow(ctx, getRoutePosition, arg.ProgressPercent, arg.UnitID)
 	var i GetRoutePositionRow
@@ -49,22 +140,25 @@ func (q *Queries) GetRoutePosition(ctx context.Context, arg GetRoutePositionPara
 
 const getUnitRoute = `-- name: GetUnitRoute :one
 SELECT 
-    unit_id,
-    intervention_id,
-    ST_AsGeoJSON(route_geometry)::text AS route_geojson,
-    route_length_meters,
-    estimated_duration_seconds,
-    progress_percent,
+    ur.unit_id,
+    ur.intervention_id,
+    ST_AsGeoJSON(ur.route_geometry)::text AS route_geojson,
+    ur.route_length_meters,
+    ur.estimated_duration_seconds,
+    ur.progress_percent,
     -- Current position interpolated along the route
-    ST_X(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lat,
+    ST_X(ST_LineInterpolatePoint(ur.route_geometry, ur.progress_percent / 100.0))::float8 AS current_lon,
+    ST_Y(ST_LineInterpolatePoint(ur.route_geometry, ur.progress_percent / 100.0))::float8 AS current_lat,
     -- Remaining distance and time
-    (route_length_meters * (1.0 - progress_percent / 100.0))::double precision AS remaining_meters,
-    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::double precision AS remaining_seconds,
-    created_at,
-    updated_at
-FROM unit_routes
-WHERE unit_id = $1
+    (ur.route_length_meters * (1.0 - ur.progress_percent / 100.0))::float8 AS remaining_meters,
+    (ur.estimated_duration_seconds * (1.0 - ur.progress_percent / 100.0))::float8 AS remaining_seconds,
+    ur.created_at,
+    ur.updated_at,
+    e.severity
+FROM unit_routes ur
+LEFT JOIN interventions i ON ur.intervention_id = i.id
+LEFT JOIN events e ON i.event_id = e.id
+WHERE ur.unit_id = $1
 `
 
 type GetUnitRouteRow struct {
@@ -80,6 +174,7 @@ type GetUnitRouteRow struct {
 	RemainingSeconds         float64            `json:"remaining_seconds"`
 	CreatedAt                pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
+	Severity                 *int32             `json:"severity"`
 }
 
 // Gets a unit's route with current position interpolated from progress
@@ -99,6 +194,47 @@ func (q *Queries) GetUnitRoute(ctx context.Context, unitID pgtype.UUID) (GetUnit
 		&i.RemainingSeconds,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Severity,
+	)
+	return i, err
+}
+
+const getUnitStationRouteData = `-- name: GetUnitStationRouteData :one
+
+SELECT
+    u.id AS unit_id,
+    COALESCE(ST_X(u.location::geometry), 0)::float8 AS unit_lon,
+    COALESCE(ST_Y(u.location::geometry), 0)::float8 AS unit_lat,
+    l.id AS station_id,
+    COALESCE(ST_X(l.location::geometry), 0)::float8 AS station_lon,
+    COALESCE(ST_Y(l.location::geometry), 0)::float8 AS station_lat
+FROM units u
+JOIN locations l ON l.id = u.location_id
+WHERE u.id = $1
+`
+
+type GetUnitStationRouteDataRow struct {
+	UnitID     pgtype.UUID `json:"unit_id"`
+	UnitLon    float64     `json:"unit_lon"`
+	UnitLat    float64     `json:"unit_lat"`
+	StationID  pgtype.UUID `json:"station_id"`
+	StationLon float64     `json:"station_lon"`
+	StationLat float64     `json:"station_lat"`
+}
+
+// NOTE: CalculateRoute is implemented as raw SQL in handlers_routing.go
+// because sqlc cannot parse pgr_connectedComponents and other pgRouting functions
+// Gets all data needed to calculate a route to the unit's home station
+func (q *Queries) GetUnitStationRouteData(ctx context.Context, unitID pgtype.UUID) (GetUnitStationRouteDataRow, error) {
+	row := q.db.QueryRow(ctx, getUnitStationRouteData, unitID)
+	var i GetUnitStationRouteDataRow
+	err := row.Scan(
+		&i.UnitID,
+		&i.UnitLon,
+		&i.UnitLat,
+		&i.StationID,
+		&i.StationLon,
+		&i.StationLat,
 	)
 	return i, err
 }
@@ -186,10 +322,10 @@ WHERE unit_id = $2
 RETURNING 
     unit_id,
     progress_percent,
-    ST_X(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lon,
-    ST_Y(ST_LineInterpolatePoint(route_geometry, LEAST(progress_percent / 100.0, 1.0)))::double precision AS current_lat,
-    (route_length_meters * (1.0 - progress_percent / 100.0))::double precision AS remaining_meters,
-    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::double precision AS remaining_seconds
+    ST_X(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lon,
+    ST_Y(ST_LineInterpolatePoint(route_geometry, progress_percent / 100.0))::float8 AS current_lat,
+    (route_length_meters * (1.0 - progress_percent / 100.0))::float8 AS remaining_meters,
+    (estimated_duration_seconds * (1.0 - progress_percent / 100.0))::float8 AS remaining_seconds
 `
 
 type UpdateRouteProgressParams struct {
