@@ -238,7 +238,7 @@ function addEventMarkers(
             isSelected,
             location.event.severity,
             onSiteUnits,
-            !location.event.auto_simulated, // isManual = inverse of auto_simulated
+            location.event.auto_simulated === false, // isManual = inverse of auto_simulated
         )
 
         // Anchor at center so connection lines point to the event icon center
