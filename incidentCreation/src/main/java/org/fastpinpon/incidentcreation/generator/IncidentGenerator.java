@@ -29,7 +29,6 @@ public final class IncidentGenerator {
     private static final long DEFAULT_INCIDENT_INTERVAL_SECONDS = 180;
 
     // Water locations along the Rhône and Saône rivers in Lyon for AQUATIC_RESCUE incidents
-    // Format: {latitude, longitude}
     private static final double[][] WATER_LOCATIONS = {
         // Saône river (west side of Presqu'île, flows north to south)
         {45.7850, 4.8280},  // Saône - Île Barbe area
@@ -185,7 +184,7 @@ public final class IncidentGenerator {
             lon = CITY_CENTER_LON + lonOffset;
         }
         
-        int gravite = generateSeverityForType(type);
+        int gravite = generateSeverityForType();
         int number = ++incidentSequence;
 
         Incident incident = new Incident(number, type, lat, lon, gravite);
@@ -262,10 +261,9 @@ public final class IncidentGenerator {
      * - 20%: severity 3 or 4 (Modéré/Élevée)
      * - 10%: severity 5 (Critique)
      * 
-     * @param type the incident type (unused, kept for API compatibility)
      * @return severity level 1-5
      */
-    private int generateSeverityForType(IncidentType type) {
+    private int generateSeverityForType() {
         int roll = random.nextInt(100);  // 0-99
         
         if (roll < 70) {

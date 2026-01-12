@@ -137,13 +137,6 @@ public final class ApiClient {
         }
     }
 
-    private String pickEventType() {
-        if (eventTypeCodes.isEmpty()) {
-            return null;
-        }
-        return eventTypeCodes.get(random.nextInt(eventTypeCodes.size()));
-    }
-
     private <T> T execute(Call<T> call, String action) {
         try {
             Response<T> resp = call.execute();
