@@ -3,8 +3,6 @@ services:
     image: ghcr.io/loan-mgt/fast-pin-pon/api:main
     restart: unless-stopped
     container_name: fast-pin-pon-api
-    env_file:
-      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -13,11 +11,13 @@ services:
       - default
     environment:
       - LOG_FILE=/var/log/fast-pin-pon/api.log
-      - DB_URL=${DB_URL}
       - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
-      - KEYCLOAK_PUBLIC_URL=${KC_HOSTNAME}
-      - KEYCLOAK_REALM=sdmis-realm
-      - KEYCLOAK_CLIENT_ID=sdmis-api
+      - KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - ENGINE_CALLBACK_URL=http://engine:8081
+      - DB_URL=${DB_URL}
+      - DB_RUN_MIGRATIONS=${DB_RUN_MIGRATIONS}
+      - DB_MIGRATIONS_DIR=${DB_MIGRATIONS_DIR}
     volumes:
       - logs:/var/log:rw
     healthcheck:
@@ -55,9 +55,9 @@ services:
     environment:
       - API_BASE_URL=http://api:8080
       - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
-      - KEYCLOAK_REALM=sdmis-realm
-      - KEYCLOAK_CLIENT_ID=sdmis-api
-      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
     networks:
       - internal
     volumes:
@@ -78,12 +78,12 @@ services:
       keycloak_web:
         condition: service_healthy
     environment:
-      - API_BASE_URL=http://api:8080
       - INCIDENT_INTERVAL_SECONDS=180
+      - API_BASE_URL=http://api:8080
       - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
-      - KEYCLOAK_REALM=sdmis-realm
-      - KEYCLOAK_CLIENT_ID=sdmis-api
-      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
     networks:
       - internal
     volumes:
@@ -104,14 +104,14 @@ services:
       keycloak_web:
         condition: service_healthy
     environment:
-      - API_BASE_URL=http://api:8080
-      - ENGINE_CALLBACK_PORT=8081
       - DISPATCH_SCHEDULER_ENABLED=true
       - DISPATCH_INTERVAL_SECONDS=30
+      - ENGINE_CALLBACK_PORT=8081
+      - API_BASE_URL=http://api:8080
       - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
-      - KEYCLOAK_REALM=sdmis-realm
-      - KEYCLOAK_CLIENT_ID=sdmis-api
-      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
     networks:
       - internal
     volumes:
@@ -128,9 +128,9 @@ services:
     restart: unless-stopped
     shm_size: 256mb
     environment:
-      POSTGRES_DB: fastpinpon
-      POSTGRES_USER: fastpinpon
-      POSTGRES_PASSWORD: fastpinpon
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql
     networks:
@@ -138,7 +138,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - pg_isready -U fastpinpon -d fastpinpon
+        - pg_isready -U ${DB_USER} -d ${DB_NAME}
       interval: 10s
       timeout: 5s
       retries: 5
@@ -183,6 +183,7 @@ services:
       PROXY_ADDRESS_FORWARDING: true
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
       PASSWORD_USER: ${PASSWORD_USER}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
       KC_HTTP_MANAGEMENT_PORT: 9000
       KC_HEALTH_PATH: /health/ready
     healthcheck:
@@ -196,9 +197,6 @@ services:
         condition: service_healthy
     volumes:
       - logs:/opt/keycloak/data/logs:rw
-    ports:
-      - 8082:8080
-      - 9000:9000
 
   keycloakdb:
     image: postgres:16
@@ -247,8 +245,6 @@ services:
       # --- MAPPING DES RÔLES ---
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: ${GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH}
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/api-http.json
-    ports:
-      - 3002:3000
     networks:
       - default
       - internal-grafana
@@ -257,8 +253,6 @@ services:
     image: ghcr.io/loan-mgt/fast-pin-pon/infra/loki:latest
     container_name: fast-pin-pon-loki
     restart: unless-stopped
-    ports:
-      - 3100:3100
     volumes:
       - loki-data:/loki
     command: -config.file=/etc/loki/local-config.yml
