@@ -52,14 +52,13 @@ export function CreateEventModal({
   const [eventTypeCode, setEventTypeCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [selectedAddress, setSelectedAddress] = useState<string>('')
+
 
   const canUseAddressSearch = permissions?.canUseAddressSearch ?? false
 
   const handleAddressSelect = useCallback((address: AddressSuggestion) => {
     setLatitude(address.latitude.toString())
     setLongitude(address.longitude.toString())
-    setSelectedAddress(address.label)
   }, [])
 
   // Clear coordinates and address when user starts typing in search bar
@@ -68,7 +67,6 @@ export function CreateEventModal({
     if (addressRequired) {
       setLatitude('')
       setLongitude('')
-      setSelectedAddress('')
     }
   }, [addressRequired])
 
@@ -102,7 +100,6 @@ export function CreateEventModal({
       setEventTypeCode(defaultEventType)
       setError(null)
       setIsSubmitting(false)
-      setSelectedAddress('')
     }
   }, [isOpen, defaultEventType, initialLocation])
 
@@ -189,11 +186,7 @@ export function CreateEventModal({
                 onSelect={handleAddressSelect}
                 onInputChange={handleClearCoordinates}
               />
-              {selectedAddress && (
-                <p className="text-emerald-400 text-xs">
-                  📍 {selectedAddress}
-                </p>
-              )}
+
             </div>
           )}
 
