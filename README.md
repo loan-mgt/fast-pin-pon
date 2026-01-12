@@ -156,6 +156,27 @@ The project is organized into microservices and components:
 └── .github/            # CI/CD workflows
 ```
 
+## Configuration & Environment Variables
+
+Key environment variables to control system behavior, adjustable in `docker-compose.dev.yml` or `.env`.
+
+### Simulation Service (`simulation`)
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `SIMULATION_UPDATING_ENABLED` | `true` | **Critical**: Controls whether the simulation updates unit positions. Set to `true` to enable movement and Microbit integration. Set to `false` to freeze units. |
+| `SIMULATION_SPEED_MULTIPLIER` | `8.0` | Speed factor. `1.0` is real-time. Higher values speed up vehicle movement. |
+
+### Incident Generator (`incidentCreation`)
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `INCIDENT_INTERVAL_SECONDS` | `180` | Time (in seconds) between automatically generated random incidents. |
+
+### Decision Engine (`engine`)
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `DISPATCH_SCHEDULER_ENABLED` | `true` | Enables the periodic dispatch loop to re-optimize assignments. |
+| `DISPATCH_INTERVAL_SECONDS` | `30` | Frequency (in seconds) of the dispatch optimization loop. |
+
 ## Components and Features
 
 ### Network (`network/`)
