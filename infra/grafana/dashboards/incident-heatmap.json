@@ -550,7 +550,7 @@
         "pieType": "pie",
         "reduceOptions": {
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -567,92 +567,50 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (severity, timestamp) (api_incident_heatmap)",
-          "format": "table",
+          "expr": "sum(api_incident_heatmap{severity=~\"1|2\"})",
           "instant": true,
-          "legendFormat": "{{severity}}",
+          "legendFormat": "Faible",
           "range": false,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(api_incident_heatmap{severity=\"3\"})",
+          "instant": true,
+          "legendFormat": "Modéré",
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(api_incident_heatmap{severity=\"4\"})",
+          "instant": true,
+          "legendFormat": "Élevée",
+          "range": false,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(api_incident_heatmap{severity=\"5\"})",
+          "instant": true,
+          "legendFormat": "Critique",
+          "range": false,
+          "refId": "D"
         }
       ],
       "title": "Incidents par Gravité",
-      "transformations": [
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "timestamp"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "severity"
-              }
-            ]
-          }
-        },
-        {
-          "id": "filterByValue",
-          "options": {
-            "filters": [
-              {
-                "config": {
-                  "id": "greaterOrEqual",
-                  "options": {
-                    "value": "${__from:date:seconds}"
-                  }
-                },
-                "fieldName": "timestamp"
-              },
-              {
-                "config": {
-                  "id": "lowerOrEqual",
-                  "options": {
-                    "value": "${__to:date:seconds}"
-                  }
-                },
-                "fieldName": "timestamp"
-              }
-            ],
-            "match": "all",
-            "type": "include"
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Value": {
-                "aggregations": ["sum"],
-                "operation": "aggregate"
-              },
-              "severity": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
-            }
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "renameByName": {
-              "Value (sum)": "Value",
-              "1": "Faible",
-              "2": "Faible",
-              "3": "Modéré",
-              "4": "Élevée",
-              "5": "Critique"
-            }
-          }
-        },
-        {
-          "id": "rowsToFields",
-          "options": {}
-        }
-      ],
       "type": "piechart"
     },
     {
