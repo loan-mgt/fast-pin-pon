@@ -245,6 +245,22 @@ class FastPinPonService {
   }
 
   /**
+   * Toggle auto simulation mode for an event.
+   * When disabled, the event won't be processed by the dispatch engine or simulation.
+   */
+  async toggleEventAutoSimulated(eventId: string, autoSimulated: boolean, token?: string): Promise<{ id: string, auto_simulated: boolean, updated_at: string }> {
+    const response = await fetch(`${this.API_BASE_URL}/events/${eventId}/auto-simulated`, {
+      method: 'PATCH',
+      headers: this.buildHeaders(token),
+      body: JSON.stringify({ auto_simulated: autoSimulated }),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to toggle auto simulation: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+
+  /**
    * Filter units by status - useful for excluding available_hidden from map display
    */
   getVisibleUnits(units: UnitSummary[]): UnitSummary[] {
@@ -257,6 +273,39 @@ class FastPinPonService {
   getUnitsByLocation(units: UnitSummary[], locationId: string): UnitSummary[] {
     return units.filter((unit) => unit.location_id === locationId)
   }
+
+  // Dispatch Configuration API
+
+  async getDispatchConfig(token?: string): Promise<{ items: DispatchConfigItem[] }> {
+    const response = await fetch(`${this.API_BASE_URL}/dispatch/config`, {
+      headers: this.buildHeaders(token),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to fetch dispatch config: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+
+  async updateDispatchConfig(key: string, value: number, token?: string): Promise<DispatchConfigItem> {
+    const response = await fetch(`${this.API_BASE_URL}/dispatch/config`, {
+      method: 'PUT',
+      headers: this.buildHeaders(token),
+      body: JSON.stringify({ key, value }),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to update dispatch config: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+}
+
+export interface DispatchConfigItem {
+  key: string
+  value: number
+  description: string
+  min_value?: number
+  max_value?: number
+  updated_at: string
 }
 
 export const fastPinPonService = new FastPinPonService()

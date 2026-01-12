@@ -41,16 +41,16 @@ var (
 			Help: "Time from dispatch to arrival for a unit assignment.",
 			Buckets: []float64{60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600},
 		},
-		[]string{"event_id", "intervention_id", "event_type", "unit_type", "severity"},
+		[]string{"event_type", "unit_type", "severity"},
 	)
 
 	assignmentOnSiteDurationSeconds = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "api_intervention_assignment_on_site_duration_seconds",
 			Help: "Time from arrival to release for a unit assignment.",
-			Buckets: []float64{120, 300, 600, 900, 1200, 1800, 2700, 3600, 5400, 7200, 10800},
+			Buckets: []float64{30, 60, 120, 300, 600, 900, 1200, 1800, 2700, 3600, 5400, 7200, 10800},
 		},
-		[]string{"event_id", "intervention_id", "event_type", "unit_type", "severity"},
+		[]string{"event_type", "unit_type", "severity"},
 	)
 
 	eventResolutionDurationSeconds = prometheus.NewHistogramVec(
@@ -220,8 +220,6 @@ func (s *Server) observeAssignmentTravel(ctx context.Context, assignmentID pgtyp
 
 	severityLabel := strconv.Itoa(int(row.Severity))
 	assignmentTravelDurationSeconds.WithLabelValues(
-		uuidString(row.EventID),
-		uuidString(row.InterventionID),
 		row.EventTypeCode,
 		row.UnitTypeCode,
 		severityLabel,
@@ -236,18 +234,32 @@ func (s *Server) observeAssignmentOnSite(ctx context.Context, assignmentID pgtyp
 	}
 
 	if !row.ArrivedAt.Valid || !row.ReleasedAt.Valid {
+		s.log.Debug().
+			Str("assignment_id", uuidString(assignmentID)).
+			Bool("arrived_valid", row.ArrivedAt.Valid).
+			Bool("released_valid", row.ReleasedAt.Valid).
+			Msg("skipping on-site metric: missing arrival or release timestamp")
 		return
 	}
 
 	duration := row.ReleasedAt.Time.Sub(row.ArrivedAt.Time)
+	// Allow very small but positive durations (e.g. 1ms) to be recorded.
 	if duration <= 0 {
+		s.log.Debug().
+			Str("assignment_id", uuidString(assignmentID)).
+			Dur("duration", duration).
+			Msg("skipping on-site metric: non-positive duration")
 		return
 	}
 
+	s.log.Info().
+		Str("assignment_id", uuidString(assignmentID)).
+		Dur("duration", duration).
+		Str("event_type", row.EventTypeCode).
+		Msg("recording on-site duration metric")
+
 	severityLabel := strconv.Itoa(int(row.Severity))
 	assignmentOnSiteDurationSeconds.WithLabelValues(
-		uuidString(row.EventID),
-		uuidString(row.InterventionID),
 		row.EventTypeCode,
 		row.UnitTypeCode,
 		severityLabel,

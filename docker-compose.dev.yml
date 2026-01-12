@@ -12,9 +12,12 @@ services:
       - .env.example
       - .env
     environment:
+      - LOG_LEVEL=debug
       - ENGINE_CALLBACK_URL=http://engine:8081
     depends_on:
       postgres:
+        condition: service_healthy
+      keycloak_web:
         condition: service_healthy
     ports:
       - "8081:8080"
@@ -55,10 +58,12 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      keycloak_web:
+        condition: service_healthy
     restart: on-failure
     environment:
       - API_BASE_URL=http://api:8080
-      - SIMULATION_UPDATING_ENABLED=false
+      - SIMULATION_UPDATING_ENABLED=true
       - SIMULATION_SPEED_MULTIPLIER=8.0
       - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
       - KEYCLOAK_REALM=sdmis-realm
@@ -78,6 +83,8 @@ services:
       dockerfile: Dockerfile
     depends_on:
       api:
+        condition: service_healthy
+      keycloak_web:
         condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
@@ -130,8 +137,7 @@ services:
       args:
         - GRAFANA_URL=http://localhost:3000
     environment:
-      - KC_HOSTNAME=localhost
-      - KC_HOSTNAME_PORT=8082
+      - KC_HOSTNAME=http://localhost:8082
       - KEYCLOAK_URL=http://localhost:8082
       - KEYCLOAK_REALM=sdmis-realm
       - KEYCLOAK_CLIENT_ID=sdmis-api

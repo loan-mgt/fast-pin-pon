@@ -30,6 +30,8 @@ export type Permissions = {
   canDeleteUnit: boolean
   canUseAddressSearch: boolean
   canViewDashboard: boolean
+  canToggleAutoSimulation: boolean
+  canAccessSettings: boolean
 }
 
 function extractRoles(kc: Keycloak): string[] {
@@ -52,6 +54,8 @@ function derivePermissions(roles: string[]): Permissions {
     canDeleteUnit: isIt,
     canUseAddressSearch: isIt || isSuperieur,
     canViewDashboard: isIt || isSuperieur,
+    canToggleAutoSimulation: isIt || isSuperieur,
+    canAccessSettings: isIt,
   }
 }
 

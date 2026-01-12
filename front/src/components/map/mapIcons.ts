@@ -372,12 +372,14 @@ function createUnitBadge(typeCode: string, count: number): HTMLDivElement {
 /**
  * Create an event marker element with the appropriate icon and severity color.
  * Optionally displays on-site units grouped by type below the event icon.
+ * Shows a manual mode indicator badge when isManual is true.
  */
 export function createEventMarkerElement(
   eventTypeCode: string,
   isSelected: boolean,
   severity?: number,
   onSiteUnits?: UnitSummary[],
+  isManual?: boolean,
 ): HTMLDivElement {
   const hasUnits = onSiteUnits && onSiteUnits.length > 0
   const groupedUnits = hasUnits ? groupUnitsByType(onSiteUnits) : []
@@ -422,6 +424,26 @@ export function createEventMarkerElement(
 
   eventContainer.appendChild(svgContainer)
   wrapper.appendChild(eventContainer)
+
+  // Manual mode indicator - small orange bar below the icon
+  if (isManual) {
+    const manualIndicator = document.createElement('div')
+    manualIndicator.textContent = 'Manuel'
+    manualIndicator.title = 'Incident géré manuellement'
+    manualIndicator.style.cssText = `
+            background: #f59e0b;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            border: 2px solid white;
+            margin-top: 2px;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        `
+    wrapper.appendChild(manualIndicator)
+  }
 
   // Unit badges row (if units are on site)
   if (groupedUnits.length > 0) {

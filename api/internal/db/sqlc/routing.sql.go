@@ -154,7 +154,8 @@ SELECT
     (ur.estimated_duration_seconds * (1.0 - ur.progress_percent / 100.0))::float8 AS remaining_seconds,
     ur.created_at,
     ur.updated_at,
-    e.severity
+    e.severity,
+    COALESCE(e.auto_simulated, true) AS auto_simulated
 FROM unit_routes ur
 LEFT JOIN interventions i ON ur.intervention_id = i.id
 LEFT JOIN events e ON i.event_id = e.id
@@ -175,6 +176,7 @@ type GetUnitRouteRow struct {
 	CreatedAt                pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
 	Severity                 *int32             `json:"severity"`
+	AutoSimulated            bool               `json:"auto_simulated"`
 }
 
 // Gets a unit's route with current position interpolated from progress
@@ -195,6 +197,7 @@ func (q *Queries) GetUnitRoute(ctx context.Context, unitID pgtype.UUID) (GetUnit
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Severity,
+		&i.AutoSimulated,
 	)
 	return i, err
 }
