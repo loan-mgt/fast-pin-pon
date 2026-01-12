@@ -13,6 +13,11 @@ services:
       - default
     environment:
       - LOG_FILE=/var/log/fast-pin-pon/api.log
+      - DB_URL=${DB_URL}
+      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - KEYCLOAK_PUBLIC_URL=${KC_HOSTNAME}
+      - KEYCLOAK_REALM=sdmis-realm
+      - KEYCLOAK_CLIENT_ID=sdmis-api
     volumes:
       - logs:/var/log:rw
     healthcheck:
