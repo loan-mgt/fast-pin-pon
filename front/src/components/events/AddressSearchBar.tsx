@@ -148,7 +148,6 @@ export function AddressSearchBar({
                     ref={inputRef}
                     id="address-search"
                     type="text"
-                    role="combobox"
                     value={query}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
@@ -156,10 +155,6 @@ export function AddressSearchBar({
                     placeholder={placeholder}
                     className="bg-slate-900/60 pr-10 pl-3 py-2 border border-blue-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 w-full text-white text-sm"
                     aria-label="Rechercher une adresse"
-                    aria-expanded={isOpen}
-                    aria-haspopup="listbox"
-                    aria-controls="address-suggestions-list"
-                    aria-autocomplete="list"
                     autoComplete="off"
                 />
                 {/* Search icon or loading spinner */}
@@ -202,23 +197,19 @@ export function AddressSearchBar({
 
             {/* Suggestions dropdown */}
             {isOpen && suggestions.length > 0 && (
-                <ul
+                <div
                     id="address-suggestions-list"
                     className="z-50 absolute bg-slate-800/95 backdrop-blur-sm shadow-lg mt-1 border border-blue-500/20 rounded-xl w-full max-h-60 overflow-auto"
-                    role="listbox"
                 >
                     {suggestions.map((suggestion, index) => (
-                        <li
+                        <button
                             key={`${suggestion.latitude}-${suggestion.longitude}`}
-                            role="option"
-                            aria-selected={highlightedIndex === index}
-                            tabIndex={-1}
-                            className={`px-3 py-2 cursor-pointer text-sm transition-colors ${highlightedIndex === index
+                            type="button"
+                            className={`w-full text-left px-3 py-2 cursor-pointer text-sm transition-colors ${highlightedIndex === index
                                 ? 'bg-sky-500/20 text-white'
                                 : 'text-slate-300 hover:bg-slate-700/50'
                                 }`}
                             onClick={() => handleSelect(suggestion)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSelect(suggestion)}
                             onMouseEnter={() => setHighlightedIndex(index)}
                         >
                             <div className="font-medium">{suggestion.label}</div>
@@ -227,9 +218,9 @@ export function AddressSearchBar({
                                     {suggestion.postcode} {suggestion.city}
                                 </div>
                             )}
-                        </li>
+                        </button>
                     ))}
-                </ul>
+                </div>
             )}
 
             {/* No results message */}
