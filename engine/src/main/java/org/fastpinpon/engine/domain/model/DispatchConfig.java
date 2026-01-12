@@ -16,7 +16,6 @@ public final class DispatchConfig {
     // Weight keys
     public static final String WEIGHT_TRAVEL_TIME = "weight_travel_time";
     public static final String WEIGHT_COVERAGE_PENALTY = "weight_coverage_penalty";
-    public static final String WEIGHT_CAPABILITY_MATCH = "weight_capability_match";
     public static final String WEIGHT_EN_ROUTE_PROGRESS = "weight_en_route_progress";
     public static final String WEIGHT_PREEMPTION_DELTA = "weight_preemption_delta";
     public static final String WEIGHT_REASSIGNMENT_COST = "weight_reassignment_cost";
@@ -43,12 +42,11 @@ public final class DispatchConfig {
      */
     public static DispatchConfig defaults() {
         Map<String, Double> defaults = new HashMap<>();
-        defaults.put(WEIGHT_TRAVEL_TIME, 1.0);
-        defaults.put(WEIGHT_COVERAGE_PENALTY, 0.3);
-        defaults.put(WEIGHT_CAPABILITY_MATCH, -50.0);
+        defaults.put(WEIGHT_TRAVEL_TIME, 0.70);
+        defaults.put(WEIGHT_COVERAGE_PENALTY, 1.50);
         defaults.put(WEIGHT_EN_ROUTE_PROGRESS, 0.2);
-        defaults.put(WEIGHT_PREEMPTION_DELTA, -100.0);
-        defaults.put(WEIGHT_REASSIGNMENT_COST, 60.0);
+        defaults.put(WEIGHT_PREEMPTION_DELTA, 5.0);
+        defaults.put(WEIGHT_REASSIGNMENT_COST, 85.0);
         defaults.put(MIN_RESERVE_PER_BASE, 1.0);
         defaults.put(PREEMPTION_SEVERITY_THRESHOLD, 2.0);
         defaults.put(MAX_CANDIDATES_PER_DISPATCH, 10.0);
@@ -75,15 +73,11 @@ public final class DispatchConfig {
 
     // Convenience getters for weights
     public double getTravelTimeWeight() {
-        return getOrDefault(WEIGHT_TRAVEL_TIME, 1.0);
+        return getOrDefault(WEIGHT_TRAVEL_TIME, 0.70);
     }
 
     public double getCoveragePenaltyWeight() {
-        return getOrDefault(WEIGHT_COVERAGE_PENALTY, 0.3);
-    }
-
-    public double getCapabilityMatchWeight() {
-        return getOrDefault(WEIGHT_CAPABILITY_MATCH, -50.0);
+        return getOrDefault(WEIGHT_COVERAGE_PENALTY, 1.50);
     }
 
     public double getEnRouteProgressWeight() {
@@ -91,11 +85,11 @@ public final class DispatchConfig {
     }
 
     public double getPreemptionDeltaWeight() {
-        return getOrDefault(WEIGHT_PREEMPTION_DELTA, -100.0);
+        return getOrDefault(WEIGHT_PREEMPTION_DELTA, 5.0);
     }
 
     public double getReassignmentCost() {
-        return getOrDefault(WEIGHT_REASSIGNMENT_COST, 60.0);
+        return getOrDefault(WEIGHT_REASSIGNMENT_COST, 85.0);
     }
 
     // Convenience getters for thresholds

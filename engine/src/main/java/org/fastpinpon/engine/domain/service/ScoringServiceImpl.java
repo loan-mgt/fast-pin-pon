@@ -12,9 +12,8 @@ import java.util.logging.Logger;
  * Score formula (lower = better):
  *   score = w1 * travel_time_seconds
  *         + w2 * coverage_penalty
- *         + w3 * capability_match_bonus (negative = better)
- *         + w5 * preemption_severity_delta (negative = better)
- *         + w6 * reassignment_cost
+ *         + w4 * preemption_severity_delta
+ *         + w5 * reassignment_cost
  */
 public final class ScoringServiceImpl implements ScoringService {
 
@@ -27,7 +26,6 @@ public final class ScoringServiceImpl implements ScoringService {
     public ScoredCandidate score(CandidateDto candidate, int targetSeverity, DispatchConfig config) {
         double score = calculateTravelScore(candidate, config);
         score += calculateCoverageScore(candidate, config);
-        score += calculateCapabilityScore(candidate, config);
         score += calculatePreemptionScore(candidate, targetSeverity, config);
 
         final double finalScore = score;
@@ -61,19 +59,6 @@ public final class ScoringServiceImpl implements ScoringService {
         if (otherUnits < minReserve) {
             int shortage = minReserve - otherUnits;
             return config.getCoveragePenaltyWeight() * shortage * 100; // Scale penalty
-        }
-        return 0.0;
-    }
-
-    /**
-     * Calculate capability match bonus.
-     * Gives bonus (negative score) for exact unit type match.
-     * For now, assumes all candidates passed through type filter are matches.
-     */
-    private double calculateCapabilityScore(CandidateDto candidate, DispatchConfig config) {
-        // Bonus for being an available unit (not requiring preemption)
-        if (candidate.isAvailable()) {
-            return config.getCapabilityMatchWeight(); // Negative = bonus
         }
         return 0.0;
     }
