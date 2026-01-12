@@ -234,53 +234,48 @@ export function EventDetailPanel({
             {assignedUnits.length === 0 ? (
               <p className="text-slate-400 text-xs">Aucune unité assignée pour le moment.</p>
             ) : (
-              assignedUnits.map((unit) => {
-                const canLocateUnit =
-                  typeof unit.location?.longitude === 'number' && typeof unit.location?.latitude === 'number'
-
-                return (
-                  <div
-                    key={unit.id}
-                    className="flex justify-between items-start bg-slate-800/60 hover:bg-slate-800/80 border border-slate-700 rounded-lg overflow-hidden transition-colors"
+              assignedUnits.map((unit) => (
+                <div
+                  key={unit.id}
+                  className="flex justify-between items-start bg-slate-800/60 hover:bg-slate-800/80 border border-slate-700 rounded-lg overflow-hidden transition-colors"
+                >
+                  <button
+                    type="button"
+                    className="flex-1 hover:bg-slate-700/20 py-2 pr-2 pl-3 focus:outline-none text-left transition-colors"
+                    onClick={() => onEventSelect?.(event.id)}
                   >
+                    <div className="space-y-1 min-w-0">
+                      <p className="font-semibold text-white text-sm truncate leading-tight">{unit.call_sign}</p>
+                      <p className="text-[0.75rem] text-slate-300 truncate leading-tight">{unit.unit_type_code}</p>
+                      <StatusBadge status={unit.status} type="unit" className="text-[10px] mt-1" />
+                    </div>
+                  </button>
+
+                  <div className="flex items-center gap-2 py-2 pr-3">
                     <button
                       type="button"
-                      className="flex-1 hover:bg-slate-700/20 py-2 pr-2 pl-3 focus:outline-none text-left transition-colors"
-                      onClick={() => onEventSelect?.(event.id)}
+                      className="bg-rose-500/20 hover:bg-rose-500/40 p-1.5 border border-rose-500/30 rounded-full h-fit text-rose-300 transition-colors cursor-pointer"
+                      title="Désassigner l'unité"
+                      onClick={() => setUnitToUnassign({ id: unit.id, callSign: unit.call_sign })}
                     >
-                      <div className="space-y-1 min-w-0">
-                        <p className="font-semibold text-white text-sm truncate leading-tight">{unit.call_sign}</p>
-                        <p className="text-[0.75rem] text-slate-300 truncate leading-tight">{unit.unit_type_code}</p>
-                        <StatusBadge status={unit.status} type="unit" className="text-[10px] mt-1" />
-                      </div>
-                    </button>
-
-                    <div className="flex items-center gap-2 py-2 pr-3">
-                      <button
-                        type="button"
-                        className="bg-rose-500/20 hover:bg-rose-500/40 p-1.5 border border-rose-500/30 rounded-full h-fit text-rose-300 transition-colors cursor-pointer"
-                        title="Désassigner l'unité"
-                        onClick={() => setUnitToUnassign({ id: unit.id, callSign: unit.call_sign })}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    </div>
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
                   </div>
-                )
-              })
+                </div>
+              ))
             )}
           </div>
         </div>

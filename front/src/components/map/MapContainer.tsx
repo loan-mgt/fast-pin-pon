@@ -138,13 +138,9 @@ function buildConnectionLines(
     const selectedEvent = eventById.get(selectedEventId)
     const hasLon = selectedEvent?.location?.longitude !== undefined
     const hasLat = selectedEvent?.location?.latitude !== undefined
-<<<<<<< HEAD
-    if (hasLon === false || hasLat === false) return []
+    if (!hasLon || !hasLat) return []
 
     const connectionEligibleStatuses = new Set(['available', 'under_way', 'unavailable', 'offline', 'created', 'planned', 'completed', 'cancelled'])
-=======
-    if (!hasLon || !hasLat) return []
->>>>>>> 31daac2 (sonar fix)
 
     return unitLocations
         .filter((loc) => unitToEvent.get(loc.unit.id) === selectedEventId)
