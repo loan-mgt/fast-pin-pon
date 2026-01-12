@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react'
 import type { JSX } from 'react'
 import { Card } from '../ui/card'
+import { StatusBadge } from '../ui/StatusBadge'
 import { ConfirmationDialog } from '../ui/confirmation-dialog'
 import { UnitAssignmentDialog } from './UnitAssignmentDialog'
 import type { EventSummary } from '../../types'
@@ -131,7 +132,6 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
                 disabled={isTogglingAuto}
                 title={localAutoSimulated ? 'Mode automatique activé - Cliquez pour passer en manuel' : 'Mode manuel activé - Cliquez pour passer en automatique'}
               >
-                <span>{localAutoSimulated ? '⚙️' : '🖐'}</span>
                 <span>{localAutoSimulated ? 'Auto' : 'Manuel'}</span>
               </button>
             )}
@@ -281,7 +281,7 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
                       <p className="text-[0.75rem] text-slate-300 truncate leading-tight">
                         {unit.unit_type_code}
                       </p>
-                      <p className="text-[0.7rem] text-slate-400 truncate leading-tight">{unit.status}</p>
+                      <StatusBadge status={unit.status} type="unit" className="text-[10px] mt-1" />
                     </div>
                   </button>
                   {canAssign && (

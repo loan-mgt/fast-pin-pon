@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { JSX } from 'react'
 import { Card } from '../ui/card'
+import { StatusBadge } from '../ui/StatusBadge'
 import { Button } from '../ui/button'
 import type { EventSummary, UnitSummary, UnitType, EventType } from '../../types'
 import { fastPinPonService } from '../../services/FastPinPonService'
@@ -147,8 +148,8 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
           type="button"
           onClick={() => toggleUnitSelection(unit.id)}
           className={`w-full group flex justify-between items-center p-3.5 rounded-xl border transition-all duration-300 ${isSelected
-              ? 'bg-sky-500/10 border-sky-500/50 shadow-[0_0_20px_-10px_rgba(14,165,233,0.3)]'
-              : 'bg-slate-800/30 border-slate-800 hover:bg-slate-800/50 hover:border-slate-700'
+            ? 'bg-sky-500/10 border-sky-500/50 shadow-[0_0_20px_-10px_rgba(14,165,233,0.3)]'
+            : 'bg-slate-800/30 border-slate-800 hover:bg-slate-800/50 hover:border-slate-700'
             }`}
         >
           <div className="flex items-center gap-4">
@@ -165,8 +166,7 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
           </div>
           <div className="text-right">
             <p className="font-black text-white text-xs">{distance} <span className="ml-0.5 font-bold text-[0.6rem] text-slate-400 uppercase">km</span></p>
-            <p className={`text-[0.65rem] mt-1 font-bold uppercase tracking-tighter ${unit.status === 'available' ? 'text-emerald-400/90' : 'text-slate-500'
-              }`}>{unit.status}</p>
+            <StatusBadge status={unit.status} type="unit" className="text-[9px] mt-1" showDot={false} />
           </div>
         </button>
       )
@@ -206,8 +206,8 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
                   type="button"
                   onClick={() => toggleUnitType(type.code)}
                   className={`p-3 rounded-xl border text-left transition-all duration-200 ${selectedUnitTypes.includes(type.code)
-                      ? 'bg-sky-500/10 border-sky-500 text-sky-100 shadow-[0_0_15px_-5px_rgba(14,165,233,0.4)]'
-                      : 'bg-slate-800/40 border-slate-700/50 text-slate-400 hover:border-slate-500'
+                    ? 'bg-sky-500/10 border-sky-500 text-sky-100 shadow-[0_0_15px_-5px_rgba(14,165,233,0.4)]'
+                    : 'bg-slate-800/40 border-slate-700/50 text-slate-400 hover:border-slate-500'
                     }`}
                 >
                   <p className="font-black text-xs leading-none tracking-tighter">{type.code}</p>
