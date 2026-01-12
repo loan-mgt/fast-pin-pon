@@ -40,6 +40,8 @@ export function EventDetailPanel({
   const canAssign = permissions?.canAssignUnits ?? false
   const canDelete = permissions?.canDeleteIncident ?? false
   const assignedUnits = event?.assigned_units ?? []
+  const canLocateEvent =
+    typeof event?.location?.longitude === 'number' && typeof event?.location?.latitude === 'number'
 
   const handleDeleteIncident = useCallback(() => {
     if (!event || !canDelete || isDeleting) return
@@ -81,9 +83,6 @@ export function EventDetailPanel({
   }, [event, unitToUnassign, token, onRefresh])
 
   if (!event) return null
-
-  const canLocateEvent =
-    typeof event.location?.longitude === 'number' && typeof event.location?.latitude === 'number'
 
   return (
     <>
@@ -273,8 +272,10 @@ export function EventDetailPanel({
                         title="Centrer sur l'unité"
                         disabled={!canLocateUnit}
                         onClick={() => {
-                          if (!canLocateUnit) return
-                          onLocateEvent?.(unit.location!.longitude, unit.location!.latitude, 13)
+                          const unitLng = unit.location?.longitude
+                          const unitLat = unit.location?.latitude
+                          if (!canLocateUnit || unitLng === undefined || unitLat === undefined) return
+                          onLocateEvent?.(unitLng, unitLat, 13)
                         }}
                       >
                         <svg
