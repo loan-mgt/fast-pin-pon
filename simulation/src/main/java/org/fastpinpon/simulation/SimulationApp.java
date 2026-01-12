@@ -5,16 +5,9 @@ import org.fastpinpon.simulation.engine.SimulationEngine;
 import org.fastpinpon.simulation.http.SimulationHttpServer;
 import io.github.cdimascio.dotenv.Dotenv;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,10 +26,6 @@ public class SimulationApp {
     private static final String KEYCLOAK_REALM_KEY = "KEYCLOAK_REALM";
     private static final String KEYCLOAK_CLIENT_ID_KEY = "KEYCLOAK_CLIENT_ID";
     private static final String KEYCLOAK_CLIENT_SECRET_KEY = "KEYCLOAK_CLIENT_SECRET";
-
-    private static final String DEFAULT_LOG_FILE = "/app/logs/simulation/simulation.log";
-    private static final String FILE_LOGGING_ENABLED_ENV = "SIM_FILE_LOGGING_ENABLED";
-    private static final String LOG_FILE_ENV = "SIM_LOG_FILE";
 
     public static void main(String[] args) {
         String apiBaseUrl = resolveApiBaseUrl();
@@ -154,38 +143,6 @@ public class SimulationApp {
         return defaultValue;
     }
 
-    private static void configureFileLogging() {
-        java.util.logging.Logger root = java.util.logging.Logger.getLogger("");
-        root.setLevel(Level.INFO);
-
-        if (!isFileLoggingEnabled()) {
-            return;
-        }
-
-        String logFilePath = System.getenv(LOG_FILE_ENV);
-        if (logFilePath == null || logFilePath.trim().isEmpty()) {
-            logFilePath = DEFAULT_LOG_FILE;
-        }
-
-        Path target = Paths.get(logFilePath).toAbsolutePath();
-        try {
-            Files.createDirectories(target.getParent());
-            FileHandler handler = new FileHandler(target.toString(), 5 * 1024 * 1024, 3, true);
-            handler.setFormatter(new SimpleFormatter());
-            root.addHandler(handler);
-        } catch (IOException e) {
-            root.log(Level.WARNING, "[SIM] Failed to setup file logging", e);
-        }
-    }
-
-    private static boolean isFileLoggingEnabled() {
-        String val = System.getenv(FILE_LOGGING_ENABLED_ENV);
-        if (val == null || val.trim().isEmpty()) {
-            return true; // keep file logging on by default
-        }
-        String normalized = val.trim().toLowerCase();
-        return !(normalized.equals("false") || normalized.equals("0") || normalized.equals("no"));
-    }
     private static boolean envFlag(String key, boolean defaultValue) {
         String val = System.getenv(key);
         if (val == null || val.trim().isEmpty()) {

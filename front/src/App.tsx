@@ -171,7 +171,7 @@ export function App() {
 
   const handleCreateEvent = useCallback(
     async (payload: CreateEventRequest) => {
-      const newEvent = await fastPinPonService.createEvent(payload, true)
+      const newEvent = await fastPinPonService.createEvent(payload, true, token ?? undefined)
 
       // Update local state immediately so selection works even before refresh completes
       // We look up the event type name to avoid showing an empty label
@@ -185,7 +185,7 @@ export function App() {
 
       await refreshData()
     },
-    [refreshData, eventTypes],
+    [refreshData, eventTypes, token],
   )
 
   const handleAddUnit = useCallback(

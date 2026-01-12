@@ -40,7 +40,7 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
         selectedUnitTypes.length > 0 ? selectedUnitTypes : undefined,
         token ?? undefined
       )
-      
+
       // Filter out already assigned units
       const assignedIds = new Set(event.assigned_units?.map(u => u.id) ?? [])
       setNearbyUnits(units.filter(u => !assignedIds.has(u.id)))
@@ -62,8 +62,8 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
       setIsLoading(true)
       try {
         const [uTypes, eTypes] = await Promise.all([
-          fastPinPonService.getUnitTypes(),
-          fastPinPonService.getEventTypes()
+          fastPinPonService.getUnitTypes(token ?? undefined),
+          fastPinPonService.getEventTypes(token ?? undefined)
         ])
         setUnitTypes(uTypes)
 
@@ -88,13 +88,13 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
   }, [isOpen, fetchUnits])
 
   const toggleUnitType = (code: string) => {
-    setSelectedUnitTypes(prev => 
+    setSelectedUnitTypes(prev =>
       prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
     )
   }
 
   const toggleUnitSelection = (id: string) => {
-    setSelectedUnitIds(prev => 
+    setSelectedUnitIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     )
   }
@@ -105,7 +105,7 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
     setIsSubmitting(true)
     try {
       await Promise.all(
-        selectedUnitIds.map(unitId => 
+        selectedUnitIds.map(unitId =>
           fastPinPonService.assignUnitToIntervention(event.intervention_id!, unitId, token ?? undefined)
         )
       )
@@ -146,17 +146,15 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
           key={unit.id}
           type="button"
           onClick={() => toggleUnitSelection(unit.id)}
-          className={`w-full group flex justify-between items-center p-3.5 rounded-xl border transition-all duration-300 ${
-            isSelected
+          className={`w-full group flex justify-between items-center p-3.5 rounded-xl border transition-all duration-300 ${isSelected
               ? 'bg-sky-500/10 border-sky-500/50 shadow-[0_0_20px_-10px_rgba(14,165,233,0.3)]'
               : 'bg-slate-800/30 border-slate-800 hover:bg-slate-800/50 hover:border-slate-700'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-4">
-            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-300 ${
-              isSelected ? 'bg-sky-500 border-sky-500' : 'border-slate-700 bg-slate-900'
-            }`}>
-              {isSelected && <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-white"><path d="M2 5L4 7L8 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-300 ${isSelected ? 'bg-sky-500 border-sky-500' : 'border-slate-700 bg-slate-900'
+              }`}>
+              {isSelected && <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-white"><path d="M2 5L4 7L8 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
             </div>
             <div className="text-left">
               <p className="font-bold text-white text-sm tracking-tight">{unit.call_sign}</p>
@@ -167,9 +165,8 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
           </div>
           <div className="text-right">
             <p className="font-black text-white text-xs">{distance} <span className="ml-0.5 font-bold text-[0.6rem] text-slate-400 uppercase">km</span></p>
-            <p className={`text-[0.65rem] mt-1 font-bold uppercase tracking-tighter ${
-              unit.status === 'available' ? 'text-emerald-400/90' : 'text-slate-500'
-            }`}>{unit.status}</p>
+            <p className={`text-[0.65rem] mt-1 font-bold uppercase tracking-tighter ${unit.status === 'available' ? 'text-emerald-400/90' : 'text-slate-500'
+              }`}>{unit.status}</p>
           </div>
         </button>
       )
@@ -185,8 +182,8 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
             <p className="mt-1 text-slate-400 text-sm">{event.title}</p>
           </div>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => fetchUnits()} 
+            <button
+              onClick={() => fetchUnits()}
               disabled={isLoading}
               className={`p-2 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-slate-800 ${isLoading ? 'animate-spin opacity-50' : ''}`}
               title="Actualiser les unités"
@@ -208,11 +205,10 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
                   key={type.code}
                   type="button"
                   onClick={() => toggleUnitType(type.code)}
-                  className={`p-3 rounded-xl border text-left transition-all duration-200 ${
-                    selectedUnitTypes.includes(type.code)
+                  className={`p-3 rounded-xl border text-left transition-all duration-200 ${selectedUnitTypes.includes(type.code)
                       ? 'bg-sky-500/10 border-sky-500 text-sky-100 shadow-[0_0_15px_-5px_rgba(14,165,233,0.4)]'
                       : 'bg-slate-800/40 border-slate-700/50 text-slate-400 hover:border-slate-500'
-                  }`}
+                    }`}
                 >
                   <p className="font-black text-xs leading-none tracking-tighter">{type.code}</p>
                   <p className="opacity-80 mt-1.5 font-medium text-[0.65rem] truncate">{type.name}</p>
@@ -226,7 +222,7 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
               <h3 className="font-bold text-[0.7rem] text-sky-400 uppercase leading-none tracking-widest">Unités disponibles à proximité</h3>
               <span className="bg-slate-800/80 px-2 py-0.5 rounded-full font-medium text-[0.6rem] text-slate-500 uppercase tracking-tighter">Tri par distance</span>
             </div>
-            
+
             <div className="space-y-2.5">
               {unitsListContent}
             </div>
@@ -237,8 +233,8 @@ export function UnitAssignmentDialog({ isOpen, event, onClose, onRefresh, onTogg
           <Button variant="ghost" onClick={onClose} disabled={isSubmitting} className="px-6">
             Annuler
           </Button>
-          <Button 
-            onClick={handleAssign} 
+          <Button
+            onClick={handleAssign}
             disabled={selectedUnitIds.length === 0 || isSubmitting}
             className="px-8 min-w-[140px]"
           >

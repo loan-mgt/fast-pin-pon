@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 
 public final class ApiClient {
     private static final Logger log = LoggerFactory.getLogger(ApiClient.class);
-    private static final OkHttpClient HTTP = new OkHttpClient();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_INSTANT;
     private final Random random = new Random();
