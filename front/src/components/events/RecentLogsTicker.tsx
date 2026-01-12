@@ -21,6 +21,8 @@ function formatTimeAgo(value: string): string {
     return `${diffDay}d ago`
 }
 
+import { truncateMiddle } from '../../utils/stringUtils'
+
 
 
 type RecentLogsTickerProps = {
@@ -45,7 +47,7 @@ export function RecentLogsTicker({ logs, loading, error, onUnitClick, onEventCli
     return (
         <Card
             className={
-                `z-10 fixed bottom-0 left-0 shadow-2xl shadow-slate-950/60 p-0 pb-1 flex flex-col overflow-hidden rounded-none w-[360px] min-w-[260px] max-w-[90vw] ` +
+                `z-10 fixed bottom-0 left-0 shadow-2xl shadow-slate-950/60 p-0 pb-1 flex flex-col overflow-hidden rounded-none w-[450px] min-w-[260px] max-w-[90vw] ` +
                 (open ? 'max-h-[50vh]' : '')
             }
         >
@@ -85,16 +87,23 @@ export function RecentLogsTicker({ logs, loading, error, onUnitClick, onEventCli
                                     </span>
 
                                     {/* Entity label (clickable unit or event) */}
-                                    <span className={`flex-shrink-0 font-medium ${isClickable ? 'text-blue-300 underline underline-offset-2' : 'text-slate-300'}`}>
-                                        {log.entity_type === 'unit' && log.unit_call_sign ? log.unit_call_sign : null}
-                                        {log.entity_type === 'intervention' && log.event_title ? log.event_title : null}
+                                    <span className={`min-w-0 flex-1 font-medium truncate ${isClickable ? 'text-blue-300 underline underline-offset-2' : 'text-slate-300'}`}>
+                                        {/* Unit: usually short, but truncating just in case */}
+                                        {log.entity_type === 'unit' && log.unit_call_sign
+                                            ? truncateMiddle(log.unit_call_sign, 3, 3)
+                                            : null}
+                                        {/* Event: often long, needs truncation */}
+                                        {log.entity_type === 'intervention' && log.event_title
+                                            ? truncateMiddle(log.event_title, 3, 3)
+                                            : null}
                                     </span>
 
 
 
                                     {/* Status transition */}
                                     {/* Status transition */}
-                                    <span className="flex-1 flex items-center min-w-0">
+                                    {/* Status transition */}
+                                    <span className="flex-shrink-0 flex items-center ml-2">
                                         {log.old_value && (
                                             <div className="flex items-center gap-1.5 min-w-0 overflow-hidden mr-2">
                                                 <StatusBadge
