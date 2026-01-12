@@ -446,6 +446,17 @@ export function MapContainer({
                     if (eventIdForUnit) onEventSelect?.(eventIdForUnit)
                 })
 
+                const STATUS_LABELS_FR: Record<string, string> = {
+                    available: 'Disponible',
+                    available_hidden: 'À la caserne',
+                    under_way: 'En route',
+                    on_site: 'Sur place',
+                    unavailable: 'Indisponible',
+                    offline: 'Hors ligne',
+                }
+                const statusNormalized = loc.unit.status?.toLowerCase().replaceAll(/[-\s]/g, '_') ?? ''
+                const statusLabel = STATUS_LABELS_FR[statusNormalized] ?? loc.unit.status.replace('_', ' ')
+
                 const marker = new maplibregl.Marker({ element: wrapper, anchor: 'center' })
                     .setLngLat([loc.longitude, loc.latitude])
                     .setPopup(
@@ -453,7 +464,7 @@ export function MapContainer({
                             `<div style="font-family: system-ui, sans-serif;">
                                 <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${loc.unit.call_sign}</div>
                                 <div style="font-size: 12px; color: #666; margin-bottom: 6px;">${loc.unit.unit_type_code}</div>
-                                <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; color: white; background-color: ${color};">${loc.unit.status.replace('_', ' ')}</div>
+                                <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; color: white; background-color: ${color};">${statusLabel}</div>
                             </div>`,
                         ),
                     )

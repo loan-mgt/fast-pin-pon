@@ -31,11 +31,11 @@ export function UnitPanel({ units }: Readonly<UnitPanelProps>): JSX.Element {
       <button
         type="button"
         className="flex flex-shrink-0 justify-between items-center gap-2 bg-transparent px-2 py-1 border-none w-full text-left whitespace-nowrap cursor-pointer select-none"
-        aria-label={isPanelCollapsed ? 'Open available vehicles panel' : 'Close available vehicles panel'}
+        aria-label={isPanelCollapsed ? 'Ouvrir le panneau des véhicules disponibles' : 'Fermer le panneau des véhicules disponibles'}
         onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
       >
         <div className="flex items-center gap-2 whitespace-nowrap">
-          <p className="font-semibold text-white text-lg leading-none">Available vehicles</p>
+          <p className="font-semibold text-white text-lg leading-none">Véhicules disponibles</p>
           <span className="bg-blue-500/20 px-2 py-0.5 rounded-full font-medium text-blue-400 text-xs leading-none">
             {availableUnits.length}
           </span>
@@ -45,7 +45,7 @@ export function UnitPanel({ units }: Readonly<UnitPanelProps>): JSX.Element {
       {!isPanelCollapsed && (
         <div className="flex-1 mt-1 min-h-0 overflow-y-auto">
           {availableUnits.length === 0 ? (
-            <p className="text-slate-300 text-sm">No available vehicles.</p>
+            <p className="text-slate-300 text-sm">Aucun véhicule disponible.</p>
           ) : (
             <div className="space-y-3">
               {availableUnits.map((unit) => (

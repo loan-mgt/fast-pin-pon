@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react'
 import type { JSX } from 'react'
 import { Card } from '../ui/card'
+import { StatusBadge } from '../ui/StatusBadge'
 import { ConfirmationDialog } from '../ui/confirmation-dialog'
 import { UnitAssignmentDialog } from './UnitAssignmentDialog'
 import type { EventSummary } from '../../types'
@@ -115,7 +116,7 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
               <p className="text-sky-300/80 text-xs uppercase tracking-wide">Incident</p>
             </div>
             <h2 className="font-bold text-white text-lg leading-tight">{event.title}</h2>
-            <p className="text-slate-300/80 text-xs leading-snug">{event.description ?? 'No description'}</p>
+            <p className="text-slate-300/80 text-xs leading-snug">{event.description ?? 'Aucune description'}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
             {/* Auto toggle switch - only visible for authorized roles */}
@@ -131,7 +132,6 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
                 disabled={isTogglingAuto}
                 title={localAutoSimulated ? 'Mode automatique activé - Cliquez pour passer en manuel' : 'Mode manuel activé - Cliquez pour passer en automatique'}
               >
-                <span>{localAutoSimulated ? '⚙️' : '🖐'}</span>
                 <span>{localAutoSimulated ? 'Auto' : 'Manuel'}</span>
               </button>
             )}
@@ -199,7 +199,7 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
               <button
                 type="button"
                 className="p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                aria-label="Close incident details"
+                aria-label="Fermer les détails de l'incident"
                 onClick={onClose}
               >
                 ✕
@@ -210,15 +210,15 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
 
         <div className="gap-2 grid grid-cols-2 mt-3 text-slate-200/90 text-xs">
           <div className="bg-slate-800/60 px-2 py-1.5 border border-blue-500/20 rounded-md">
-            <p className="text-[0.7rem] text-slate-400 uppercase tracking-wide">Severity</p>
+            <p className="text-[0.7rem] text-slate-400 uppercase tracking-wide">Criticité</p>
             <p className="font-semibold text-white">{severityLabel(event.severity)}</p>
           </div>
           <div className="bg-slate-800/60 px-2 py-1.5 border border-blue-500/20 rounded-md">
-            <p className="text-[0.7rem] text-slate-400 uppercase tracking-wide">Status</p>
-            <p className="font-semibold text-white">{event.intervention_status || 'Unknown'}</p>
+            <p className="text-[0.7rem] text-slate-400 uppercase tracking-wide">Statut</p>
+            <p className="font-semibold text-white">{event.intervention_status || 'Inconnu'}</p>
           </div>
           <div className="col-span-2 bg-slate-800/60 px-2 py-1.5 border border-blue-500/20 rounded-md">
-            <p className="text-[0.7rem] text-slate-400 uppercase tracking-wide">Reported</p>
+            <p className="text-[0.7rem] text-slate-400 uppercase tracking-wide">Signalé</p>
             <p className="font-semibold text-white">{formatTimestamp(event.reported_at)}</p>
           </div>
         </div>
@@ -281,7 +281,7 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
                       <p className="text-[0.75rem] text-slate-300 truncate leading-tight">
                         {unit.unit_type_code}
                       </p>
-                      <p className="text-[0.7rem] text-slate-400 truncate leading-tight">{unit.status}</p>
+                      <StatusBadge status={unit.status} type="unit" className="text-[10px] mt-1" />
                     </div>
                   </button>
                   {canAssign && (

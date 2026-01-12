@@ -37,9 +37,24 @@ export function StatusBadge({ status, type = 'unit', className = '', showDot = t
         colors = INTERVENTION_STATUS_COLORS[normalized] ?? 'bg-slate-600/20 text-slate-200 border-slate-300/20'
     }
 
+    const STATUS_LABELS_FR: Record<string, string> = {
+        // Unit statuses
+        available: 'Disponible',
+        available_hidden: 'À la caserne',
+        under_way: 'En route',
+        on_site: 'Sur place',
+        unavailable: 'Indisponible',
+        offline: 'Hors ligne',
+        // Intervention statuses
+        created: 'Créé',
+        completed: 'Terminé',
+        cancelled: 'Annulé',
+        pending: 'En attente',
+    }
+
     const formatStatus = (s: string) => {
-        if (s === 'available_hidden') return 'home base'
-        return s.replaceAll(/[-\s_]/g, ' ')
+        const normalized = normalizeStatus(s)
+        return STATUS_LABELS_FR[normalized] ?? s.replaceAll(/[-\s_]/g, ' ')
     }
 
     return (
