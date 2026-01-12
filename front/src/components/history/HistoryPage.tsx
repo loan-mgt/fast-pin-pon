@@ -28,17 +28,17 @@ function formatTime(dateString: string): string {
 
 function calculateDuration(startedAt?: string, completedAt?: string): string {
     if (!startedAt || !completedAt) return '—'
-    
+
     const start = new Date(startedAt).getTime()
     const end = new Date(completedAt).getTime()
     const durationMs = end - start
-    
+
     if (durationMs < 0) return '—'
-    
+
     const minutes = Math.floor(durationMs / (1000 * 60))
     const hours = Math.floor(minutes / 60)
     const remainingMinutes = minutes % 60
-    
+
     if (hours > 0) {
         return `${hours}h ${remainingMinutes}min`
     }
@@ -108,7 +108,7 @@ export function HistoryPage(): JSX.Element {
                 const data = await fastPinPonService.getEvents(100, token ?? undefined)
                 setEvents(data)
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to load history')
+                setError(err instanceof Error ? err.message : 'Échec du chargement de l\'historique')
             } finally {
                 setLoading(false)
             }
@@ -159,7 +159,7 @@ export function HistoryPage(): JSX.Element {
     if (loading) {
         return (
             <div className="flex justify-center items-center flex-1 p-8">
-                <p className="text-slate-400">Loading history...</p>
+                <p className="text-slate-400">Chargement de l'historique...</p>
             </div>
         )
     }
@@ -176,16 +176,16 @@ export function HistoryPage(): JSX.Element {
         <div className="flex-1 p-6 overflow-auto">
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-white">Incident History</h1>
+                    <h1 className="text-2xl font-bold text-white">Historique des incidents</h1>
                     <div className="flex items-center gap-3">
-                        <label htmlFor="filter-type" className="text-slate-400 text-sm">Filter by type:</label>
+                        <label htmlFor="filter-type" className="text-slate-400 text-sm">Filtrer par type :</label>
                         <select
                             id="filter-type"
                             value={filterType}
                             onChange={(e) => setFilterType(e.target.value)}
                             className="bg-slate-800/80 px-3 py-2 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
                         >
-                            <option value="all">All types</option>
+                            <option value="all">Tous les types</option>
                             {eventTypes.map((type) => (
                                 <option key={type} value={type}>
                                     {type}
@@ -205,7 +205,7 @@ export function HistoryPage(): JSX.Element {
                                         onClick={() => handleSort('date')}
                                         className="flex items-center gap-2 text-slate-300 text-xs font-semibold uppercase tracking-wider hover:text-white transition-colors"
                                     >
-                                        Date & Time
+                                        Date et heure
                                         <SortIcon field="date" currentField={sortField} direction={sortDirection} />
                                     </button>
                                 </th>
@@ -221,7 +221,7 @@ export function HistoryPage(): JSX.Element {
                                 </th>
                                 <th className="px-4 py-3 text-left">
                                     <span className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
-                                        Title
+                                        Titre
                                     </span>
                                 </th>
                                 <th className="px-4 py-3 text-left">
@@ -230,7 +230,7 @@ export function HistoryPage(): JSX.Element {
                                         onClick={() => handleSort('severity')}
                                         className="flex items-center gap-2 text-slate-300 text-xs font-semibold uppercase tracking-wider hover:text-white transition-colors"
                                     >
-                                        Severity
+                                        Criticité
                                         <SortIcon field="severity" currentField={sortField} direction={sortDirection} />
                                     </button>
                                 </th>
@@ -240,13 +240,13 @@ export function HistoryPage(): JSX.Element {
                                         onClick={() => handleSort('duration')}
                                         className="flex items-center gap-2 text-slate-300 text-xs font-semibold uppercase tracking-wider hover:text-white transition-colors"
                                     >
-                                        Duration
+                                        Durée
                                         <SortIcon field="duration" currentField={sortField} direction={sortDirection} />
                                     </button>
                                 </th>
                                 <th className="px-4 py-3 text-left">
                                     <span className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
-                                        Status
+                                        Statut
                                     </span>
                                 </th>
                             </tr>
@@ -295,13 +295,13 @@ export function HistoryPage(): JSX.Element {
                     </table>
                     {sortedAndFilteredEvents.length === 0 && (
                         <div className="p-8 text-center text-slate-400">
-                            No incidents found
+                            Aucun incident trouvé
                         </div>
                     )}
                 </div>
 
                 <div className="mt-4 text-slate-500 text-sm">
-                    Showing {sortedAndFilteredEvents.length} of {events.length} incidents
+                    Affichage de {sortedAndFilteredEvents.length} sur {events.length} incidents
                 </div>
             </div>
         </div>
