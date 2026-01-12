@@ -14,6 +14,11 @@ services:
     environment:
       - LOG_LEVEL=debug
       - ENGINE_CALLBACK_URL=http://engine:8081
+      - DB_URL=postgres://fastpinpon:fastpinpon@postgres:5432/fastpinpon?sslmode=disable
+      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - KEYCLOAK_PUBLIC_URL=http://localhost:8082
+      - KEYCLOAK_REALM=sdmis-realm
+      - KEYCLOAK_CLIENT_ID=sdmis-api
     depends_on:
       postgres:
         condition: service_healthy
