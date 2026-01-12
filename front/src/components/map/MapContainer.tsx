@@ -27,7 +27,7 @@ type EventLocation = {
 
 function loadStoredMapState(): StoredMapState | null {
     const savedState = localStorage.getItem(MAP_STATE_KEY)
-    if (!savedState) return null
+    if (savedState === null) return null
 
     try {
         const parsed = JSON.parse(savedState) as StoredMapState
@@ -70,7 +70,7 @@ function flyToInitialLocation(
     eventLocations: EventLocation[],
     isFirstLoad: MutableRefObject<boolean>,
 ): void {
-    if (!isFirstLoad.current) return
+    if (isFirstLoad.current === false) return
     if (eventLocations.length === 0) return
 
     const savedState = loadStoredMapState()
@@ -120,10 +120,12 @@ function buildConnectionLines(
     unitLocations: UnitLocation[],
     unitToEvent: Map<string, string>,
 ): GeoJSON.Feature<GeoJSON.LineString>[] {
-    if (!selectedEventId) return []
+    if (selectedEventId === null || selectedEventId === undefined) return []
 
     const selectedEvent = eventById.get(selectedEventId)
-    if (!selectedEvent?.location?.longitude || !selectedEvent?.location?.latitude) return []
+    const hasLon = selectedEvent?.location?.longitude !== undefined
+    const hasLat = selectedEvent?.location?.latitude !== undefined
+    if (!hasLon || !hasLat) return []
 
     return unitLocations
         .filter((loc) => unitToEvent.get(loc.unit.id) === selectedEventId)
@@ -348,7 +350,7 @@ export function MapContainer({
     // Effect for event markers
     useEffect(() => {
         const map = mapRef.current
-        if (!map) return
+        if (map === null) return
 
         clearMarkers(eventMarkersRef)
 
@@ -362,7 +364,7 @@ export function MapContainer({
     // Effect for building markers (casernes)
     useEffect(() => {
         const map = mapRef.current
-        if (!map) return
+        if (map === null) return
 
         // Clear existing
         for (const marker of buildingMarkersRef.current) marker.remove()
@@ -394,7 +396,7 @@ export function MapContainer({
     // Effect for unit markers and connection lines
     useEffect(() => {
         const map = mapRef.current
-        if (!map) return
+        if (map === null) return
 
         // Wait for style to be loaded before adding sources/layers
         const updateUnitsAndConnections = () => {

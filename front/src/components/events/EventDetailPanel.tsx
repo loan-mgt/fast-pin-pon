@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState } from 'react'
 import type { JSX } from 'react'
 import { Card } from '../ui/card'
 import { ConfirmationDialog } from '../ui/confirmation-dialog'
@@ -26,17 +26,9 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [unitToUnassign, setUnitToUnassign] = useState<{ id: string, callSign: string } | null>(null)
-  const [isTogglingAuto, setIsTogglingAuto] = useState(false)
-  const [localAutoSimulated, setLocalAutoSimulated] = useState(event?.auto_simulated ?? true)
-
-  // Sync local state when event prop changes
-  useEffect(() => {
-    setLocalAutoSimulated(event?.auto_simulated ?? true)
-  }, [event?.id, event?.auto_simulated])
 
   const canAssign = permissions?.canAssignUnits ?? false
   const canDelete = permissions?.canDeleteIncident ?? false
-  const canToggleAuto = permissions?.canToggleAutoSimulation ?? false
   const assignedUnits = event?.assigned_units ?? []
 
   const handleDeleteIncident = useCallback(async () => {
@@ -83,25 +75,6 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
     }
   }, [event, unitToUnassign, token, onRefresh])
 
-  const handleToggleAutoSimulated = useCallback(async () => {
-    if (!event || isTogglingAuto) return
-
-    const newValue = !localAutoSimulated
-    setIsTogglingAuto(true)
-    try {
-      await fastPinPonService.toggleEventAutoSimulated(event.id, newValue, token ?? undefined)
-      setLocalAutoSimulated(newValue)
-      if (onRefresh) {
-        await onRefresh()
-      }
-    } catch (err) {
-      console.error('Failed to toggle auto simulation', err)
-      setErrorMessage('Impossible de changer le mode. Veuillez réessayer.')
-    } finally {
-      setIsTogglingAuto(false)
-    }
-  }, [event, isTogglingAuto, localAutoSimulated, token, onRefresh])
-
   if (!event) return null
 
   return (
@@ -117,19 +90,28 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
             <h2 className="font-bold text-white text-lg leading-tight">{event.title}</h2>
             <p className="text-slate-300/80 text-xs leading-snug">{event.description ?? 'No description'}</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            {/* Auto toggle switch - only visible for authorized roles */}
-            {canToggleAuto && (
-              <button
-                type="button"
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${isTogglingAuto ? 'opacity-50 cursor-wait' : ''
-                  } ${localAutoSimulated
-                    ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
-                    : 'bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30'
-                  }`}
-                onClick={handleToggleAutoSimulated}
-                disabled={isTogglingAuto}
-                title={localAutoSimulated ? 'Mode automatique activé - Cliquez pour passer en manuel' : 'Mode manuel activé - Cliquez pour passer en automatique'}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="hover:bg-sky-500/10 p-2 border border-sky-500/40 rounded-md text-sky-200 transition-colors cursor-pointer"
+              aria-label="Centrer sur l'incident"
+              title="Centrer sur l'incident"
+              onClick={() => {
+                if (event.location?.longitude && event.location?.latitude) {
+                  onLocateEvent?.(event.location.longitude, event.location.latitude)
+                }
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0Z" />
                 <circle cx="12" cy="10" r="3" />
@@ -139,80 +121,40 @@ export function EventDetailPanel({ event, onClose, onEventSelect, permissions, o
               type="button"
               className={`p-2 rounded-md border transition-colors ${
                 canDelete
-                <span>{localAutoSimulated ? '⚙️' : '🖐'}</span>
-                <span>{localAutoSimulated ? 'Auto' : 'Manuel'}</span>
-              </button>
-            )}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="hover:bg-sky-500/10 p-2 border border-sky-500/40 rounded-md text-sky-200 transition-colors cursor-pointer"
-                aria-label="Centrer sur l'incident"
-                title="Centrer sur l'incident"
-                onClick={() => {
-                  if (event.location?.longitude && event.location?.latitude) {
-                    onLocateEvent?.(event.location.longitude, event.location.latitude)
-                  }
-                }}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <circle cx="12" cy="12" r="6" />
-                  <circle cx="12" cy="12" r="2" />
-                  <line x1="12" y1="2" x2="12" y2="4" />
-                  <line x1="12" y1="20" x2="12" y2="22" />
-                  <line x1="2" y1="12" x2="4" y2="12" />
-                  <line x1="20" y1="12" x2="22" y2="12" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className={`p-2 rounded-md border transition-colors ${canDelete
                   ? 'border-rose-500/40 text-rose-200 hover:bg-rose-500/10 cursor-pointer'
                   : 'border-slate-700 text-slate-500 cursor-not-allowed'
-                  }`}
-                aria-label="Supprimer l'incident"
-                title="Supprimer l'incident"
-                disabled={!canDelete || isDeleting}
-                onClick={handleDeleteIncident}
+              }`}
+              aria-label="Supprimer l'incident"
+              title="Supprimer l'incident"
+              disabled={!canDelete || isDeleting}
+              onClick={handleDeleteIncident}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                  <path d="M10 11v6" />
-                  <path d="M14 11v6" />
-                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className="p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                aria-label="Close incident details"
-                onClick={onClose}
-              >
-                ✕
-              </button>
-            </div>
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              aria-label="Close incident details"
+              onClick={onClose}
+            >
+              ✕
+            </button>
           </div>
         </div>
 
