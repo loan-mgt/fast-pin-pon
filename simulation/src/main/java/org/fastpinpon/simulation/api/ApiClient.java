@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 
 public final class ApiClient {
     private static final Logger log = LoggerFactory.getLogger(ApiClient.class);
-    private static final OkHttpClient HTTP = new OkHttpClient();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_INSTANT;
     private final Random random = new Random();
@@ -33,13 +32,20 @@ public final class ApiClient {
     public final List<String> unitTypeCodes = new ArrayList<>();
     private final ApiService api;
 
-    public ApiClient(String baseUrlRaw) {
+    public ApiClient(String baseUrlRaw, String tokenUrl, String clientId, String clientSecret) {
         String normalized = baseUrlRaw.endsWith("/") ? baseUrlRaw : baseUrlRaw + "/";
+
+        OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
+
+        if (tokenUrl != null && !tokenUrl.isEmpty() && clientId != null && !clientId.isEmpty()) {
+            TokenManager tokenManager = new TokenManager(tokenUrl, clientId, clientSecret);
+            httpClientBuilder.addInterceptor(new AuthInterceptor(tokenManager));
+        }
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(normalized)
             .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
-            .client(HTTP)
+            .client(httpClientBuilder.build())
                 .build();
         this.api = retrofit.create(ApiService.class);
 
@@ -152,6 +158,40 @@ public final class ApiClient {
             log.warn("Health check failed: {}", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Check if the API is reachable by loading event types.
+     *
+     * @return true if event types were loaded successfully
+     */
+    public boolean isAvailable() {
+        return !eventTypeCodes.isEmpty();
+    }
+
+    /**
+     * Wait for API to become available with retries.
+     *
+     * @param maxRetries maximum number of retries
+     * @param retryDelayMs delay between retries in milliseconds
+     * @return true if API became available
+     */
+    public boolean waitForApi(int maxRetries, long retryDelayMs) {
+        for (int i = 0; i < maxRetries; i++) {
+            loadEventTypes();
+            loadUnitTypes();
+            if (isAvailable()) {
+                return true;
+            }
+            log.info("[API] Waiting for API to become available... ({}/{})", i + 1, maxRetries);
+            try {
+                Thread.sleep(retryDelayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return isAvailable();
     }
 
     /**

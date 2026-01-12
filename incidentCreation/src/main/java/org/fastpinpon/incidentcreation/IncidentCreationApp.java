@@ -30,6 +30,13 @@ public class IncidentCreationApp {
     private static final String INCIDENT_INTERVAL_KEY = "INCIDENT_INTERVAL_SECONDS";
     private static final String LOG_FILE_ENV = "INCIDENT_CREATION_LOG_FILE";
     private static final String FILE_LOGGING_ENABLED_ENV = "INCIDENT_CREATION_FILE_LOGGING_ENABLED";
+    
+    // Keycloak environment variables
+    private static final String KEYCLOAK_URL_KEY = "KEYCLOAK_URL";
+    private static final String KEYCLOAK_REALM_KEY = "KEYCLOAK_REALM";
+    private static final String KEYCLOAK_CLIENT_ID_KEY = "KEYCLOAK_CLIENT_ID";
+    private static final String KEYCLOAK_CLIENT_SECRET_KEY = "KEYCLOAK_CLIENT_SECRET";
+
     private static final String DEFAULT_LOG_FILE = "/app/logs/incident-creation/incident-creation.log";
     
     private static final long DEFAULT_INTERVAL_SECONDS = 180;
@@ -42,10 +49,21 @@ public class IncidentCreationApp {
         String apiBaseUrl = resolveApiBaseUrl();
         long intervalSeconds = resolveIntervalSeconds();
         
-        LOG.log(Level.INFO, "[IncidentCreation] Starting with API={0}, interval={1}s", 
-                new Object[]{apiBaseUrl, intervalSeconds});
+        // Resolve Keycloak config
+        String keycloakUrl = resolveEnv(KEYCLOAK_URL_KEY, "");
+        String keycloakRealm = resolveEnv(KEYCLOAK_REALM_KEY, "");
+        String clientId = resolveEnv(KEYCLOAK_CLIENT_ID_KEY, "");
+        String clientSecret = resolveEnv(KEYCLOAK_CLIENT_SECRET_KEY, "");
+        
+        String tokenUrl = "";
+        if (!keycloakUrl.isEmpty() && !keycloakRealm.isEmpty()) {
+            tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", keycloakUrl, keycloakRealm);
+        }
 
-        ApiClient api = new ApiClient(apiBaseUrl);
+        LOG.log(Level.INFO, "[IncidentCreation] Starting with API={0}, interval={1}s, tokenUrl={2}", 
+                new Object[]{apiBaseUrl, intervalSeconds, tokenUrl});
+
+        ApiClient api = new ApiClient(apiBaseUrl, tokenUrl, clientId, clientSecret);
         
         // Wait for API to become available
         LOG.info("[IncidentCreation] Waiting for API to become available...");
@@ -137,6 +155,32 @@ public class IncidentCreationApp {
         }
 
         return DEFAULT_INTERVAL_SECONDS;
+    }
+
+    private static String resolveEnv(String key, String defaultValue) {
+        String fromEnv = System.getenv(key);
+        if (fromEnv != null && !fromEnv.trim().isEmpty()) {
+            return fromEnv.trim();
+        }
+
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+        String fromDotEnv = dotenv.get(key);
+        if (fromDotEnv != null && !fromDotEnv.trim().isEmpty()) {
+            return fromDotEnv.trim();
+        }
+
+        Dotenv parentDotenv = Dotenv.configure()
+                .directory("../")
+                .ignoreIfMissing()
+                .load();
+        String fromParent = parentDotenv.get(key);
+        if (fromParent != null && !fromParent.trim().isEmpty()) {
+            return fromParent.trim();
+        }
+
+        return defaultValue;
     }
 
     private static void configureFileLogging() {

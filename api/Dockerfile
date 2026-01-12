@@ -7,11 +7,11 @@ WORKDIR /app
 # Copy go mod files
 COPY go.mod go.sum ./
 
-# Download dependencies
-RUN go mod download
-
-# Copy source code
+# Copy source code first (needed for go mod tidy to analyze imports)
 COPY . .
+
+# Download and tidy dependencies (resolves new imports automatically)
+RUN go mod tidy && go mod download
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .

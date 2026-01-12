@@ -5,10 +5,6 @@ import org.fastpinpon.simulation.engine.SimulationEngine;
 import org.fastpinpon.simulation.http.SimulationHttpServer;
 import io.github.cdimascio.dotenv.Dotenv;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -24,11 +20,29 @@ public class SimulationApp {
     private static final String SPEED_MULTIPLIER_ENV = "SIMULATION_SPEED_MULTIPLIER";
 
     private static final Logger log = LoggerFactory.getLogger(SimulationApp.class);
+    
+    // Keycloak environment variables
+    private static final String KEYCLOAK_URL_KEY = "KEYCLOAK_URL";
+    private static final String KEYCLOAK_REALM_KEY = "KEYCLOAK_REALM";
+    private static final String KEYCLOAK_CLIENT_ID_KEY = "KEYCLOAK_CLIENT_ID";
+    private static final String KEYCLOAK_CLIENT_SECRET_KEY = "KEYCLOAK_CLIENT_SECRET";
 
     public static void main(String[] args) {
         String apiBaseUrl = resolveApiBaseUrl();
-        ApiClient api = new ApiClient(apiBaseUrl);
+        // Resolve Keycloak config
+        String keycloakUrl = resolveEnv(KEYCLOAK_URL_KEY, "");
+        String keycloakRealm = resolveEnv(KEYCLOAK_REALM_KEY, "");
+        String clientId = resolveEnv(KEYCLOAK_CLIENT_ID_KEY, "");
+        String clientSecret = resolveEnv(KEYCLOAK_CLIENT_SECRET_KEY, "");
         
+        String tokenUrl = "";
+        if (!keycloakUrl.isEmpty() && !keycloakRealm.isEmpty()) {
+            tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", keycloakUrl, keycloakRealm);
+        }
+
+        log.info("Starting Simulation with API={}, tokenUrl={}", apiBaseUrl, tokenUrl);
+
+        ApiClient api = new ApiClient(apiBaseUrl, tokenUrl, clientId, clientSecret);
         // Check API connectivity before proceeding
         if (!api.isHealthy()) {
             log.error("API not reachable at {}. Exiting to allow restart.", apiBaseUrl);
@@ -101,6 +115,32 @@ public class SimulationApp {
         }
 
         return "http://localhost:8081";
+    }
+
+    private static String resolveEnv(String key, String defaultValue) {
+        String fromEnv = System.getenv(key);
+        if (fromEnv != null && !fromEnv.trim().isEmpty()) {
+            return fromEnv.trim();
+        }
+
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+        String fromDotEnv = dotenv.get(key);
+        if (fromDotEnv != null && !fromDotEnv.trim().isEmpty()) {
+            return fromDotEnv.trim();
+        }
+
+        Dotenv parentDotenv = Dotenv.configure()
+                .directory("../")
+                .ignoreIfMissing()
+                .load();
+        String fromParent = parentDotenv.get(key);
+        if (fromParent != null && !fromParent.trim().isEmpty()) {
+            return fromParent.trim();
+        }
+
+        return defaultValue;
     }
 
     private static boolean envFlag(String key, boolean defaultValue) {

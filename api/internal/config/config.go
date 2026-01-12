@@ -16,6 +16,15 @@ type Config struct {
 	EngineURL string         `env:"ENGINE_CALLBACK_URL" envDefault:"http://engine:8081"`
 	HTTP      HTTPConfig     `envPrefix:"HTTP_"`
 	Database  DatabaseConfig `envPrefix:"DB_"`
+	Keycloak  KeycloakConfig `envPrefix:"KEYCLOAK_"`
+}
+
+// KeycloakConfig holds Keycloak authentication settings.
+type KeycloakConfig struct {
+	URL       string `env:"URL" envDefault:"http://fast-pin-pon-keycloak:8080"`
+	PublicURL string `env:"PUBLIC_URL" envDefault:"http://localhost:8082"`
+	Realm     string `env:"REALM" envDefault:"sdmis-realm"`
+	ClientID  string `env:"CLIENT_ID" envDefault:"sdmis-api"`
 }
 
 // HTTPConfig controls the HTTP server behaviour.
