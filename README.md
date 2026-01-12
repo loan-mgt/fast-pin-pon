@@ -219,6 +219,71 @@ SERIAL_PORT=/dev/ttyACM0 SIMULATOR_URL=http://localhost:8090 python3 bridge_emit
 SERIAL_PORT=/dev/ttyACM1 API_URL=http://localhost:8081 python3 bridge_receiver.py
 ```
 
+#### Guide d'Installation Hardware
+
+Ce guide détaille les étapes pour mettre en place la communication radio "air-gapped" entre le simulateur et l'API.
+
+**Prérequis**
+- Python 3.8+
+- 2x cartes Micro:bit v2
+- Câbles Micro-USB
+
+**1. Installation des dépendances**
+Sur les deux machines (PC Emetteur et PC Récepteur) :
+```bash
+cd network
+pip install -r requirements.txt
+# Note: Le script utilise un chargeur .env interne, pas besoin de python-dotenv
+```
+
+**2. Flashage des Micro:bits**
+Rendez-vous sur [Python Editor for Micro:bit](https://python.microbit.org/v3).
+
+*   **Micro:bit "UNIT" (Mobile / Emetteur)**
+    1.  Copiez le contenu de `network/unit.py`.
+    2.  Flashez le code sur la première carte.
+    3.  Au démarrage, elle affiche une coche (✓) puis son ID (ex: `MB001`).
+
+*   **Micro:bit "RELAY" (Station / Récepteur)**
+    1.  Copiez le contenu de `network/relay.py`.
+    2.  Flashez le code sur la seconde carte.
+    3.  Au démarrage, elle affiche une flèche Ouest (←).
+
+**3. Configuration**
+Créez un fichier `.env` dans le dossier `network/` (ou définissez les variables d'environnement) :
+
+```ini
+# Configuration Commune
+KEYCLOAK_URL=https://auth.fast-pin-pon.4loop.org
+KEYCLOAK_REALM=sdmis-realm
+KEYCLOAK_CLIENT_ID=bridge-client
+KEYCLOAK_CLIENT_SECRET=votre-secret
+
+# PC 1 : Emetteur (Simulateur -> Micro:bit)
+SIMULATOR_URL=http://localhost:8090
+SERIAL_PORT=/dev/tty.usbmodemXXXX  # Adaptez selon votre OS (ex: COM3 sur Windows)
+
+# PC 2 : Récepteur (Micro:bit -> API)
+API_URL=http://localhost:8081
+# SERIAL_PORT=... (Si différent)
+```
+
+**4. Lancement**
+
+*   **Sur le PC Emetteur (Simulateur)** :
+    ```bash
+    # Lance le bridge qui lit le simulateur et écrit sur le port série
+    python3 bridge_emitter.py
+    ```
+    *Vérification : Le terminal doit afficher `[EMIT] GPS:...` et la Micro:bit doit clignoter.*
+
+*   **Sur le PC Récepteur (API)** :
+    ```bash
+    # Lance le bridge qui lit le port série et notifie l'API
+    python3 bridge_receiver.py
+    ```
+    *Vérification : Le terminal doit afficher `[RECV] ...` et `[API] Location updated`.*
+
 ### API (`api/`)
 
 **Backend Services and REST API**
