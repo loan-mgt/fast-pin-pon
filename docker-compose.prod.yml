@@ -45,6 +45,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      keycloak_web:
+        condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
       - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
@@ -67,6 +69,8 @@ services:
     container_name: fast-pin-pon-incident-creation
     depends_on:
       api:
+        condition: service_healthy
+      keycloak_web:
         condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
@@ -91,6 +95,8 @@ services:
     container_name: fast-pin-pon-engine
     depends_on:
       api:
+        condition: service_healthy
+      keycloak_web:
         condition: service_healthy
     environment:
       - API_BASE_URL=http://api:8080
