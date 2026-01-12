@@ -166,9 +166,29 @@ This module implements a physical radio bridge using **Micro:bit** devices to pr
 
 #### Architecture Flow
 
+```mermaid
+flowchart LR
+    linkStyle default stroke:#a8a8a8,stroke-width:1px,fill:none;
+    classDef box fill:#ffffff,stroke:#e5e7eb,stroke-width:1px,color:#1f2937,rx:5,ry:5;
+    classDef radio fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#1f2937,rx:5,ry:5;
+
+    SIM("<img src='https://cdn.simpleicons.org/openjdk/5382a1' width='24' /><br/><b>Simulation</b>"):::box
+    EMI("<img src='https://cdn.simpleicons.org/python/3776AB' width='24' /><br/><b>Emitter</b>"):::box
+    UNIT{{"<b>Unit</b><br/>Micro:bit"}}:::radio
+    RELAY{{"<b>Relay</b><br/>Micro:bit"}}:::radio
+    REC("<img src='https://cdn.simpleicons.org/python/3776AB' width='24' /><br/><b>Receiver</b>"):::box
+    API("<img src='https://cdn.simpleicons.org/go/00ADD8' width='24' /><br/><b>API</b>"):::box
+
+    SIM -->|HTTP| EMI
+    EMI -->|USB| UNIT
+    UNIT -.->|Radio 2.4GHz| RELAY
+    RELAY -->|USB| REC
+    REC -->|REST| API
+```
+
 1.  **Emitter Bridge (PC)** (`bridge_emitter.py`):
     - Polls the simulation HTTP endpoint.
-    - Encapsulates data into a custom serial protocol (SEQ + CRC + Data).
+    - Encrypts and encapsulates data (SEQ + XOR Encrypted Data + CRC + Sign).
     - Sends data via USB Serial to the **Unit Micro:bit**.
 2.  **Unit Micro:bit** (`unit.py`):
     - Receives serial data from the Emitter Bridge.
@@ -179,14 +199,15 @@ This module implements a physical radio bridge using **Micro:bit** devices to pr
     - Relays received messages to the Receiver Bridge via USB Serial.
 4.  **Receiver Bridge (Server)** (`bridge_receiver.py`):
     - Decodes the serial stream.
-    - Validates data formats (`GPS`, `STA`).
+    - Validates integrity (CRC + Signature) and decrypts payload.
     - Pushes updates to the Main API (`POST /v1/units/{id}/telemetry`).
 
 #### Protocol & Security
 
 - **Radio Channel**: 7 (Configurable)
-- **Status Codes**: Optimized 3-char codes (`AVL`=Available, `UWY`=Underway, `ONS`=OnSite) to save bandwidth.
-- **Packet Structure**: ASCII-based simple protocol (`TYPE:ID,PAYLOAD`).
+- **Encryption**: Lightweight XOR encryption with shared secret key.
+- **Integrity & Auth**: Custom Signature (Salted) + CRC8 checksum to ensure authenticity.
+- **Packet Structure**: `SEQ|ENCRYPTED_DATA|CRC|SIGN`
 
 #### Usage
 
