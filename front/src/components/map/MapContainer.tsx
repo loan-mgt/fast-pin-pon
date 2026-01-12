@@ -102,12 +102,25 @@ function buildUnitEventMaps(events: EventSummary[]): {
 }
 
 function getUnitLocations(units: UnitSummary[]): UnitLocation[] {
+    const normalizeStatus = (status: string) => status?.toLowerCase().replaceAll(/[-\s]/g, '_') ?? ''
+    const allowedStatuses = new Set([
+        'available',
+        'under_way',
+        'on_site',
+        'unavailable',
+        'offline',
+        'created',
+        'planned',
+        'completed',
+        'cancelled',
+    ])
+
     return units
-        // Exclude units with status 'available_hidden' from map display
-        .filter((unit) => unit.status !== 'available_hidden')
-        .filter((unit) => unit.location?.longitude && unit.location?.latitude)
-        .filter((unit) => unit.location.longitude !== 0 && unit.location.latitude !== 0)
-        .map((unit) => ({
+        .map((unit) => ({ unit, normalizedStatus: normalizeStatus(unit.status) }))
+        .filter(({ normalizedStatus }) => allowedStatuses.has(normalizedStatus))
+        .filter(({ unit }) => unit.location?.longitude && unit.location?.latitude)
+        .filter(({ unit }) => unit.location.longitude !== 0 && unit.location.latitude !== 0)
+        .map(({ unit }) => ({
             unit,
             longitude: unit.location.longitude,
             latitude: unit.location.latitude,
@@ -127,10 +140,11 @@ function buildConnectionLines(
     const hasLat = selectedEvent?.location?.latitude !== undefined
     if (hasLon === false || hasLat === false) return []
 
+    const connectionEligibleStatuses = new Set(['available', 'under_way', 'unavailable', 'offline', 'created', 'planned', 'completed', 'cancelled'])
+
     return unitLocations
         .filter((loc) => unitToEvent.get(loc.unit.id) === selectedEventId)
-        // Exclude on_site units - they are displayed under the event icon
-        .filter((loc) => loc.unit.status.toLowerCase() !== 'on_site')
+        .filter((loc) => connectionEligibleStatuses.has(loc.unit.status.toLowerCase()))
         .map((loc) => ({
             type: 'Feature' as const,
             properties: { unitId: loc.unit.id, eventId: selectedEventId },
