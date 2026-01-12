@@ -1059,7 +1059,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "sdmis-api-secret-123",
+      "secret": "${KEYCLOAK_CLIENT_SECRET}",
       "redirectUris": [
         "/*"
       ],
