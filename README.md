@@ -1,4 +1,4 @@
-# Fast pin pom
+# Fast Pin Pon
 
 ## Useful Links
 
@@ -152,7 +152,7 @@ It handles business logic, persistence, and coordinates between the Decision Eng
     - Full lifecycle management: Incident creation -> Intervention -> Assignments -> Resolution.
     - Tracks status changes and audit logs (`/v1/events/{id}/logs`).
 
-2.  ** Fleet Management**:
+2.  **Fleet Management**:
     - Real-time unit tracking (CRUD, status, location updates).
     - Spatial queries: "Find units nearby" (`/v1/units/nearby`).
     - Hardware linking: Associate units with Micro:bit IDs (`/v1/units/{id}/microbit`).
@@ -263,7 +263,28 @@ The system implements a **three-tier role hierarchy** to control access to diffe
 | **superieur** | Intermediate  | Access to **Map** + **Dashboard**              |
 | **it**        | Administrator | Full access: **Map** + **Dashboard** + **Log** |
 
+#### 1. Administrator (`it`)
+The "admin" role intended for System Administrators and IT Operations.
+- **Dashboard Access**: Full access to Grafana Dashboards, Logs (Loki), and SonarQube.
+- **Map/Operational Access**: Can create/delete/modify **ALL** resources (Incidents, Units, Assignments).
+- **Specific Capabilities**:
+    - Create/Delete Units (Fleet Management).
+    - Force delete incidents.
+    - Full CRUD on events.
 
+#### 2. Supervisor (`superieur`)
+Intended for Operational Command Centers (CODIS) needing high-level overview and dispatch capabilities without system-level administration.
+- **Dashboard Access**: Read-only access to operational metrics (Grafana).
+- **Map/Operational Access**:
+    - **Create Incidents**: Can declare new emergencies.
+    - **Assign Units**: Can manually override dispatch decisions.
+    - **Address Search**: Access to geocoding services.
+- **Restrictions**: Cannot delete resources or modify fleet composition.
+
+#### 3. Standard User (`classic`)
+Default access for field personnel or public view.
+- **Access**: Read-only Map View.
+- **Capabilities**: Can view real-time unit positions and active incidents but cannot interact with them.
 
 -----
 ### Authentication Flow
