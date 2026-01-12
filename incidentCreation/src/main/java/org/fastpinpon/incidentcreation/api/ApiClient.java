@@ -65,8 +65,9 @@ public final class ApiClient {
 
     /**
      * Create an event from raw parameters.
+     * Uses the incident type directly as the event type code.
      * 
-     * @param type incident type
+     * @param type incident type (used as event_type_code)
      * @param number incident sequence number
      * @param lat latitude
      * @param lon longitude
@@ -74,16 +75,13 @@ public final class ApiClient {
      * @return created event id or null on failure
      */
     public String createEvent(IncidentType type, int number, double lat, double lon, int severity) {
-        String typeCode = pickEventType();
-        if (typeCode == null) {
-            LOG.warning("[API] No event type code available; cannot create event.");
-            return null;
-        }
-        String title = "SIM-" + type + "-" + number;
+        // Use the incident type enum name directly as the event type code
+        String typeCode = type.name();
+        String title = "SIM-" + typeCode + "-" + number;
         CreateEventRequest payload = new CreateEventRequest(title, typeCode, lat, lon, severity, "incident-generator");
         IdDto created = execute(api.createEvent(payload, "true"), "POST /v1/events");
         if (created != null && created.getId() != null) {
-            LOG.log(Level.INFO, "[API] Event created (id={0})", created.getId());
+            LOG.log(Level.INFO, "[API] Event created (id={0}, type={1})", new Object[]{created.getId(), typeCode});
             return created.getId();
         }
         return null;

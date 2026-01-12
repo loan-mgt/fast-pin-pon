@@ -13,7 +13,7 @@ Environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `API_BASE_URL` | Base URL of the Fast Pin Pon API | `http://localhost:8081` |
-| `INCIDENT_INTERVAL_SECONDS` | Seconds between incident generation | `60` |
+| `INCIDENT_INTERVAL_SECONDS` | Seconds between incident generation | `180` |
 | `INCIDENT_CREATION_LOG_FILE` | Path to log file | `/app/logs/incident-creation/incident-creation.log` |
 | `INCIDENT_CREATION_FILE_LOGGING_ENABLED` | Enable file logging | `true` |
 

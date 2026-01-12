@@ -32,7 +32,7 @@ public class IncidentCreationApp {
     private static final String FILE_LOGGING_ENABLED_ENV = "INCIDENT_CREATION_FILE_LOGGING_ENABLED";
     private static final String DEFAULT_LOG_FILE = "/app/logs/incident-creation/incident-creation.log";
     
-    private static final long DEFAULT_INTERVAL_SECONDS = 60;
+    private static final long DEFAULT_INTERVAL_SECONDS = 180;
     private static final int API_RETRY_COUNT = 30;
     private static final long API_RETRY_DELAY_MS = 2000;
 

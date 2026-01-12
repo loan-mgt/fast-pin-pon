@@ -134,13 +134,13 @@ export function getUnitIconWithStatus(unitTypeCode: string, status?: string): st
 }
 
 // Event marker size in pixels
-const EVENT_SIZE = 46
+const EVENT_SIZE = 52
 
-// Severity color mapping
+// Severity color mapping - bright, high-contrast colors
 export const SEVERITY_COLORS: Record<string, string> = {
-    low: '#facc15',      // Yellow (was green, but yellow indicates there's still a problem)
-    medium: '#f59e0b',   // Orange/Amber
-    high: '#E60000',     // Red
+    low: '#22c55e',      // Bright green - visible on light maps
+    medium: '#f97316',   // Bright orange - high contrast
+    high: '#dc2626',     // Bright red - emergency visibility
 }
 
 // Unit status color mapping (matches format.ts STATUS_COLORS)
@@ -409,7 +409,7 @@ export function createEventMarkerElement(
         display: flex;
         align-items: center;
         justify-content: center;
-        ${isSelected ? 'filter: drop-shadow(0 0 6px rgba(59,130,246,0.9));' : ''}
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5))${isSelected ? ' drop-shadow(0 0 8px rgba(59,130,246,0.9))' : ''};
     `
     svgContainer.innerHTML = getEventIconWithSeverity(eventTypeCode, severity)
 

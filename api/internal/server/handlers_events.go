@@ -1,8 +1,10 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	db "fast/pin/internal/db/sqlc"
 )
@@ -206,6 +208,16 @@ func (s *Server) handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, "failed to create event", err.Error())
 		return
 	}
+
+	// Trigger immediate metrics sync so the new incident appears on the heatmap right away
+	go func() {
+		// Use background context since the request context will be canceled after response
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if syncErr := SyncIncidentMetrics(ctx, s.queries, s.log); syncErr != nil {
+			s.log.Warn().Err(syncErr).Msg("failed to sync incident metrics after create")
+		}
+	}()
 
 	// Auto-create intervention if requested via query param
 	if r.URL.Query().Get("auto_intervention") == "true" {

@@ -69,7 +69,7 @@ services:
       - api
     environment:
       - API_BASE_URL=http://api:8080
-      - INCIDENT_INTERVAL_SECONDS=60
+      - INCIDENT_INTERVAL_SECONDS=180
   engine:
     image: fast-pin-pon-engine-dev
     container_name: fast-pin-pon-engine
@@ -174,5 +174,4 @@ volumes:
   kc-db-data: {}
   loki-data: {}
   logs: {}
-
 

@@ -18,7 +18,7 @@ RUN useradd -m appuser && mkdir -p /app/logs/incident-creation && chmod 777 -R /
 
 COPY --from=build /workspace/target/incident-creation-*-SNAPSHOT.jar /app/app.jar
 ENV API_BASE_URL=http://api:8080
-ENV INCIDENT_INTERVAL_SECONDS=60
+ENV INCIDENT_INTERVAL_SECONDS=180
 
 # Ensure application files are owned by non-root user
 RUN chown appuser:appuser /app/app.jar

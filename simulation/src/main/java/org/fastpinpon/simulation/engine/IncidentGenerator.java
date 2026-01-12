@@ -25,7 +25,7 @@ public final class IncidentGenerator implements IncidentSource {
 
     private static final double CITY_CENTER_LAT = 45.75;
     private static final double CITY_CENTER_LON = 4.85;
-    private static final long DEFAULT_INCIDENT_INTERVAL_SECONDS = 60;
+    private static final long DEFAULT_INCIDENT_INTERVAL_SECONDS = 180;
 
     // Unit types typically needed for each incident type
     private static final Map<IncidentType, List<String>> INCIDENT_UNIT_TYPES = new EnumMap<>(IncidentType.class);
@@ -48,7 +48,7 @@ public final class IncidentGenerator implements IncidentSource {
     private Incident pendingIncident = null;
 
     /**
-     * Create a generator with the default 60-second interval between incidents.
+     * Create a generator with the default 180-second interval between incidents.
      */
     public IncidentGenerator() {
         this(DEFAULT_INCIDENT_INTERVAL_SECONDS);
