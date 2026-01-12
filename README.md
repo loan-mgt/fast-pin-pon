@@ -200,6 +200,45 @@ The "Brain" of the operation. It assigns the most appropriate resource to each i
 
 ### Incident Generator (`incidentCreation/`)
 
+```mermaid
+sequenceDiagram
+    participant IC as 🚨 Incident Creation
+    participant API as ⚡ API
+    participant DB as 💾 PostgreSQL
+    participant Engine as 🚒 Engine
+    participant Sim as 📍 Simulation
+    participant Grafana as 📊 Grafana
+    
+    Note over IC: Toutes les 3 minutes
+    IC->>API: POST /v1/incidents<br/>(nouvel incident)
+    API->>DB: INSERT incident
+    DB->>API: incident_id
+    API->>IC: 201 Created
+    
+    Note over Engine: Polling toutes les 30s
+    Engine->>API: GET /v1/incidents?status=pending
+    API->>DB: SELECT incidents
+    DB->>API: Liste incidents
+    API->>Engine: Incidents non assignés
+    
+    Engine->>Engine: Calcule dispatch optimal
+    Engine->>API: POST /v1/dispatch<br/>(assign vehicles)
+    API->>DB: UPDATE incidents, vehicles
+    DB->>API: Success
+    API->>Engine: 200 OK
+    
+    Note over Sim: Temps réel
+    Sim->>API: PUT /v1/vehicles/{id}/position
+    API->>DB: UPDATE vehicle position
+    API->>Sim: 200 OK
+    
+    Note over Grafana: Dashboard temps réel
+    Grafana->>API: GET /v1/metrics
+    API->>DB: Aggregate data
+    DB->>API: Stats
+    API->>Grafana: Metrics JSON
+```
+---
 **Load & Chaos Generator (Java)**
 
 A standalone service designed to stimulate the system by generating random emergency events.
@@ -225,24 +264,41 @@ The system implements a **three-tier role hierarchy** to control access to diffe
 | **it**        | Administrator | Full access: **Map** + **Dashboard** + **Log** |
 
 
+
+-----
 ### Authentication Flow
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant API
-    participant Keycloak
+    participant User as 👤 Utilisateur
+    participant Front as 🖥️ Frontend
+    participant API as ⚡ API
+    participant Keycloak as 🔐 Keycloak
     
-    Note over Client,Keycloak: Token Acquisition
-    Client->>Keycloak: POST /token (client_credentials or password)
-    Keycloak-->>Client: JWT access_token
+    User->>Front: Accède à l'application
+    Front->>Keycloak: Redirect vers login<br/>(Authorization Code Flow)
+    Keycloak->>User: Affiche formulaire login
+    User->>Keycloak: Entre credentials
+    Keycloak->>Front: Redirect avec authorization code
+    Front->>Keycloak: POST /token<br/>(code + client_credentials)
+    Keycloak->>Front: JWT access_token + refresh_token
     
-    Note over Client,API: API Request
-    Client->>API: GET /v1/events + Authorization: Bearer <token>
+    Note over Front: Stocke tokens
+    
+    Front->>API: GET /v1/events<br/>Authorization: Bearer <token>
     API->>Keycloak: Fetch JWKS (cached)
-    API->>API: Validate JWT signature, expiry, issuer
-    API->>API: Check api-access role
-    API-->>Client: 200 OK or 401/403
+    API->>API: Valide signature JWT
+    API->>API: Vérifie expiry & issuer
+    API->>API: Vérifie rôle 'api-access'
+    
+    alt Token valide
+        API->>Front: 200 OK + données
+    else Token invalide/expiré
+        API->>Front: 401 Unauthorized
+        Front->>Keycloak: POST /token (refresh_token)
+        Keycloak->>Front: Nouveau access_token
+        Front->>API: Retry avec nouveau token
+    end
 ```
 
 ## Database
