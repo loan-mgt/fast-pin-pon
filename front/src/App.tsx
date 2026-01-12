@@ -6,7 +6,7 @@ import { Navbar } from './components/layout/Navbar'
 import { MapContainer } from './components/map/MapContainer'
 import { EventPanel } from './components/events/EventPanel'
 import { RecentLogsTicker } from './components/events/RecentLogsTicker'
-import { UnitPanel } from './components/units/UnitPanel'
+
 import { EventDetailPanel } from './components/events/EventDetailPanel'
 import { CreateEventModal } from './components/events/CreateEventModal'
 import { DashboardPage } from './components/dashboard/DashboardPage'
@@ -310,7 +310,7 @@ export function App() {
               flyToLocationRef.current = flyTo
             }}
           />
-          <UnitPanel units={units} />
+
           <EventPanel
             events={sortedEvents}
             error={error}

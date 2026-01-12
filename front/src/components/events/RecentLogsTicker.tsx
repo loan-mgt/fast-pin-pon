@@ -15,10 +15,10 @@ function formatTimeAgo(value: string): string {
     const diffHour = Math.floor(diffMin / 60)
     const diffDay = Math.floor(diffHour / 24)
 
-    if (diffSec < 60) return `${diffSec}s ago`
-    if (diffMin < 60) return `${diffMin}m ago`
-    if (diffHour < 24) return `${diffHour}h ago`
-    return `${diffDay}d ago`
+    if (diffSec < 60) return `${diffSec}s`
+    if (diffMin < 60) return `${diffMin}min`
+    if (diffHour < 24) return `${diffHour}h`
+    return `${diffDay}j`
 }
 
 import { truncateMiddle } from '../../utils/stringUtils'
@@ -58,7 +58,7 @@ export function RecentLogsTicker({ logs, loading, error, onUnitClick, onEventCli
                 onClick={() => setOpen((v) => !v)}
             >
                 <div className="flex items-center gap-2 whitespace-nowrap">
-                    <p className="font-semibold text-white text-lg leading-none">Activity Logs</p>
+                    <p className="font-semibold text-white text-lg leading-none">Journaux d'activité</p>
 
                 </div>
             </button>

@@ -24,11 +24,11 @@ export function EventPanel({ events, error, onEventSelect, selectedEventId }: Re
             <button
                 type="button"
                 className="flex flex-shrink-0 justify-between items-center gap-2 bg-transparent px-2 py-1 border-none w-full text-left whitespace-nowrap cursor-pointer select-none panel-header"
-                aria-label={isPanelCollapsed ? 'Open incidents panel' : 'Close incidents panel'}
+                aria-label={isPanelCollapsed ? 'Ouvrir le panneau des incidents' : 'Fermer le panneau des incidents'}
                 onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
             >
                 <div className="flex items-center gap-2 whitespace-nowrap">
-                    <p className="font-semibold text-white text-lg leading-none">Latest incidents</p>
+                    <p className="font-semibold text-white text-lg leading-none">Derniers incidents</p>
                     <span className="bg-blue-500/20 px-2 py-0.5 rounded-full font-medium text-blue-400 text-xs leading-none">
                         {events.length}
                     </span>

@@ -47,10 +47,10 @@ export function Navbar({
     const navRef = useRef<HTMLElement | null>(null)
 
     const getViewTitle = (view: ViewMode): string => {
-        if (view === 'live') return 'Live events'
-        if (view === 'dashboard') return 'Dashboard'
-        if (view === 'settings') return 'Settings'
-        return 'History'
+        if (view === 'live') return 'Évènements en direct'
+        if (view === 'dashboard') return 'Tableau de bord'
+        if (view === 'settings') return 'Paramètres'
+        return 'Historique'
     }
 
     useEffect(() => {
@@ -142,15 +142,15 @@ export function Navbar({
                                 }`}
                             aria-pressed={currentView === 'history'}
                         >
-                            History
+                            Historique
                         </button>
                     </div>
                     <div className="flex items-center gap-2 text-slate-400 text-xs">
                         <div className="hidden sm:block text-slate-400 text-xs">
-                            <span className="opacity-70">Updated </span>
+                            <span className="opacity-70">Mis à jour </span>
                             {lastUpdated}
                         </div>
-                        <span className="hidden sm:inline">Auto-refresh:</span>
+                        <span className="hidden sm:inline">Rafraîchissement :</span>
                         <select
                             value={refreshInterval}
                             onChange={onIntervalChange}
