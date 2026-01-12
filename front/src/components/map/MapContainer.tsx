@@ -70,7 +70,8 @@ function flyToInitialLocation(
     eventLocations: EventLocation[],
     isFirstLoad: MutableRefObject<boolean>,
 ): void {
-    if (!isFirstLoad.current || !eventLocations.length) return
+    if (!isFirstLoad.current) return
+    if (eventLocations.length === 0) return
 
     const savedState = loadStoredMapState()
     const { center, zoom } = getInitialView(eventLocations, savedState)
@@ -352,7 +353,7 @@ export function MapContainer({
         clearMarkers(eventMarkersRef)
 
         const eventLocations = getEventLocations(events)
-        if (!eventLocations.length) return
+        if (eventLocations.length === 0) return
 
         flyToInitialLocation(map, eventLocations, isFirstLoad)
         addEventMarkers(map, eventLocations, selectedEventId, onEventSelect, eventMarkersRef, units)
