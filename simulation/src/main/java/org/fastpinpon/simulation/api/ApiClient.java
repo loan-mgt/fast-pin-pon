@@ -184,7 +184,7 @@ public final class ApiClient {
             if (isAvailable()) {
                 return true;
             }
-            LOG.log(Level.INFO, "[API] Waiting for API to become available... ({0}/{1})", new Object[]{i + 1, maxRetries});
+            log.info("[API] Waiting for API to become available... ({}/{})", i + 1, maxRetries);
             try {
                 Thread.sleep(retryDelayMs);
             } catch (InterruptedException e) {

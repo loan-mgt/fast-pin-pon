@@ -248,6 +248,7 @@ export function App() {
         userLabel={userLabel}
         onAddUnit={permissions?.canCreateUnit ? () => setIsAddUnitOpen(true) : undefined}
         canCreateWithAddress={permissions?.canUseAddressSearch ?? false}
+        canViewDashboard={permissions?.canViewDashboard ?? false}
         onCreateIncident={permissions?.canCreateIncident ? () => {
           setIsAddressRequired(true)
           setPendingLocation(null)

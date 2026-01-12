@@ -22,6 +22,8 @@ interface NavbarProps {
     onCreateIncident?: () => void
     /** Whether the user can create incidents via address search */
     canCreateWithAddress?: boolean
+    /** Whether the user can view the dashboard */
+    canViewDashboard?: boolean
 }
 
 export function Navbar({
@@ -37,6 +39,7 @@ export function Navbar({
     onAddUnit,
     onCreateIncident,
     canCreateWithAddress = false,
+    canViewDashboard = false,
 }: Readonly<NavbarProps>): JSX.Element {
     const navRef = useRef<HTMLElement | null>(null)
 
@@ -113,17 +116,19 @@ export function Navbar({
                         >
                             Live
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => onNavigate('dashboard')}
-                            className={`px-3 py-1 text-xs font-semibold rounded-full transition ${currentView === 'dashboard'
-                                ? 'bg-slate-100 text-slate-950 shadow'
-                                : 'text-slate-300 hover:text-white'
-                                }`}
-                            aria-pressed={currentView === 'dashboard'}
-                        >
-                            Dashboard
-                        </button>
+                        {canViewDashboard && (
+                            <button
+                                type="button"
+                                onClick={() => onNavigate('dashboard')}
+                                className={`px-3 py-1 text-xs font-semibold rounded-full transition ${currentView === 'dashboard'
+                                    ? 'bg-slate-100 text-slate-950 shadow'
+                                    : 'text-slate-300 hover:text-white'
+                                    }`}
+                                aria-pressed={currentView === 'dashboard'}
+                            >
+                                Dashboard
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={() => onNavigate('history')}

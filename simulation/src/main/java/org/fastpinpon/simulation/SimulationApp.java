@@ -12,6 +12,9 @@ import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.SimpleFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +51,7 @@ public class SimulationApp {
             tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", keycloakUrl, keycloakRealm);
         }
 
-        Logger.getLogger(SimulationApp.class.getName()).log(Level.INFO, "Starting Simulation with API={0}, tokenUrl={1}", new Object[]{apiBaseUrl, tokenUrl});
+        log.info("Starting Simulation with API={}, tokenUrl={}", apiBaseUrl, tokenUrl);
 
         ApiClient api = new ApiClient(apiBaseUrl, tokenUrl, clientId, clientSecret);
         // Check API connectivity before proceeding
@@ -152,7 +155,7 @@ public class SimulationApp {
     }
 
     private static void configureFileLogging() {
-        Logger root = Logger.getLogger("");
+        java.util.logging.Logger root = java.util.logging.Logger.getLogger("");
         root.setLevel(Level.INFO);
 
         if (!isFileLoggingEnabled()) {

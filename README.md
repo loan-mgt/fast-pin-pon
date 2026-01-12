@@ -2,14 +2,14 @@
 
 ## Useful Links
 
-| Service | URL | Description |
-|---|---|---|
-| **Web UI** | https://fast-pin-pon.4loop.org/ | Main application interface |
-| **API** | https://api.fast-pin-pon.4loop.org/ | Main API Endpoint |
-| **Swagger UI** | https://loan-mgt.github.io/fast-pin-pon/swagger | API Contract & Documentation |
-| **Keycloak** | https://auth.fast-pin-pon.4loop.org/ | Identity Provider |
-| **Grafana** | https://dash.fast-pin-pon.4loop.org/ | Metrics Dashboard |
-| **SonarQube** | https://sonar.4loop.org/dashboard?id=fast-pin-pon | Code Quality Dashboard |
+| Service        | URL                                               | Description                  |
+| -------------- | ------------------------------------------------- | ---------------------------- |
+| **Web UI**     | https://fast-pin-pon.4loop.org/                   | Main application interface   |
+| **API**        | https://api.fast-pin-pon.4loop.org/               | Main API Endpoint            |
+| **Swagger UI** | https://loan-mgt.github.io/fast-pin-pon/swagger   | API Contract & Documentation |
+| **Keycloak**   | https://auth.fast-pin-pon.4loop.org/              | Identity Provider            |
+| **Grafana**    | https://dash.fast-pin-pon.4loop.org/              | Metrics Dashboard            |
+| **SonarQube**  | https://sonar.4loop.org/dashboard?id=fast-pin-pon | Code Quality Dashboard       |
 
 
 ## Architecture
@@ -218,13 +218,11 @@ The system uses **Keycloak** as the central authentication and authorization ser
 ### Role-Based Access Control (RBAC)
 The system implements a **three-tier role hierarchy** to control access to different resources and dashboards:
 
-| Role | Access Level | Permissions |
-|------|-------------|-------------|
-| **classic** | Basic | Access to **Map** view only |
-| **superieur** | Intermediate | Access to **Map** + **Dashboard** |
-| **it** | Administrator | Full access: **Map** + **Dashboard** + **Log** |
-
-
+| Role          | Access Level  | Permissions                                    |
+| ------------- | ------------- | ---------------------------------------------- |
+| **classic**   | Basic         | Access to **Map** view only                    |
+| **superieur** | Intermediate  | Access to **Map** + **Dashboard**              |
+| **it**        | Administrator | Full access: **Map** + **Dashboard** + **Log** |
 
 
 ### Authentication Flow
