@@ -100,8 +100,8 @@ export function EventDetailPanel({
             <button
               type="button"
               className={`p-2 rounded-md border transition-colors ${canLocateEvent
-                  ? 'border-sky-500/40 text-sky-200 hover:bg-sky-500/10 cursor-pointer'
-                  : 'border-slate-700 text-slate-500 cursor-not-allowed'
+                ? 'border-sky-500/40 text-sky-200 hover:bg-sky-500/10 cursor-pointer'
+                : 'border-slate-700 text-slate-500 cursor-not-allowed'
                 }`}
               aria-label="Centrer sur l'incident"
               title="Centrer sur l'incident"
@@ -132,8 +132,8 @@ export function EventDetailPanel({
             <button
               type="button"
               className={`p-2 rounded-md border transition-colors ${canDelete
-                  ? 'border-rose-500/40 text-rose-200 hover:bg-rose-500/10 cursor-pointer'
-                  : 'border-slate-700 text-slate-500 cursor-not-allowed'
+                ? 'border-rose-500/40 text-rose-200 hover:bg-rose-500/10 cursor-pointer'
+                : 'border-slate-700 text-slate-500 cursor-not-allowed'
                 }`}
               aria-label="Clore l'incident"
               title="Clore l'incident"
@@ -202,8 +202,8 @@ export function EventDetailPanel({
             <button
               type="button"
               className={`p-2 rounded-md border transition-colors ${canAssign
-                  ? 'border-blue-500/40 text-blue-200 hover:bg-blue-500/10 cursor-pointer'
-                  : 'border-slate-700 text-slate-500 cursor-not-allowed'
+                ? 'border-blue-500/40 text-blue-200 hover:bg-blue-500/10 cursor-pointer'
+                : 'border-slate-700 text-slate-500 cursor-not-allowed'
                 }`}
               aria-label="Assigner une unité"
               title="Assigner une unité"
@@ -258,18 +258,9 @@ export function EventDetailPanel({
                     <div className="flex items-center gap-2 py-2 pr-3">
                       <button
                         type="button"
-                        className={`p-1.5 border rounded-full h-fit transition-colors ${canLocateUnit
-                            ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 cursor-pointer'
-                            : 'border-slate-700 text-slate-500 cursor-not-allowed'
-                          }`}
-                        title="Centrer sur l'unité"
-                        disabled={!canLocateUnit}
-                        onClick={() => {
-                          const unitLng = unit.location?.longitude
-                          const unitLat = unit.location?.latitude
-                          if (!canLocateUnit || unitLng === undefined || unitLat === undefined) return
-                          onLocateEvent?.(unitLng, unitLat, 13)
-                        }}
+                        className="bg-rose-500/20 hover:bg-rose-500/40 p-1.5 border border-rose-500/30 rounded-full h-fit text-rose-300 transition-colors cursor-pointer"
+                        title="Désassigner l'unité"
+                        onClick={() => setUnitToUnassign({ id: unit.id, callSign: unit.call_sign })}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -282,34 +273,10 @@ export function EventDetailPanel({
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         >
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0Z" />
-                          <circle cx="12" cy="10" r="3" />
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
                       </button>
-
-                      {canAssign && (
-                        <button
-                          type="button"
-                          className="bg-rose-500/20 hover:bg-rose-500/40 p-1.5 border border-rose-500/30 rounded-full h-fit text-rose-300 transition-colors cursor-pointer"
-                          title="Désassigner l'unité"
-                          onClick={() => setUnitToUnassign({ id: unit.id, callSign: unit.call_sign })}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
-                      )}
                     </div>
                   </div>
                 )
@@ -363,3 +330,4 @@ export function EventDetailPanel({
     </>
   )
 }
+
