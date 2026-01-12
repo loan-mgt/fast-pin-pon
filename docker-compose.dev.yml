@@ -58,7 +58,7 @@ services:
     restart: on-failure
     environment:
       - API_BASE_URL=http://api:8080
-      - SIMULATION_UPDATING_ENABLED=true
+      - SIMULATION_UPDATING_ENABLED=false
       - SIMULATION_SPEED_MULTIPLIER=8.0
       - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
       - KEYCLOAK_REALM=sdmis-realm

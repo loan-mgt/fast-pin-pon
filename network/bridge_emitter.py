@@ -20,6 +20,7 @@ import serial
 import serial.tools.list_ports
 import requests
 from typing import Optional, Dict, List, Tuple
+from crypto import xor_encrypt
 
 # Configuration
 SIMULATOR_DEFAULT_URL = "http://localhost:8090"
@@ -47,8 +48,15 @@ def sign(data: str, seq: int) -> int:
 
 
 def build_packet(data: str) -> str:
+    """Build a packet with XOR-encrypted data.
+    
+    Packet format: SEQ|ENCRYPTED_DATA|CRC|SIGN
+    - CRC and SIGN are computed on ORIGINAL data for integrity
+    - Data is XOR encrypted for confidentiality
+    """
     global out_seq
-    packet = f"{out_seq}|{data}|{crc8(data)}|{sign(data, out_seq)}"
+    encrypted_data = xor_encrypt(data)
+    packet = f"{out_seq}|{encrypted_data}|{crc8(data)}|{sign(data, out_seq)}"
     out_seq = (out_seq + 1) & 0xFF
     return packet
 
