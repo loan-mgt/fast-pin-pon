@@ -46,11 +46,11 @@ interface ScoredResult {
 
 // Default weights from the backend
 const DEFAULT_WEIGHTS: ScoringWeights = {
-    travelTime: 0.70,
-    coveragePenalty: 1.50,
-    preemptionCost: 5.0,
+    travelTime: 0.7,
+    coveragePenalty: 1.5,
+    preemptionCost: 5,
     enRouteProgress: 0.2,
-    reassignmentCost: 85.0,
+    reassignmentCost: 85,
 }
 
 // Default thresholds
@@ -260,6 +260,56 @@ export function ScoringConfigPage(): JSX.Element {
         return score.toFixed(1)
     }
 
+    // Helper function for save button class
+    const getSaveButtonClass = (): string => {
+        if (saveStatus === 'success') return 'text-green-400'
+        if (saveStatus === 'error') return 'text-red-400'
+        return ''
+    }
+
+    // Helper function for save button content
+    const renderSaveButtonContent = () => {
+        if (isSaving) {
+            return (
+                <>
+                    <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                </>
+            )
+        }
+        if (saveStatus === 'success') {
+            return (
+                <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Saved!
+                </>
+            )
+        }
+        if (saveStatus === 'error') {
+            return (
+                <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Failed
+                </>
+            )
+        }
+        return (
+            <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                Save to Database
+            </>
+        )
+    }
+
     return (
         <div className="flex flex-col gap-6 flex-1 px-6 py-6 bg-slate-950 text-slate-100 overflow-auto">
             {/* Header */}
@@ -277,38 +327,9 @@ export function ScoringConfigPage(): JSX.Element {
                         variant="ghost"
                         onClick={handleSaveWeights}
                         disabled={isSaving}
-                        className={saveStatus === 'success' ? 'text-green-400' : saveStatus === 'error' ? 'text-red-400' : ''}
+                        className={getSaveButtonClass()}
                     >
-                        {isSaving ? (
-                            <>
-                                <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Saving...
-                            </>
-                        ) : saveStatus === 'success' ? (
-                            <>
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                Saved!
-                            </>
-                        ) : saveStatus === 'error' ? (
-                            <>
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                Failed
-                            </>
-                        ) : (
-                            <>
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                                </svg>
-                                Save to Database
-                            </>
-                        )}
+                        {renderSaveButtonContent()}
                     </Button>
                     <Button variant="ghost" onClick={handleResetWeights}>
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -414,8 +435,37 @@ export function ScoringConfigPage(): JSX.Element {
                                 return '#22c55e' // green-500 (available)
                             }
 
+                            // Determine connection line background color
+                            const getLineBackground = (): string => {
+                                if (isDisqualified) return '#475569'
+                                if (isSelected) return '#22d3ee'
+                                return '#64748b'
+                            }
+
                             // Extract unit type from callSign (e.g., "VSAV-01" -> "VSAV")
                             const unitType = candidate.callSign.split('-')[0].toUpperCase()
+
+                            // Generate SVG for unit type
+                            const getUnitSvg = (type: string, color: string): string => {
+                                if (type === 'VSAV') {
+                                    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
+                                        <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
+                                        <line x1="50" y1="25" x2="50" y2="75" stroke="white" stroke-width="8" stroke-linecap="round"/>
+                                        <line x1="25" y1="50" x2="75" y2="50" stroke="white" stroke-width="8" stroke-linecap="round"/>
+                                    </svg>`
+                                }
+                                if (type === 'FPT') {
+                                    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
+                                        <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
+                                        <path d="M 50 80 Q 20 60 50 20 Q 80 60 50 80 Z" fill="none" stroke="white" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+                                        <path d="M 50 80 Q 35 65 50 45" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
+                                    </svg>`
+                                }
+                                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
+                                    <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="8"/>
+                                    <circle cx="50" cy="50" r="15" fill="white"/>
+                                </svg>`
+                            }
 
                             return (
                                 <div
@@ -432,7 +482,7 @@ export function ScoringConfigPage(): JSX.Element {
                                             top: '50%',
                                             width: `${distance * 1.5}%`,
                                             height: '2px',
-                                            background: isDisqualified ? '#475569' : isSelected ? '#22d3ee' : '#64748b',
+                                            background: getLineBackground(),
                                             opacity: isDisqualified ? 0.3 : 0.4,
                                             transformOrigin: '0 50%',
                                             transform: `rotate(${Math.atan2(50 - y, 50 - x) * 180 / Math.PI}deg)`,
@@ -445,22 +495,7 @@ export function ScoringConfigPage(): JSX.Element {
                                         className={`relative transition-all ${isSelected ? 'scale-125' : ''}`}
                                         style={{ width: 36, height: 36 }}
                                         dangerouslySetInnerHTML={{
-                                            __html: unitType === 'VSAV'
-                                                ? `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
-                                                <circle cx="50" cy="50" r="45" fill="${getUnitColor()}" stroke="white" stroke-width="8"/>
-                                                <line x1="50" y1="25" x2="50" y2="75" stroke="white" stroke-width="8" stroke-linecap="round"/>
-                                                <line x1="25" y1="50" x2="75" y2="50" stroke="white" stroke-width="8" stroke-linecap="round"/>
-                                            </svg>`
-                                                : unitType === 'FPT'
-                                                    ? `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
-                                                <circle cx="50" cy="50" r="45" fill="${getUnitColor()}" stroke="white" stroke-width="8"/>
-                                                <path d="M 50 80 Q 20 60 50 20 Q 80 60 50 80 Z" fill="none" stroke="white" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
-                                                <path d="M 50 80 Q 35 65 50 45" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
-                                            </svg>`
-                                                    : `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
-                                                <circle cx="50" cy="50" r="45" fill="${getUnitColor()}" stroke="white" stroke-width="8"/>
-                                                <circle cx="50" cy="50" r="15" fill="white"/>
-                                            </svg>`
+                                            __html: getUnitSvg(unitType, getUnitColor())
                                         }}
                                     />
                                     {isSelected && (
@@ -525,27 +560,30 @@ export function ScoringConfigPage(): JSX.Element {
                                 </tr>
                             </thead>
                             <tbody>
-                                {scoredResults.map((result: ScoredResult, index: number) => (
-                                    <tr
-                                        key={result.id}
-                                        className={`border-b border-slate-800 ${result.isDisqualified
-                                            ? 'text-slate-500 line-through'
-                                            : index === 0
-                                                ? 'bg-cyan-500/10 text-cyan-400'
-                                                : ''
-                                            }`}
-                                    >
-                                        <td className="px-2 py-2 text-left">
-                                            {result.isDisqualified ? '—' : `#${index + 1}`}
-                                        </td>
-                                        <td className="px-2 py-2 text-left font-medium">
-                                            {result.callSign}
-                                        </td>
-                                        <td className="px-2 py-2 text-right font-mono">
-                                            {formatScore(result.totalScore)}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {scoredResults.map((result: ScoredResult, index: number) => {
+                                    // Determine row class based on status
+                                    const getRowClass = (): string => {
+                                        if (result.isDisqualified) return 'text-slate-500 line-through'
+                                        if (index === 0) return 'bg-cyan-500/10 text-cyan-400'
+                                        return ''
+                                    }
+                                    return (
+                                        <tr
+                                            key={result.id}
+                                            className={`border-b border-slate-800 ${getRowClass()}`}
+                                        >
+                                            <td className="px-2 py-2 text-left">
+                                                {result.isDisqualified ? '—' : `#${index + 1}`}
+                                            </td>
+                                            <td className="px-2 py-2 text-left font-medium">
+                                                {result.callSign}
+                                            </td>
+                                            <td className="px-2 py-2 text-right font-mono">
+                                                {formatScore(result.totalScore)}
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -562,7 +600,7 @@ export function ScoringConfigPage(): JSX.Element {
                         {/* Travel Time Weight */}
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <label className="text-sm font-medium text-amber-400">
+                                <label htmlFor="travel-time-weight" className="text-sm font-medium text-amber-400">
                                     w₁ - Travel Time Weight
                                 </label>
                                 <span className="text-sm font-mono bg-slate-800 px-2 py-0.5 rounded text-amber-400">
@@ -570,12 +608,13 @@ export function ScoringConfigPage(): JSX.Element {
                                 </span>
                             </div>
                             <input
+                                id="travel-time-weight"
                                 type="range"
                                 min="0"
                                 max="5"
                                 step="0.1"
                                 value={weights.travelTime}
-                                onChange={(e) => handleWeightChange('travelTime', parseFloat(e.target.value))}
+                                onChange={(e) => handleWeightChange('travelTime', Number.parseFloat(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
                             />
                             <p className="text-xs text-slate-500">Multiplied by travel time in seconds</p>
@@ -584,7 +623,7 @@ export function ScoringConfigPage(): JSX.Element {
                         {/* Coverage Penalty Weight */}
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <label className="text-sm font-medium text-green-400">
+                                <label htmlFor="coverage-penalty-weight" className="text-sm font-medium text-green-400">
                                     w₂ - Coverage Penalty Weight
                                 </label>
                                 <span className="text-sm font-mono bg-slate-800 px-2 py-0.5 rounded text-green-400">
@@ -592,12 +631,13 @@ export function ScoringConfigPage(): JSX.Element {
                                 </span>
                             </div>
                             <input
+                                id="coverage-penalty-weight"
                                 type="range"
                                 min="0"
                                 max="2"
                                 step="0.1"
                                 value={weights.coveragePenalty}
-                                onChange={(e) => handleWeightChange('coveragePenalty', parseFloat(e.target.value))}
+                                onChange={(e) => handleWeightChange('coveragePenalty', Number.parseFloat(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
                             />
                             <p className="text-xs text-slate-500">Applied when depleting base below reserve (×100 per unit shortage)</p>
@@ -606,7 +646,7 @@ export function ScoringConfigPage(): JSX.Element {
                         {/* Preemption Delta Weight */}
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <label className="text-sm font-medium text-rose-400">
+                                <label htmlFor="preemption-delta-weight" className="text-sm font-medium text-rose-400">
                                     w₃ - Preemption Delta Weight
                                 </label>
                                 <span className="text-sm font-mono bg-slate-800 px-2 py-0.5 rounded text-rose-400">
@@ -614,12 +654,13 @@ export function ScoringConfigPage(): JSX.Element {
                                 </span>
                             </div>
                             <input
+                                id="preemption-delta-weight"
                                 type="range"
                                 min="-100"
                                 max="100"
                                 step="5"
                                 value={weights.preemptionCost}
-                                onChange={(e) => handleWeightChange('preemptionCost', parseFloat(e.target.value))}
+                                onChange={(e) => handleWeightChange('preemptionCost', Number.parseFloat(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
                             />
                             <p className="text-xs text-slate-500">Multiplied by severity delta (target - current)</p>
@@ -628,7 +669,7 @@ export function ScoringConfigPage(): JSX.Element {
                         {/* Reassignment Cost */}
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <label className="text-sm font-medium text-orange-400">
+                                <label htmlFor="reassignment-cost-weight" className="text-sm font-medium text-orange-400">
                                     w₄ - Reassignment Base Cost
                                 </label>
                                 <span className="text-sm font-mono bg-slate-800 px-2 py-0.5 rounded text-orange-400">
@@ -636,12 +677,13 @@ export function ScoringConfigPage(): JSX.Element {
                                 </span>
                             </div>
                             <input
+                                id="reassignment-cost-weight"
                                 type="range"
                                 min="0"
                                 max="200"
                                 step="5"
                                 value={weights.reassignmentCost}
-                                onChange={(e) => handleWeightChange('reassignmentCost', parseFloat(e.target.value))}
+                                onChange={(e) => handleWeightChange('reassignmentCost', Number.parseFloat(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
                             />
                             <p className="text-xs text-slate-500">Fixed penalty for reassigning an already-assigned unit</p>
@@ -653,15 +695,16 @@ export function ScoringConfigPage(): JSX.Element {
                         {/* Thresholds */}
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <label className="text-sm font-medium text-slate-300">
+                                <label htmlFor="min-reserve-per-base" className="text-sm font-medium text-slate-300">
                                     Min Reserve Per Base
                                 </label>
                                 <input
+                                    id="min-reserve-per-base"
                                     type="number"
                                     min="0"
                                     max="5"
                                     value={minReservePerBase}
-                                    onChange={(e) => setMinReservePerBase(parseInt(e.target.value) || 0)}
+                                    onChange={(e) => setMinReservePerBase(Number.parseInt(e.target.value) || 0)}
                                     className="w-16 px-2 py-1 text-sm bg-slate-800 border border-slate-700 rounded text-slate-200 text-center"
                                 />
                             </div>
@@ -670,15 +713,16 @@ export function ScoringConfigPage(): JSX.Element {
 
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <label className="text-sm font-medium text-slate-300">
+                                <label htmlFor="preemption-severity-threshold" className="text-sm font-medium text-slate-300">
                                     Preemption Severity Threshold
                                 </label>
                                 <input
+                                    id="preemption-severity-threshold"
                                     type="number"
                                     min="0"
                                     max="5"
                                     value={preemptionThreshold}
-                                    onChange={(e) => setPreemptionThreshold(parseInt(e.target.value) || 0)}
+                                    onChange={(e) => setPreemptionThreshold(Number.parseInt(e.target.value) || 0)}
                                     className="w-16 px-2 py-1 text-sm bg-slate-800 border border-slate-700 rounded text-slate-200 text-center"
                                 />
                             </div>
@@ -739,13 +783,14 @@ export function ScoringConfigPage(): JSX.Element {
                         {isEditingCustom && customScenario && (
                             <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-700 space-y-3">
                                 <div className="flex items-center gap-4">
-                                    <label className="text-xs text-slate-400">Target Severity:</label>
+                                    <label htmlFor="custom-target-severity" className="text-xs text-slate-400">Target Severity:</label>
                                     <input
+                                        id="custom-target-severity"
                                         type="number"
                                         min="1"
                                         max="5"
                                         value={customScenario.targetSeverity}
-                                        onChange={(e) => setCustomScenario({ ...customScenario, targetSeverity: parseInt(e.target.value) || 1 })}
+                                        onChange={(e) => setCustomScenario({ ...customScenario, targetSeverity: Number.parseInt(e.target.value) || 1 })}
                                         className="w-16 px-2 py-1 text-sm bg-slate-800 border border-slate-700 rounded text-slate-200 text-center"
                                     />
                                 </div>
@@ -764,7 +809,7 @@ export function ScoringConfigPage(): JSX.Element {
                                             <input
                                                 type="number"
                                                 value={candidate.travelTimeSeconds}
-                                                onChange={(e) => handleUpdateCandidate(candidate.id, { travelTimeSeconds: parseInt(e.target.value) || 0 })}
+                                                onChange={(e) => handleUpdateCandidate(candidate.id, { travelTimeSeconds: Number.parseInt(e.target.value) || 0 })}
                                                 className="w-16 px-1 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200 text-center"
                                             />
                                             <span className="text-slate-500">s</span>
@@ -774,7 +819,7 @@ export function ScoringConfigPage(): JSX.Element {
                                             <input
                                                 type="number"
                                                 value={candidate.otherUnitsAtBase}
-                                                onChange={(e) => handleUpdateCandidate(candidate.id, { otherUnitsAtBase: parseInt(e.target.value) || 0 })}
+                                                onChange={(e) => handleUpdateCandidate(candidate.id, { otherUnitsAtBase: Number.parseInt(e.target.value) || 0 })}
                                                 className="w-12 px-1 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200 text-center"
                                             />
                                         </div>
@@ -784,7 +829,7 @@ export function ScoringConfigPage(): JSX.Element {
                                                 checked={candidate.isAvailable}
                                                 onChange={(e) => handleUpdateCandidate(candidate.id, { isAvailable: e.target.checked })}
                                                 className="rounded border-slate-600"
-                                            />
+                                            />{' '}
                                             Avail
                                         </label>
                                         <label className="flex items-center gap-1 text-slate-400">
@@ -793,7 +838,7 @@ export function ScoringConfigPage(): JSX.Element {
                                                 checked={candidate.isCurrentlyAssigned}
                                                 onChange={(e) => handleUpdateCandidate(candidate.id, { isCurrentlyAssigned: e.target.checked, currentInterventionSeverity: e.target.checked ? 2 : undefined })}
                                                 className="rounded border-slate-600"
-                                            />
+                                            />{' '}
                                             Assigned
                                         </label>
                                         {candidate.isCurrentlyAssigned && (
@@ -804,7 +849,7 @@ export function ScoringConfigPage(): JSX.Element {
                                                     min="1"
                                                     max="5"
                                                     value={candidate.currentInterventionSeverity ?? 2}
-                                                    onChange={(e) => handleUpdateCandidate(candidate.id, { currentInterventionSeverity: parseInt(e.target.value) || 2 })}
+                                                    onChange={(e) => handleUpdateCandidate(candidate.id, { currentInterventionSeverity: Number.parseInt(e.target.value) || 2 })}
                                                     className="w-10 px-1 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200 text-center"
                                                 />
                                             </div>
