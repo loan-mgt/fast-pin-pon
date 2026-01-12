@@ -70,8 +70,7 @@ function flyToInitialLocation(
     eventLocations: EventLocation[],
     isFirstLoad: MutableRefObject<boolean>,
 ): void {
-    if (isFirstLoad.current === false) return
-    if (eventLocations.length === 0) return
+    if (!isFirstLoad.current || eventLocations.length === 0) return
 
     const savedState = loadStoredMapState()
     const { center, zoom } = getInitialView(eventLocations, savedState)
