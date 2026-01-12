@@ -45,6 +45,7 @@ export function App() {
   } = useAuth()
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isAddressRequired, setIsAddressRequired] = useState(false)
   const [isAddUnitOpen, setIsAddUnitOpen] = useState(false)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([])
@@ -245,6 +246,12 @@ export function App() {
         onLogout={logout}
         userLabel={userLabel}
         onAddUnit={() => setIsAddUnitOpen(true)}
+        canCreateWithAddress={permissions?.canUseAddressSearch ?? false}
+        onCreateIncident={() => {
+          setIsAddressRequired(true)
+          setPendingLocation(null)
+          setIsCreateOpen(true)
+        }}
       />
 
       {view === 'dashboard' && (
@@ -281,6 +288,7 @@ export function App() {
             onBuildingSelect={handleBuildingSelect}
             selectedEventId={selectedEventId}
             onCreateAtLocation={(coords) => {
+              setIsAddressRequired(false)
               setPendingLocation(coords)
               setIsCreateOpen(true)
             }}
@@ -312,10 +320,12 @@ export function App() {
         onClose={() => {
           setIsCreateOpen(false)
           setPendingLocation(null)
+          setIsAddressRequired(false)
         }}
         eventTypes={eventTypes}
         onSubmit={handleCreateEvent}
         initialLocation={pendingLocation}
+        addressRequired={isAddressRequired}
       />
 
       <AddUnitModal
