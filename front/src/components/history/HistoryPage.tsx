@@ -144,9 +144,9 @@ export function HistoryPage(): JSX.Element {
 
     const eventTypes = useMemo(() => {
         const typeMap = new Map<string, string>()
-        events.forEach((e) => {
+        for (const e of events) {
             typeMap.set(e.event_type_code, e.event_type_name || e.event_type_code)
-        })
+        }
         return Array.from(typeMap.entries())
             .map(([code, name]) => ({ code, name }))
             .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
