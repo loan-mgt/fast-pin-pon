@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import type { JSX } from 'react'
 import { Card } from '../ui/card'
 import { StatusBadge } from '../ui/StatusBadge'
@@ -35,10 +35,18 @@ export function EventDetailPanel({
   const [showConfirm, setShowConfirm] = useState(false)
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [unitToUnassign, setUnitToUnassign] = useState<{ id: string; callSign: string } | null>(null)
+  const [unitToUnassign, setUnitToUnassign] = useState<{ id: string, callSign: string } | null>(null)
+  const [isTogglingAuto, setIsTogglingAuto] = useState(false)
+  const [localAutoSimulated, setLocalAutoSimulated] = useState(event?.auto_simulated ?? true)
+
+  // Sync local state when event prop changes
+  useEffect(() => {
+    setLocalAutoSimulated(event?.auto_simulated ?? true)
+  }, [event?.id, event?.auto_simulated])
 
   const canAssign = permissions?.canAssignUnits ?? false
   const canDelete = permissions?.canDeleteIncident ?? false
+  const canToggleAuto = permissions?.canToggleAutoSimulation ?? false
   const assignedUnits = event?.assigned_units ?? []
   const canLocateEvent =
     typeof event?.location?.longitude === 'number' && typeof event?.location?.latitude === 'number'
@@ -82,6 +90,25 @@ export function EventDetailPanel({
     }
   }, [event, unitToUnassign, token, onRefresh])
 
+  const handleToggleAutoSimulated = useCallback(async () => {
+    if (!event || isTogglingAuto) return
+
+    const newValue = !localAutoSimulated
+    setIsTogglingAuto(true)
+    try {
+      await fastPinPonService.toggleEventAutoSimulated(event.id, newValue, token ?? undefined)
+      setLocalAutoSimulated(newValue)
+      if (onRefresh) {
+        await onRefresh()
+      }
+    } catch (err) {
+      console.error('Failed to toggle auto simulation', err)
+      setErrorMessage('Impossible de changer le mode. Veuillez réessayer.')
+    } finally {
+      setIsTogglingAuto(false)
+    }
+  }, [event, isTogglingAuto, localAutoSimulated, token, onRefresh])
+
   if (!event) return null
 
   return (
@@ -97,6 +124,23 @@ export function EventDetailPanel({
           </div>
 
           <div className="flex items-center gap-2">
+
+            {canToggleAuto && (
+              <button
+                type="button"
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${isTogglingAuto ? 'opacity-50 cursor-wait' : ''
+                  } ${localAutoSimulated
+                    ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
+                    : 'bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30'
+                  }`}
+                onClick={handleToggleAutoSimulated}
+                disabled={isTogglingAuto}
+                title={localAutoSimulated ? 'Mode automatique activé - Cliquez pour passer en manuel' : 'Mode manuel activé - Cliquez pour passer en automatique'}
+              >
+                <span>{localAutoSimulated ? 'Auto' : 'Manuel'}</span>
+              </button>
+            )}
+
             <button
               type="button"
               className={`p-2 rounded-md border transition-colors ${canLocateEvent
@@ -254,12 +298,11 @@ export function EventDetailPanel({
                   <div className="flex items-center gap-2 py-2 pr-3">
                     <button
                       type="button"
-                      className={`p-1.5 border rounded-full h-fit transition-colors ${
-                        unit.location
-                          ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200 hover:bg-emerald-500/35 cursor-pointer'
-                          : 'bg-slate-700/50 border-slate-700 text-slate-500 cursor-not-allowed'
-                      }`}
-                      title={unit.location ? 'Localiser l’unité sur la carte' : 'Aucune position disponible'}
+                      className={`p-1.5 border rounded-full h-fit transition-colors ${unit.location
+                        ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200 hover:bg-emerald-500/35 cursor-pointer'
+                        : 'bg-slate-700/50 border-slate-700 text-slate-500 cursor-not-allowed'
+                        }`}
+                      title={unit.location ? "Localiser l'unité sur la carte" : 'Aucune position disponible'}
                       disabled={!unit.location}
                       onClick={() => {
                         if (!unit.location) return
