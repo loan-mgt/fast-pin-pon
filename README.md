@@ -111,6 +111,8 @@ flowchart TD
         API(<b>API</b><br/>Go):::container
         Sim(<b>Simulation</b><br/>Java):::container
         Engine(<b>Engine</b><br/>Java):::container
+        Gen(<b>Generator</b><br/>Java):::container
+        MapTiler(<b>MapTiler</b><br/>Tiles):::container
         DB[(<b>Postgres</b><br/>DB)]:::db
     end
 
@@ -125,6 +127,7 @@ flowchart TD
         Graf(<b>Grafana</b>):::container
         Prom(<b>Prometheus</b>):::container
         Loki(<b>Loki</b>):::container
+        Promtail(<b>Promtail</b>):::container
     end
     
     %% UI (Bridge)
@@ -138,15 +141,17 @@ flowchart TD
     %% Service Communications
     Front -->|API Call| API
     Front -.->|Redirect| KC
+    Front -.->|Tiles| MapTiler
     
     API -->|Read/Write| DB
     API -.->|Validate| KC
     
-    Sim & Engine -->|REST| API
+    Sim & Engine & Gen -->|REST| API
     KC --> KC_DB
     
     %% Observability Links
     Prom -.->|Scrape| API
+    Promtail -.->|Push| Loki
     Graf -.->|Query| Prom & Loki
 ```
 
@@ -349,17 +354,14 @@ It handles business logic, persistence, and coordinates between the Decision Eng
 
 **Vehicle Physics & World State (Java)**
 
-This component bridges the gap between the static database state and the "real world" movement of vehicles. It runs a game loop to update vehicle positions along their assigned routes.
+Bridges the gap between the static database state and the "real world" movement of vehicles. Runs a game loop to update vehicle positions along their assigned routes.
 
-- **Mechanics**:
-  - Runs a **1 Hz Game Loop** (1 tick/second) using a `ScheduledExecutorService`.
-  - On each tick, it calculates the new position of every moving unit based on its speed and path.
-- **Interfaces**:
-  - **API Client**: Pushes updates to the Main API.
-  - **HTTP Server** (Port 8090): Exposes a `/tick` endpoint polled by the **Network Bridge** to fetch "physical" coordinates for radio transmission.
-- **Components**:
-  - `SimulationEngine`: Main logic coordinator.
-  - `RoutingService`: Interpolates positions along decoding Polyline paths.
+- **Mechanics**: Runs a periodic tick loop that calculates new vehicle positions based on elapsed time, speed multiplier, and route progress. Pushes location updates to the API.
+- **HTTP Server** (Port `8090`):
+  - `GET /tick` - Trigger tick(s) and return vehicle snapshots
+  - `GET /units` - Get current vehicle positions
+  - `GET /status` - Health check with vehicle count
+- **Components**: `SimulationEngine` (coordinator), `RoutingService` (path interpolation).
 
 ### Decision Engine (`engine/`)
 
@@ -368,18 +370,19 @@ This component bridges the gap between the static database state and the "real w
 The "Brain" of the operation. It assigns the most appropriate resource to each intervention using a multi-objective optimization algorithm.
 
 - **Trigger Modes**:
-  - **Webhook**: Immediate calculation when API notifies of a new intervention (`POST /dispatch/assign`).
+  - **Webhook**: Immediate calculation when API notifies of a new intervention (`POST /dispatch/{interventionId}`).
   - **Scheduler**: Periodically runs (every N seconds) to re-optimize pending interventions or reassign freed units.
 - **Scoring Algorithm** (Lower is better):
     ```
-    Score = (w1 * TravelTime) 
+    Score = (w1 * TravelTimeSeconds) 
           + (w2 * CoveragePenalty) 
-          + (w3 * CapabilityBonus) 
-          + (w4 * PreemptionCost)
+          + (w4 * PreemptionSeverityDelta) 
+          + (w5 * ReassignmentCost)
     ```
-  - **Travel Time**: Estimated ETA from OSRM/pgRouting.
-  - **Coverage**: Penalties for leaving a fire station below minimum reserve capacity.
-  - **Preemption**: Can re-route units from low-priority tasks to high-priority emergencies (if `SeverityDelta > Threshold`).
+  - **Travel Time** (`w1`): Weighted travel time in seconds from pgRouting.
+  - **Coverage** (`w2`): Penalty for leaving a fire station below minimum reserve capacity.
+  - **Preemption** (`w4`): Bonus for re-routing units from lower-priority to higher-priority emergencies (if `SeverityDelta >= Threshold`).
+  - **Reassignment** (`w5`): Fixed cost penalty when preempting an already-assigned unit.
 - **Configuration**: Weights and coefficients are loaded from `DispatchConfig` to tune behavior without recompilation.
 
 ### Incident Generator (`incidentCreation/`)
