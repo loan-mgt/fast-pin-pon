@@ -19,24 +19,51 @@ cd fast-pin-pon
 ```
 
 ### Étape 2 : Configuration de l'Environnement
+
 Copiez le fichier d'exemple pour créer votre configuration locale :
 ```bash
 cp .env.example .env
 ```
-> [!IMPORTANT]
-> Editez le fichier `.env` et modifiez les valeurs par défaut (mots de passe, clés secrètes) indiquées par `CHANGE_ME`.
+
+#### Variables d'Environnement Essentielles
+
+| Variable                      | Description                                  |
+| :---------------------------- | :------------------------------------------- |
+| `DB_PASSWORD`                 | Mot de passe de la DB principale             |
+| `KC_POSTGRES_PASSWORD`        | Mot de passe de la DB Keycloak               |
+| `KC_BOOTSTRAP_ADMIN_PASSWORD` | MDP Admin Keycloak (bootstrap)               |
+| `PASSWORD_USER`               | MDP par défaut pour les utilisateurs de test |
 
 ### Étape 3 : Lancement des Services
-Démarrez l'ensemble de l'infrastructure en mode développement (avec logs détaillés et rechargement à chaud) :
 
+Démarrez l'ensemble de l'infrastructure en mode développement :
 ```bash
 docker compose -f docker-compose.dev.yml up -d --build
 ```
-*Pour la production, utilisez : `docker compose -f docker-compose.prod.yml up -d`*
 
-### Étape 4 : Vérification
-Attendez quelques instants que les services s'initialisent (notamment la base de données et Keycloak).
-Accédez ensuite à l'interface via : **http://localhost:8080**
+### Étape 4 : Accès et Première Connexion
+
+Une fois les services démarrés, vous pouvez accéder aux différentes interfaces :
+
+| Service        | URL Locale                                     | Description                       |
+| :------------- | :--------------------------------------------- | :-------------------------------- |
+| **Frontend**   | [http://localhost:8080](http://localhost:8080) | Interface principale de gestion   |
+| **Keycloak**   | [http://localhost:8082](http://localhost:8082) | Console d'administration OIDC     |
+| **Grafana**    | [http://localhost:3000](http://localhost:3000) | Dashboards de monitoring          |
+| **Prometheus** | [http://localhost:9090](http://localhost:9090) | Consultation des métriques brutes |
+
+#### Comptes de Test (Keycloak)
+
+Vous pouvez vous connecter au Frontend avec les comptes suivants (le mot de passe est celui défini dans `PASSWORD_USER`) :
+
+| Login       | Rôle           | Accès                                   |
+| :---------- | :------------- | :-------------------------------------- |
+| `it`        | Administrateur | Accès total (Map, Dashboards, Logs)     |
+| `superieur` | Officier       | Gestion incidents et unités, Dashboards |
+| `classic`   | Utilisateur    | Consultation de la carte uniquement     |
+
+> [!TIP]
+> Pour accéder à **Grafana**, utilisez le bouton "Sign in with Keycloak" et connectez-vous avec le compte `it`.
 
 ## 3. Installation du Matériel (Pont Radio)
 
