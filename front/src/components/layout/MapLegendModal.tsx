@@ -36,7 +36,7 @@ const SEVERITY_LEVELS = [
 const UNIT_STATUSES = [
     { status: 'available', label: 'Disponible', color: UNIT_STATUS_COLORS.available },
     { status: 'under_way', label: 'En route', color: UNIT_STATUS_COLORS.under_way },
-    { status: 'on_site', label: 'Sur site', color: UNIT_STATUS_COLORS.on_site },
+    { status: 'on_site', label: 'Sur place', color: UNIT_STATUS_COLORS.on_site },
     { status: 'unavailable', label: 'Indisponible', color: UNIT_STATUS_COLORS.unavailable },
     { status: 'offline', label: 'Hors ligne', color: UNIT_STATUS_COLORS.offline },
 ] as const

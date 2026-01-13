@@ -254,6 +254,35 @@ export function EventDetailPanel({
                   <div className="flex items-center gap-2 py-2 pr-3">
                     <button
                       type="button"
+                      className={`p-1.5 border rounded-full h-fit transition-colors ${
+                        unit.location
+                          ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200 hover:bg-emerald-500/35 cursor-pointer'
+                          : 'bg-slate-700/50 border-slate-700 text-slate-500 cursor-not-allowed'
+                      }`}
+                      title={unit.location ? 'Localiser l’unité sur la carte' : 'Aucune position disponible'}
+                      disabled={!unit.location}
+                      onClick={() => {
+                        if (!unit.location) return
+                        onLocateEvent?.(unit.location.longitude, unit.location.latitude, 12)
+                      }}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 2a6 6 0 0 0-6 6c0 4.2 6 12 6 12s6-7.8 6-12a6 6 0 0 0-6-6Z" />
+                        <circle cx="12" cy="8" r="2.5" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
                       className="bg-rose-500/20 hover:bg-rose-500/40 p-1.5 border border-rose-500/30 rounded-full h-fit text-rose-300 transition-colors cursor-pointer"
                       title="Désassigner l'unité"
                       onClick={() => setUnitToUnassign({ id: unit.id, callSign: unit.call_sign })}
