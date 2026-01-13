@@ -280,6 +280,9 @@ export function App() {
       {view === 'monitoring' && (
         <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-auto">
           <MonitoringPage />
+        </main>
+      )}
+
       {view === 'settings' && permissions?.canAccessSettings && (
         <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-hidden">
           <SettingsPage onClose={() => setView('live')} />
