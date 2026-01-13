@@ -62,7 +62,7 @@ export function MonitoringPage() {
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
-                        <span className="w-3 h-3 rounded-full animate-pulse bg-emerald-500 shadow-[0_0_10px_#10b981]" />
+                        <span className="w-3 h-3 rounded-full animate-pulse bg-emerald-500 shadow-[0_0_10px_#10b981]" />{' '}
                         Fast Pin Pon Health Center
                     </h1>
                     <p className="text-slate-400 text-sm mt-1">
@@ -136,7 +136,7 @@ export function MonitoringPage() {
     )
 }
 
-function ServiceCard({ name, status, icon }: { name: string, status: string, icon: 'database' | 'server' | 'chip' }) {
+function ServiceCard({ name, status, icon }: Readonly<{ name: string, status: string, icon: 'database' | 'server' | 'chip' }>) {
     const isUp = status === 'up'
 
     const getIconPath = () => {
@@ -163,12 +163,12 @@ function ServiceCard({ name, status, icon }: { name: string, status: string, ico
     )
 }
 
-function StatusDot({ status }: { status: 'up' | 'down' }) {
+function StatusDot({ status }: Readonly<{ status: 'up' | 'down' }>) {
     const color = status === 'up' ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500 shadow-[0_0_8px_#ef4444]'
     return <div className={`w-3 h-3 rounded-full ${color}`} />
 }
 
-function StatusRow({ label, value, status }: { label: string, value: string, status: 'good' | 'warning' | 'bad' }) {
+function StatusRow({ label, value, status }: Readonly<{ label: string, value: string, status: 'good' | 'warning' | 'bad' }>) {
     let color = 'text-emerald-400'
     if (status === 'warning') color = 'text-amber-400'
     if (status === 'bad') color = 'text-red-400'

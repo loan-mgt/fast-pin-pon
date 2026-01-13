@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -54,82 +55,14 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Route /v1/admin/health [get]
 func (s *Server) handleAdminHealth(w http.ResponseWriter, r *http.Request) {
-	// 1. Check DB
-	dbStatus := "up"
-	if err := s.pool.Ping(r.Context()); err != nil {
-		dbStatus = "down"
-	}
-
-	// 2. Check Simulation & Mode
-	simStatus := "down"
-	simMode := "unknown"
-
+	ctx := r.Context()
 	client := http.Client{Timeout: 2 * time.Second}
-	// Try the simulation service name (docker)
-	resp, err := client.Get("http://simulation:8090/status")
-	if err != nil {
-		resp, err = client.Get("http://localhost:8090/status")
-	}
 
-	if err == nil && resp.StatusCode == 200 {
-		simStatus = "up"
-		var simData struct {
-			UpdatingEnabled bool `json:"updating_enabled"`
-		}
-		if json.NewDecoder(resp.Body).Decode(&simData) == nil {
-			if simData.UpdatingEnabled {
-				simMode = "demo"
-			} else {
-				simMode = "hybrid"
-			}
-		}
-		resp.Body.Close()
-	}
-
-	// 3. Engine Check
-	// Engine runs on port 8081 (overridden in docker-compose) and exposes /health
-	engineStatus := "down"
-	if resp, err := client.Get("http://engine:8081/health"); err == nil && resp.StatusCode == 200 {
-		engineStatus = "up"
-		resp.Body.Close()
-	}
-
-	// 4. Microbit Network Stats
-	mbStatus := "inactive"
-	lastMsgVal := s.lastMicrobitMessage.Load()
-	var lastMsgTime time.Time
-	secondsSince := -1
-
-	if lastMsgVal != nil {
-		lastMsgTime = lastMsgVal.(time.Time)
-		since := time.Since(lastMsgTime)
-		secondsSince = int(since.Seconds())
-		// Considered active if we received a message in the last 60 seconds
-		if since < 60*time.Second {
-			mbStatus = "active"
-		}
-	}
-
-	// If simulation is in demo mode (updating enabled), Microbit network is considered inactive/down contextually
-	if simMode == "demo" {
-		mbStatus = "inactive"
-	}
-
-	// 5. System Stats (DB Counts)
-	activeUnits := 0
-	activeIncidents := 0
-
-	// Count active units (not 'unavailable' or 'offline')
-	err = s.pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM units WHERE status NOT IN ('unavailable', 'offline')").Scan(&activeUnits)
-	if err != nil {
-		// log error but don't fail the health check
-	}
-
-	// Count active incidents (not 'completed' or 'cancelled') - use 'interventions' table (incidents concept map to interventions)
-	err = s.pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM interventions WHERE status NOT IN ('completed', 'cancelled')").Scan(&activeIncidents)
-	if err != nil {
-		// log error
-	}
+	dbStatus := s.checkDatabase(ctx)
+	simStatus, simMode := s.checkSimulation(client)
+	engineStatus := s.checkEngine(client)
+	mbStatus, lastMsgTime, secondsSince := s.checkMicrobitNetwork(simMode)
+	activeUnits, activeIncidents := s.getSystemStats(ctx)
 
 	response := DetailedHealthResponse{
 		Services: ServicesHealth{
@@ -151,4 +84,74 @@ func (s *Server) handleAdminHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.writeJSON(w, http.StatusOK, response)
+}
+
+func (s *Server) checkDatabase(ctx context.Context) string {
+	if err := s.pool.Ping(ctx); err != nil {
+		return "down"
+	}
+	return "up"
+}
+
+func (s *Server) checkSimulation(client http.Client) (status string, mode string) {
+	status = "down"
+	mode = "unknown"
+
+	resp, err := client.Get("http://simulation:8090/status")
+	if err != nil {
+		resp, err = client.Get("http://localhost:8090/status")
+	}
+
+	if err != nil || resp.StatusCode != 200 {
+		return
+	}
+	defer resp.Body.Close()
+
+	status = "up"
+	var simData struct {
+		UpdatingEnabled bool `json:"updating_enabled"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&simData) == nil {
+		if simData.UpdatingEnabled {
+			mode = "demo"
+		} else {
+			mode = "hybrid"
+		}
+	}
+	return
+}
+
+func (s *Server) checkEngine(client http.Client) string {
+	resp, err := client.Get("http://engine:8081/health")
+	if err == nil && resp.StatusCode == 200 {
+		resp.Body.Close()
+		return "up"
+	}
+	return "down"
+}
+
+func (s *Server) checkMicrobitNetwork(simMode string) (status string, lastMsgTime time.Time, secondsSince int) {
+	status = "inactive"
+	secondsSince = -1
+
+	lastMsgVal := s.lastMicrobitMessage.Load()
+	if lastMsgVal != nil {
+		lastMsgTime = lastMsgVal.(time.Time)
+		since := time.Since(lastMsgTime)
+		secondsSince = int(since.Seconds())
+		if since < 60*time.Second {
+			status = "active"
+		}
+	}
+
+	if simMode == "demo" {
+		status = "inactive"
+	}
+	return
+}
+
+func (s *Server) getSystemStats(ctx context.Context) (activeUnits int, activeIncidents int) {
+	_ = s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM units WHERE status NOT IN ('unavailable', 'offline')").Scan(&activeUnits)
+	_ = s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM interventions WHERE status NOT IN ('completed', 'cancelled')").Scan(&activeIncidents)
+	return
 }
