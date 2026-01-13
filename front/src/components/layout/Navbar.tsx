@@ -5,7 +5,7 @@ import { MapLegendModal } from './MapLegendModal'
 
 const REFRESH_OPTIONS = [5, 10, 20, 30] as const
 
-type ViewMode = 'live' | 'dashboard' | 'history' | 'monitoring'
+type ViewMode = 'live' | 'dashboard' | 'history' | 'monitoring' | 'settings'
 
 interface NavbarProps {
     refreshInterval: number
@@ -24,6 +24,8 @@ interface NavbarProps {
     canCreateWithAddress?: boolean
     /** Whether the user can view the dashboard */
     canViewDashboard?: boolean
+    /** Whether the user can access settings */
+    canAccessSettings?: boolean
 }
 
 export function Navbar({
@@ -40,14 +42,16 @@ export function Navbar({
     onCreateIncident,
     canCreateWithAddress = false,
     canViewDashboard = false,
+    canAccessSettings = false,
 }: Readonly<NavbarProps>): JSX.Element {
     const navRef = useRef<HTMLElement | null>(null)
 
     const getViewTitle = (view: ViewMode): string => {
-        if (view === 'live') return 'Live events'
-        if (view === 'dashboard') return 'Dashboard'
-        if (view === 'monitoring') return 'Monitoring'
-        return 'History'
+        if (view === 'live') return 'Évènements en direct'
+        if (view === 'dashboard') return 'Tableau de bord'
+        if (view === 'monitoring') return 'Supervision'
+        if (view === 'settings') return 'Paramètres'
+        return 'Historique'
     }
 
     useEffect(() => {
@@ -139,7 +143,7 @@ export function Navbar({
                                 }`}
                             aria-pressed={currentView === 'history'}
                         >
-                            History
+                            Historique
                         </button>
                         {canViewDashboard && (
                             <button
@@ -157,10 +161,10 @@ export function Navbar({
                     </div>
                     <div className="flex items-center gap-2 text-slate-400 text-xs">
                         <div className="hidden sm:block text-slate-400 text-xs">
-                            <span className="opacity-70">Updated </span>
+                            <span className="opacity-70">Mis à jour </span>
                             {lastUpdated}
                         </div>
-                        <span className="hidden sm:inline">Auto-refresh:</span>
+                        <span className="hidden sm:inline">Rafraîchissement :</span>
                         <select
                             value={refreshInterval}
                             onChange={onIntervalChange}
@@ -198,6 +202,34 @@ export function Navbar({
                             </svg>
                         </button>
                         <MapLegendModal />
+                        {/* Settings gear icon */}
+                        {canAccessSettings && (
+                            <button
+                                type="button"
+                                onClick={() => onNavigate('settings')}
+                                className={`p-1.5 rounded-md transition-colors cursor-pointer ${currentView === 'settings'
+                                    ? 'bg-cyan-500/20 text-cyan-400'
+                                    : 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
+                                    }`}
+                                aria-label="Settings"
+                                title="Settings"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                            </button>
+                        )}
                     </div>
                     {userLabel && (
                         <button

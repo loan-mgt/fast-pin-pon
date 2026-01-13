@@ -52,14 +52,13 @@ export function CreateEventModal({
   const [eventTypeCode, setEventTypeCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [selectedAddress, setSelectedAddress] = useState<string>('')
+
 
   const canUseAddressSearch = permissions?.canUseAddressSearch ?? false
 
   const handleAddressSelect = useCallback((address: AddressSuggestion) => {
     setLatitude(address.latitude.toString())
     setLongitude(address.longitude.toString())
-    setSelectedAddress(address.label)
   }, [])
 
   // Clear coordinates and address when user starts typing in search bar
@@ -68,7 +67,6 @@ export function CreateEventModal({
     if (addressRequired) {
       setLatitude('')
       setLongitude('')
-      setSelectedAddress('')
     }
   }, [addressRequired])
 
@@ -102,7 +100,6 @@ export function CreateEventModal({
       setEventTypeCode(defaultEventType)
       setError(null)
       setIsSubmitting(false)
-      setSelectedAddress('')
     }
   }, [isOpen, defaultEventType, initialLocation])
 
@@ -116,11 +113,11 @@ export function CreateEventModal({
     setError(null)
 
     if (!title.trim()) {
-      setError('Title is required.')
+      setError('Le titre est requis.')
       return
     }
     if (!hasCoords) {
-      setError('Latitude and longitude are required.')
+      setError('La latitude et la longitude sont requises.')
       return
     }
 
@@ -133,7 +130,7 @@ export function CreateEventModal({
     }
 
     if (!eventTypeCode) {
-      setError('Pick an event type.')
+      setError('Sélectionnez un type d\'évènement.')
       return
     }
 
@@ -155,7 +152,7 @@ export function CreateEventModal({
       await onSubmit(payload)
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create event.')
+      setError(err instanceof Error ? err.message : 'Échec de la création de l\'évènement.')
     } finally {
       setIsSubmitting(false)
     }
@@ -170,11 +167,11 @@ export function CreateEventModal({
       <Card className="space-y-4 border-blue-500/30 w-full max-w-lg">
         <div className="flex justify-between items-center gap-3">
           <div>
-            <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Create</p>
-            <h2 className="font-semibold text-white text-xl">New incident</h2>
+            <p className="text-cyan-300/70 text-xs uppercase tracking-[0.35em]">Créer</p>
+            <h2 className="font-semibold text-white text-xl">Nouvel incident</h2>
           </div>
           <Button variant="ghost" type="button" onClick={onClose}>
-            Close
+            Fermer
           </Button>
         </div>
 
@@ -189,17 +186,13 @@ export function CreateEventModal({
                 onSelect={handleAddressSelect}
                 onInputChange={handleClearCoordinates}
               />
-              {selectedAddress && (
-                <p className="text-emerald-400 text-xs">
-                  📍 {selectedAddress}
-                </p>
-              )}
+
             </div>
           )}
 
           <div className="space-y-2">
             <label className="text-slate-300 text-sm" htmlFor="title">
-              Title *
+              Titre *
             </label>
             <input
               id="title"
@@ -227,7 +220,7 @@ export function CreateEventModal({
           <div className="gap-3 grid grid-cols-2">
             <div className="space-y-2">
               <label className="text-slate-300 text-sm" htmlFor="severity">
-                Severity
+                Criticité
               </label>
               <input
                 id="severity"
@@ -238,12 +231,12 @@ export function CreateEventModal({
                 onChange={(e) => setSeverity(Number.parseInt(e.target.value, 10))}
                 className="w-full"
               />
-              <p className="text-slate-400 text-xs">Current: {severity}</p>
+              <p className="text-slate-400 text-xs">Actuelle : {severity}</p>
             </div>
 
             <div className="space-y-2">
               <label className="text-slate-300 text-sm" htmlFor="eventType">
-                Event type *
+                Type d'évènement *
               </label>
               <select
                 id="eventType"
@@ -265,10 +258,10 @@ export function CreateEventModal({
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
+              Annuler
             </Button>
             <Button type="submit" disabled={isSubmitting || !hasCoords || !title.trim()}>
-              {isSubmitting ? 'Creating…' : 'Create incident'}
+              {isSubmitting ? 'Création…' : 'Créer l\'incident'}
             </Button>
           </div>
         </form>

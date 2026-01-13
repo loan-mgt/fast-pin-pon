@@ -9,12 +9,13 @@ services:
       context: api/
       dockerfile: Dockerfile
     env_file:
-      - .env.example
       - .env
     environment:
-      - ENGINE_CALLBACK_URL=http://engine:8081
+      - LOG_LEVEL=debug
     depends_on:
       postgres:
+        condition: service_healthy
+      keycloak_web:
         condition: service_healthy
     ports:
       - "8081:8080"
@@ -55,15 +56,12 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      keycloak_web:
+        condition: service_healthy
     restart: on-failure
     environment:
-      - API_BASE_URL=http://api:8080
       - SIMULATION_UPDATING_ENABLED=true
       - SIMULATION_SPEED_MULTIPLIER=8.0
-      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
-      - KEYCLOAK_REALM=sdmis-realm
-      - KEYCLOAK_CLIENT_ID=sdmis-api
-      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
     ports:
       - "8090:8090"
 
@@ -79,13 +77,10 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      keycloak_web:
+        condition: service_healthy
     environment:
-      - API_BASE_URL=http://api:8080
       - INCIDENT_INTERVAL_SECONDS=180
-      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
-      - KEYCLOAK_REALM=sdmis-realm
-      - KEYCLOAK_CLIENT_ID=sdmis-api
-      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
 
   engine:
     extends:
@@ -96,13 +91,6 @@ services:
     build:
       context: ./engine
       dockerfile: Dockerfile
-    environment:
-      - API_BASE_URL=http://api:8080
-      - KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
-      - KEYCLOAK_REALM=sdmis-realm
-      - KEYCLOAK_CLIENT_ID=sdmis-api
-      - KEYCLOAK_CLIENT_SECRET=sdmis-api-secret-123
-      - ENGINE_CALLBACK_PORT=8081
     ports:
       - "8083:8081"
 
@@ -129,12 +117,11 @@ services:
       dockerfile: Dockerfile
       args:
         - GRAFANA_URL=http://localhost:3000
+    ports:
+      - "8082:8080"
     environment:
-      - KC_HOSTNAME=localhost
-      - KC_HOSTNAME_PORT=8082
+      - KC_HOSTNAME=http://localhost:8082
       - KEYCLOAK_URL=http://localhost:8082
-      - KEYCLOAK_REALM=sdmis-realm
-      - KEYCLOAK_CLIENT_ID=sdmis-api
 
   keycloakdb:
     extends:
@@ -152,14 +139,9 @@ services:
       context: ./infra/grafana
       dockerfile: Dockerfile
     profiles: [ "monitoring" ]
-    volumes:
-      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       GF_SERVER_ROOT_URL: http://localhost:3000
       GF_AUTH_GENERIC_OAUTH_AUTH_URL: http://localhost:8082/realms/sdmis-realm/protocol/openid-connect/auth
-      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: http://fast-pin-pon-keycloak:8080/realms/sdmis-realm/protocol/openid-connect/token
-      GF_AUTH_GENERIC_OAUTH_API_URL: http://fast-pin-pon-keycloak:8080/realms/sdmis-realm/protocol/openid-connect/userinfo
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/api-http.json
     ports:
       - "3000:3000"
 
@@ -173,6 +155,8 @@ services:
       context: ./infra/loki
       dockerfile: Dockerfile
     profiles: [ "monitoring" ]
+    ports:
+      - "3100:3100"
 
   promtail:
     extends:

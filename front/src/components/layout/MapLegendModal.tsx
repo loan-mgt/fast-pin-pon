@@ -36,7 +36,7 @@ const SEVERITY_LEVELS = [
 const UNIT_STATUSES = [
     { status: 'available', label: 'Disponible', color: UNIT_STATUS_COLORS.available },
     { status: 'under_way', label: 'En route', color: UNIT_STATUS_COLORS.under_way },
-    { status: 'on_site', label: 'Sur site', color: UNIT_STATUS_COLORS.on_site },
+    { status: 'on_site', label: 'Sur place', color: UNIT_STATUS_COLORS.on_site },
     { status: 'unavailable', label: 'Indisponible', color: UNIT_STATUS_COLORS.unavailable },
     { status: 'offline', label: 'Hors ligne', color: UNIT_STATUS_COLORS.offline },
 ] as const
@@ -50,13 +50,13 @@ type LegendItemProps = {
 
 function LegendItem({ svgHtml, code, name, size }: Readonly<LegendItemProps>): JSX.Element {
     return (
-        <div className="flex items-center gap-2.5 py-1">
+        <div className="flex items-center gap-4 py-2">
             <div
                 className="flex-shrink-0 flex items-center justify-center"
                 style={{ width: size, height: size }}
                 dangerouslySetInnerHTML={{ __html: svgHtml }}
             />
-            <span className="text-slate-300 text-sm">
+            <span className="text-slate-300 text-base">
                 <span className="font-medium">{code}</span>
                 <span className="text-slate-500"> · {name}</span>
             </span>
@@ -130,7 +130,7 @@ export function MapLegendModal(): JSX.Element {
                 aria-labelledby="legend-title"
             >
                 {/* Modal content - 4-column layout */}
-                <div className="relative bg-slate-900 border border-slate-700 shadow-2xl p-6 rounded-xl w-full max-w-5xl">
+                <div className="relative bg-slate-900 border border-slate-700 shadow-2xl p-6 rounded-xl w-full max-w-6xl">
                     {/* Close button */}
                     <button
                         type="button"
@@ -154,7 +154,7 @@ export function MapLegendModal(): JSX.Element {
                         </svg>
                     </button>
 
-                    <h2 id="legend-title" className="mb-4 font-bold text-white text-xl">
+                    <h2 id="legend-title" className="mb-6 font-bold text-white text-2xl">
                         Légende de la carte
                     </h2>
 
@@ -162,21 +162,21 @@ export function MapLegendModal(): JSX.Element {
                     <div className="gap-6 grid grid-cols-2 md:grid-cols-4">
                         {/* Units types section */}
                         <div>
-                            <h3 className="flex items-center gap-2 mb-3 pb-2 border-slate-700 border-b font-semibold text-cyan-400 text-sm uppercase tracking-wide min-h-[40px]">
+                            <h3 className="flex items-center gap-3 mb-4 pb-3 border-slate-700 border-b font-semibold text-cyan-400 text-base uppercase tracking-wide min-h-[48px]">
                                 <div
-                                    className="w-5 h-5 flex-shrink-0"
+                                    className="w-7 h-7 flex-shrink-0"
                                     dangerouslySetInnerHTML={{ __html: DEFAULT_UNIT_ICON }}
                                 />
                                 <span>Types unités</span>
                             </h3>
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                                 {UNIT_TYPES.map((unit) => (
                                     <LegendItem
                                         key={unit.code}
                                         svgHtml={UNIT_TYPE_ICONS[unit.code] ?? DEFAULT_UNIT_ICON}
                                         code={unit.code}
                                         name={unit.name}
-                                        size={24}
+                                        size={36}
                                     />
                                 ))}
                             </div>
@@ -184,21 +184,21 @@ export function MapLegendModal(): JSX.Element {
 
                         {/* Unit Status section */}
                         <div>
-                            <h3 className="flex items-center gap-2 mb-3 pb-2 border-slate-700 border-b font-semibold text-cyan-400 text-sm uppercase tracking-wide min-h-[40px]">
-                                <div className="w-4 h-4 rounded-full bg-cyan-400 flex-shrink-0" />
+                            <h3 className="flex items-center gap-3 mb-4 pb-3 border-slate-700 border-b font-semibold text-cyan-400 text-base uppercase tracking-wide min-h-[48px]">
+                                <div className="w-6 h-6 rounded-full bg-cyan-400 flex-shrink-0" />
                                 <span>Statut unités</span>
                             </h3>
-                            <div className="space-y-1.5">
+                            <div className="space-y-2">
                                 {UNIT_STATUSES.map((s) => (
-                                    <div key={s.status} className="flex items-center gap-2.5 py-1">
+                                    <div key={s.status} className="flex items-center gap-4 py-2">
                                         <div
                                             className="flex-shrink-0 flex items-center justify-center"
-                                            style={{ width: 24, height: 24 }}
-                                            dangerouslySetInnerHTML={{ 
+                                            style={{ width: 36, height: 36 }}
+                                            dangerouslySetInnerHTML={{
                                                 __html: UNIT_TYPE_ICON_TEMPLATES.VSAV(s.color)
                                             }}
                                         />
-                                        <span className="text-slate-300 text-sm">{s.label}</span>
+                                        <span className="text-slate-300 text-base">{s.label}</span>
                                     </div>
                                 ))}
                             </div>
@@ -206,21 +206,21 @@ export function MapLegendModal(): JSX.Element {
 
                         {/* Events types section */}
                         <div>
-                            <h3 className="flex items-center gap-2 mb-3 pb-2 border-slate-700 border-b font-semibold text-red-400 text-sm uppercase tracking-wide min-h-[40px]">
+                            <h3 className="flex items-center gap-3 mb-4 pb-3 border-slate-700 border-b font-semibold text-red-400 text-base uppercase tracking-wide min-h-[48px]">
                                 <div
-                                    className="w-5 h-5 flex-shrink-0"
+                                    className="w-7 h-7 flex-shrink-0"
                                     dangerouslySetInnerHTML={{ __html: DEFAULT_EVENT_ICON }}
                                 />
                                 <span>Événements</span>
                             </h3>
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                                 {EVENT_TYPES.map((event) => (
                                     <LegendItem
                                         key={event.code}
                                         svgHtml={EVENT_TYPE_ICONS[event.code] ?? DEFAULT_EVENT_ICON}
                                         code={event.code}
                                         name={event.name}
-                                        size={24}
+                                        size={36}
                                     />
                                 ))}
                             </div>
@@ -228,11 +228,11 @@ export function MapLegendModal(): JSX.Element {
 
                         {/* Severity section */}
                         <div>
-                            <h3 className="flex items-center gap-2 mb-3 pb-2 border-slate-700 border-b font-semibold text-amber-400 text-sm uppercase tracking-wide min-h-[40px]">
+                            <h3 className="flex items-center gap-3 mb-4 pb-3 border-slate-700 border-b font-semibold text-amber-400 text-base uppercase tracking-wide min-h-[48px]">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
+                                    width="24"
+                                    height="24"
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
@@ -247,24 +247,24 @@ export function MapLegendModal(): JSX.Element {
                                 </svg>
                                 <span>Criticité</span>
                             </h3>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 {SEVERITY_LEVELS.map((severity) => (
-                                    <div key={severity.level} className="flex items-center gap-3 py-1">
+                                    <div key={severity.level} className="flex items-center gap-4 py-2">
                                         <div
                                             className="flex-shrink-0 flex items-center justify-center"
-                                            style={{ width: 26, height: 26 }}
-                                            dangerouslySetInnerHTML={{ 
-                                                __html: EVENT_TYPE_ICON_TEMPLATES.CRASH(severity.color) 
+                                            style={{ width: 40, height: 40 }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: EVENT_TYPE_ICON_TEMPLATES.CRASH(severity.color)
                                             }}
                                         />
                                         <div className="flex flex-col">
-                                            <span 
-                                                className="font-medium text-sm leading-tight"
+                                            <span
+                                                className="font-medium text-base leading-tight"
                                                 style={{ color: severity.color }}
                                             >
                                                 {severity.level}
                                             </span>
-                                            <span className="text-slate-500 text-xs">
+                                            <span className="text-slate-500 text-sm">
                                                 Niveau {severity.range}
                                             </span>
                                         </div>

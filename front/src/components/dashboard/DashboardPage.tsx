@@ -30,6 +30,15 @@ type SortRule = {
 
 const normalizeStatus = (status: string) => status?.toLowerCase().replaceAll(/[-\s]/g, '_') ?? ''
 
+const STATUS_FILTERS = [
+  { value: 'all', label: 'Tous' },
+  { value: 'available_hidden', label: 'À la caserne' },
+  { value: 'available', label: 'Disponible' },
+  { value: 'on_site', label: 'Sur place' },
+  { value: 'under_way', label: 'En route' },
+  { value: 'unavailable', label: 'Indisponible' },
+]
+
 const formatDate = (iso: string) => {
   if (!iso) return '—'
   const date = new Date(iso)
@@ -41,12 +50,16 @@ const formatDate = (iso: string) => {
 
 export function DashboardPage({ units, buildings = [], selectedStationId, onStationChange, onRefresh }: Readonly<DashboardPageProps>): JSX.Element {
   const { token } = useAuth()
+  const PAGE_SIZE = 15
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
   const [selectedUnitCallSign, setSelectedUnitCallSign] = useState<string | undefined>(undefined)
   const [selectedUnitMicrobitId, setSelectedUnitMicrobitId] = useState<string | undefined>(undefined)
   const [editingUnit, setEditingUnit] = useState<UnitSummary | null>(null)
   const [sortRules, setSortRules] = useState<SortRule[]>([])
   const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null)
+  const [unitTypeFilter, setUnitTypeFilter] = useState<string>('all')
+  const [unitStatusFilter, setUnitStatusFilter] = useState<string>('all')
+  const [page, setPage] = useState(0)
   const microbitPool = ['MB001', 'MB002', 'MB003', 'MB004', 'MB005', 'MB006', 'MB007', 'MB008', 'MB009', 'MB010']
   const usedMicrobits = new Set(units.map((unit) => unit.microbit_id).filter(Boolean))
   const availableMicrobits = microbitPool.filter(
@@ -141,11 +154,27 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
     }
   }
 
-  // Filter units by selected station
+  const unitTypes = useMemo(() => {
+    const types = new Set(units.map((u) => u.unit_type_code).filter(Boolean))
+    return Array.from(types).sort((a, b) => a.localeCompare(b))
+  }, [units])
+
+  const unitStatuses = useMemo(() => STATUS_FILTERS, [])
+
+  // Filter units by selected station and type
   const filteredUnits = useMemo(() => {
-    if (!selectedStationId) return units
-    return units.filter(unit => unit.location_id === selectedStationId)
-  }, [units, selectedStationId])
+    let subset = units
+    if (selectedStationId) {
+      subset = subset.filter(unit => unit.location_id === selectedStationId)
+    }
+    if (unitTypeFilter !== 'all') {
+      subset = subset.filter(unit => unit.unit_type_code === unitTypeFilter)
+    }
+    if (unitStatusFilter !== 'all') {
+      subset = subset.filter(unit => normalizeStatus(unit.status) === unitStatusFilter)
+    }
+    return subset
+  }, [units, selectedStationId, unitTypeFilter, unitStatusFilter])
 
   // Get selected station name for display
   const selectedStation = useMemo(() => {
@@ -168,6 +197,10 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
       })
       .map((entry) => entry.unit)
   })()
+
+  const totalPages = Math.max(1, Math.ceil(sortedUnits.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages - 1)
+  const pageUnits = sortedUnits.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE)
 
   const renderSortIndicator = (key: SortKey) => {
     const rule = sortRules.find((r) => r.key === key)
@@ -204,6 +237,37 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
             Effacer le filtre
           </button>
         )}
+        <label htmlFor="unit-type-filter" className="text-sm text-slate-400">
+          Type :
+        </label>
+        <select
+          id="unit-type-filter"
+          value={unitTypeFilter}
+          onChange={(e) => setUnitTypeFilter(e.target.value)}
+          className="px-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+        >
+          <option value="all">Tous les types</option>
+          {unitTypes.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
+        <label htmlFor="status-filter" className="text-sm text-slate-400">
+          Statut :
+        </label>
+        <select
+          id="status-filter"
+          value={unitStatusFilter}
+          onChange={(e) => setUnitStatusFilter(e.target.value)}
+          className="px-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+        >
+          {unitStatuses.map((status) => (
+            <option key={status.value} value={status.value}>
+              {status.label}
+            </option>
+          ))}
+        </select>
         <span className="ml-auto text-sm text-slate-400">
           {sortedUnits.length} unité{sortedUnits.length === 1 ? '' : 's'}
           {selectedStation && ` dans ${selectedStation.name}`}
@@ -216,7 +280,7 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
             <thead className="text-xs uppercase text-slate-400 border-b border-slate-800">
               <tr>
                 <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('call_sign')}>
-                  Call sign
+                  Indicatif
                   {renderSortIndicator('call_sign')}
                 </th>
                 <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('unit_type_code')}>
@@ -245,14 +309,14 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-900/60">
-              {sortedUnits.length === 0 ? (
+              {pageUnits.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-6 text-center text-slate-400">
                     Aucune unité disponible.
                   </td>
                 </tr>
               ) : (
-                sortedUnits.map((unit) => {
+                pageUnits.map((unit) => {
                   const stationName = buildings.find(b => b.id === unit.location_id)?.name ?? '—'
 
                   return (
@@ -322,6 +386,30 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
           </table>
         </div>
       </Card>
+
+      <div className="flex items-center justify-between text-sm text-slate-400">
+        <span>
+          Page {currentPage + 1} / {totalPages} • Showing {pageUnits.length} of {sortedUnits.length} units
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(p - 1, 0))}
+            disabled={currentPage === 0}
+            className="px-3 py-1.5 rounded border border-slate-700 bg-slate-800 text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+            disabled={currentPage >= totalPages - 1}
+            className="px-3 py-1.5 rounded border border-slate-700 bg-slate-800 text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      </div>
 
       <AssignMicrobitModal
         isOpen={selectedUnitId !== null}

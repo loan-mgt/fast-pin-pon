@@ -6,20 +6,21 @@ import { Navbar } from './components/layout/Navbar'
 import { MapContainer } from './components/map/MapContainer'
 import { EventPanel } from './components/events/EventPanel'
 import { RecentLogsTicker } from './components/events/RecentLogsTicker'
-import { UnitPanel } from './components/units/UnitPanel'
+
 import { EventDetailPanel } from './components/events/EventDetailPanel'
 import { CreateEventModal } from './components/events/CreateEventModal'
 import { DashboardPage } from './components/dashboard/DashboardPage'
 import { AddUnitModal } from './components/dashboard/AddUnitModal'
 import { HistoryPage } from './components/history/HistoryPage'
 import { MonitoringPage } from './components/dashboard/MonitoringPage'
+import { SettingsPage } from './components/settings/SettingsPage'
 import type { CreateEventRequest, EventType } from './types/eventTypes'
 import type { EventSummary, UnitSummary, Building, UnitType, ActivityLog } from './types'
 import { useAuth } from './auth/AuthProvider'
 
 const REFRESH_INTERVAL_KEY = 'refreshInterval'
 const MIN_SPIN_DURATION = 500
-type ViewMode = 'live' | 'dashboard' | 'history' | 'monitoring'
+type ViewMode = 'live' | 'dashboard' | 'history' | 'monitoring' | 'settings'
 
 export function App() {
   const [events, setEvents] = useState<EventSummary[]>([])
@@ -250,6 +251,7 @@ export function App() {
         onAddUnit={permissions?.canCreateUnit ? () => setIsAddUnitOpen(true) : undefined}
         canCreateWithAddress={permissions?.canUseAddressSearch ?? false}
         canViewDashboard={permissions?.canViewDashboard ?? false}
+        canAccessSettings={permissions?.canAccessSettings ?? false}
         onCreateIncident={permissions?.canCreateIncident ? () => {
           setIsAddressRequired(true)
           setPendingLocation(null)
@@ -278,6 +280,9 @@ export function App() {
       {view === 'monitoring' && (
         <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-auto">
           <MonitoringPage />
+      {view === 'settings' && permissions?.canAccessSettings && (
+        <main className="flex flex-1 min-h-[calc(100vh-72px)] overflow-hidden">
+          <SettingsPage onClose={() => setView('live')} />
         </main>
       )}
 
@@ -309,7 +314,7 @@ export function App() {
               flyToLocationRef.current = flyTo
             }}
           />
-          <UnitPanel units={units} />
+
           <EventPanel
             events={sortedEvents}
             error={error}
@@ -323,7 +328,7 @@ export function App() {
             permissions={permissions}
             onRefresh={refreshData}
             onTogglePauseRefresh={setIsPaused}
-            onLocateEvent={(lng, lat) => flyToLocationRef.current?.(lng, lat, 14)}
+            onLocateEvent={(lng, lat, zoom) => flyToLocationRef.current?.(lng, lat, zoom)}
           />
         </main>
       )}

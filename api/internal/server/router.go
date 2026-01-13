@@ -45,6 +45,7 @@ func (s *Server) routes() http.Handler {
 		v1.Post("/events/{eventID}/logs", s.handleCreateEventLog)
 		v1.Get("/event-logs/recent", s.handleListRecentEventLogs)
 		v1.Get("/events/{eventID}/interventions", s.handleListInterventionsForEvent)
+		v1.Patch("/events/{eventID}/auto-simulated", s.handleUpdateEventAutoSimulated)
 
 		v1.Post("/interventions", s.handleCreateIntervention)
 		v1.Get("/interventions/{interventionID}", s.handleGetIntervention)

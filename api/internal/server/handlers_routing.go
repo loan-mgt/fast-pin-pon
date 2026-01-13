@@ -54,6 +54,7 @@ type UnitRouteResponse struct {
 	RemainingMeters          *float64 `json:"remaining_meters,omitempty"`
 	RemainingSeconds         *float64 `json:"remaining_seconds,omitempty"`
 	Severity                 *int32   `json:"severity,omitempty"`
+	AutoSimulated            bool     `json:"auto_simulated"`
 }
 
 // UpdateProgressRequest updates the progress percentage
@@ -97,12 +98,29 @@ end_vertex AS (
 ),
 route_segments AS (
     SELECT 
-        rw.geom,
+        CASE
+            WHEN path.node = rw.source THEN rw.geom
+            ELSE ST_Reverse(rw.geom)
+        END AS geom,
         rw.length_m,
-        rw.cost_s,
-        path.seq
+        path.cost,
+        path.seq,
+        rw.cost_s      -- include the original column for API
     FROM pgr_astar(
-        'SELECT gid AS id, source, target, cost_s AS cost, reverse_cost_s AS reverse_cost, x1, y1, x2, y2 FROM routing_ways',
+        $$
+        SELECT
+            gid AS id,
+            source,
+            target,
+            cost_s AS cost,
+            CASE
+                WHEN reverse_cost_s < 0
+                    THEN cost_s * 2
+                ELSE reverse_cost_s
+            END AS reverse_cost,
+            x1, y1, x2, y2
+        FROM routing_ways
+        $$,
         (SELECT id FROM start_vertex),
         (SELECT id FROM end_vertex),
         directed := true,
@@ -112,10 +130,10 @@ route_segments AS (
     WHERE path.edge > 0
 )
 SELECT 
-    COALESCE(ST_AsGeoJSON(ST_Simplify(ST_MakeLine(geom ORDER BY seq), 0.0005))::text, '') AS route_geojson,
+    COALESCE(ST_AsGeoJSON(ST_MakeLine(geom ORDER BY seq))::text, '') AS route_geojson,
     COALESCE(SUM(length_m), 0)::double precision AS route_length_meters,
     COALESCE(SUM(cost_s), 0)::double precision AS estimated_duration_seconds
-FROM route_segments
+FROM route_segments;
 `
 
 // =============================================================================
@@ -181,6 +199,7 @@ func (s *Server) handleGetUnitRoute(w http.ResponseWriter, r *http.Request) {
 		RemainingMeters:          &remainingMeters,
 		RemainingSeconds:         &remainingSeconds,
 		Severity:                 route.Severity,
+		AutoSimulated:            route.AutoSimulated,
 	}
 
 	if route.InterventionID.Valid {

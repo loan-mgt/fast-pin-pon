@@ -24,7 +24,7 @@ export function EventList({ events, error, onSelect, selectedEventId }: Readonly
     }
 
     if (events.length === 0) {
-        return <p className="text-slate-300 text-sm">Awaiting events…</p>
+        return <p className="text-slate-300 text-sm">En attente d'évènements…</p>
     }
 
     return (
@@ -35,19 +35,26 @@ export function EventList({ events, error, onSelect, selectedEventId }: Readonly
                     type="button"
                     ref={selectedEventId === event.id ? selectedRef : null}
                     onClick={() => onSelect?.(event.id)}
-                    className={`w-full text-left space-y-2 backdrop-blur-sm p-3 border rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 cursor-pointer ${
-                        selectedEventId === event.id
-                            ? 'bg-blue-900/60 border-blue-400/60'
-                            : 'bg-slate-800/50 border-blue-500/10 hover:border-blue-500/30'
-                    }`}
+                    className={`w-full text-left space-y-2 backdrop-blur-sm p-3 border rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 cursor-pointer ${selectedEventId === event.id
+                        ? 'bg-blue-900/60 border-blue-400/60'
+                        : 'bg-slate-800/50 border-blue-500/10 hover:border-blue-500/30'
+                        }`}
                 >
                     <div className="flex justify-between items-start gap-2">
                         <h3 className="font-semibold text-white text-sm">{event.title}</h3>
-                        <span className="text-[0.55rem] text-cyan-300/90 uppercase tracking-[0.4em]">
-                            {severityLabel(event.severity)}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                            {/* Manual mode indicator */}
+                            {!event.auto_simulated && (
+                                <span className="bg-amber-500/30 px-1 py-0.5 rounded text-[0.55rem] text-amber-300" title="Mode manuel">
+                                    🖐
+                                </span>
+                            )}
+                            <span className="text-[0.55rem] text-cyan-300/90 uppercase tracking-[0.4em]">
+                                {severityLabel(event.severity)}
+                            </span>
+                        </div>
                     </div>
-                    <p className="text-slate-400 text-xs">{event.intervention_status ?? 'Status unknown'}</p>
+                    <p className="text-slate-400 text-xs">{event.intervention_status ?? 'Statut inconnu'}</p>
                     <div className="flex justify-between items-end gap-2">
                         <div className="flex flex-wrap items-center gap-2 text-[0.65rem] text-slate-400">
                             <span>{formatTimestamp(event.reported_at)}</span>
