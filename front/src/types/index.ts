@@ -84,3 +84,22 @@ export type Building = {
     created_at: string
     updated_at: string
 }
+
+export interface DetailedHealthResponse {
+    services: {
+        database: 'up' | 'down'
+        simulation: 'up' | 'down'
+        engine: 'up' | 'down'
+    }
+    mode: 'demo' | 'hybrid' | 'unknown'
+    microbit_network: {
+        status: 'active' | 'inactive'
+        last_message_at?: string
+        seconds_since_last: number
+    }
+    system_stats: {
+        active_units: number
+        active_incidents: number
+    }
+    uptime: string
+}

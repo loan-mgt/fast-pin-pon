@@ -1,4 +1,4 @@
-import type { EventSummary, UnitSummary, UnitType, Building, EventLog, ActivityLog } from '../types'
+import type { EventSummary, UnitSummary, UnitType, Building, EventLog, ActivityLog, DetailedHealthResponse } from '../types'
 import type { CreateEventRequest, EventType } from '../types/eventTypes'
 
 class FastPinPonService {
@@ -274,6 +274,15 @@ class FastPinPonService {
     return units.filter((unit) => unit.location_id === locationId)
   }
 
+  async getAdminHealth(token?: string): Promise<DetailedHealthResponse> {
+    const response = await fetch(`${this.API_BASE_URL}/admin/health`, {
+      headers: this.buildHeaders(token),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to fetch health: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
   // Dispatch Configuration API
 
   async getDispatchConfig(token?: string): Promise<{ items: DispatchConfigItem[] }> {

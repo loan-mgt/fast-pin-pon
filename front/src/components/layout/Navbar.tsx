@@ -5,7 +5,7 @@ import { MapLegendModal } from './MapLegendModal'
 
 const REFRESH_OPTIONS = [5, 10, 20, 30] as const
 
-type ViewMode = 'live' | 'dashboard' | 'history' | 'settings'
+type ViewMode = 'live' | 'dashboard' | 'history' | 'monitoring' | 'settings'
 
 interface NavbarProps {
     refreshInterval: number
@@ -49,6 +49,7 @@ export function Navbar({
     const getViewTitle = (view: ViewMode): string => {
         if (view === 'live') return 'Évènements en direct'
         if (view === 'dashboard') return 'Tableau de bord'
+        if (view === 'monitoring') return 'Supervision'
         if (view === 'settings') return 'Paramètres'
         return 'Historique'
     }
@@ -144,6 +145,19 @@ export function Navbar({
                         >
                             Historique
                         </button>
+                        {canViewDashboard && (
+                            <button
+                                type="button"
+                                onClick={() => onNavigate('monitoring')}
+                                className={`px-3 py-1 text-xs font-semibold rounded-full transition ${currentView === 'monitoring'
+                                    ? 'bg-slate-100 text-slate-950 shadow'
+                                    : 'text-slate-300 hover:text-white'
+                                    }`}
+                                aria-pressed={currentView === 'monitoring'}
+                            >
+                                Monitoring
+                            </button>
+                        )}
                     </div>
                     <div className="flex items-center gap-2 text-slate-400 text-xs">
                         <div className="hidden sm:block text-slate-400 text-xs">

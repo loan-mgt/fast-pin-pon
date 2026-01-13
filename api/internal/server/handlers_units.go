@@ -211,6 +211,10 @@ func (s *Server) handleUpdateUnitStatus(w http.ResponseWriter, r *http.Request) 
 	if !s.authMw.RequireOneOfRoles(w, r, RoleIT, RoleManageRealm) {
 		return
 	}
+
+	// Track microbit network activity
+	s.lastMicrobitMessage.Store(time.Now())
+
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
@@ -301,6 +305,10 @@ func (s *Server) handleUpdateUnitLocation(w http.ResponseWriter, r *http.Request
 	if !s.authMw.RequireOneOfRoles(w, r, RoleIT, RoleManageRealm) {
 		return
 	}
+
+	// Track microbit network activity
+	s.lastMicrobitMessage.Store(time.Now())
+
 	unitID, err := s.parseUUIDParam(r, "unitID")
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, errInvalidUnitID, err.Error())
