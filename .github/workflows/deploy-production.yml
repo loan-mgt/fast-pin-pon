@@ -84,3 +84,4 @@ jobs:
           script: |
             cd /opt/stacks/pin-pon/
             docker compose pull
+            docker compose up -d
