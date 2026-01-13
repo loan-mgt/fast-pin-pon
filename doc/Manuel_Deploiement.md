@@ -29,10 +29,9 @@ cp .env.example .env
 
 | Variable                      | Description                                  |
 | :---------------------------- | :------------------------------------------- |
-| `DB_PASSWORD`                 | Mot de passe de la DB principale             |
-| `KC_POSTGRES_PASSWORD`        | Mot de passe de la DB Keycloak               |
 | `KC_BOOTSTRAP_ADMIN_PASSWORD` | MDP Admin Keycloak (bootstrap)               |
 | `PASSWORD_USER`               | MDP par défaut pour les utilisateurs de test |
+
 
 ### Étape 3 : Lancement des Services
 
