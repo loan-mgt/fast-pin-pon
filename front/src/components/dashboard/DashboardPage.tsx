@@ -31,12 +31,12 @@ type SortRule = {
 const normalizeStatus = (status: string) => status?.toLowerCase().replaceAll(/[-\s]/g, '_') ?? ''
 
 const STATUS_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'available_hidden', label: 'Home base' },
-  { value: 'available', label: 'Available' },
-  { value: 'on_site', label: 'On site' },
-  { value: 'under_way', label: 'Under way' },
-  { value: 'unavailable', label: 'Unavailable' },
+  { value: 'all', label: 'Tous' },
+  { value: 'available_hidden', label: 'À la caserne' },
+  { value: 'available', label: 'Disponible' },
+  { value: 'on_site', label: 'Sur place' },
+  { value: 'under_way', label: 'En route' },
+  { value: 'unavailable', label: 'Indisponible' },
 ]
 
 const formatDate = (iso: string) => {
@@ -280,7 +280,7 @@ export function DashboardPage({ units, buildings = [], selectedStationId, onStat
             <thead className="text-xs uppercase text-slate-400 border-b border-slate-800">
               <tr>
                 <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('call_sign')}>
-                  Call sign
+                  Indicatif
                   {renderSortIndicator('call_sign')}
                 </th>
                 <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleSort('unit_type_code')}>

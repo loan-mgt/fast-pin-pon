@@ -9,9 +9,9 @@ type UnitStatus = 'available' | 'available_hidden' | 'under_way' | 'on_site' | '
 
 const STATUS_OPTIONS: { value: UnitStatus; label: string }[] = [
   { value: 'available', label: 'Disponible' },
-  { value: 'available_hidden', label: 'Disponible (caché)' },
+  { value: 'available_hidden', label: 'À la caserne' },
   { value: 'under_way', label: 'En route' },
-  { value: 'on_site', label: 'Sur site' },
+  { value: 'on_site', label: 'Sur place' },
   { value: 'unavailable', label: 'Indisponible' },
   { value: 'offline', label: 'Hors ligne' },
 ]

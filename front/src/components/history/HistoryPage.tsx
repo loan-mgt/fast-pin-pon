@@ -143,8 +143,13 @@ export function HistoryPage(): JSX.Element {
     }, [token])
 
     const eventTypes = useMemo(() => {
-        const types = new Set(events.map((e) => e.event_type_code))
-        return Array.from(types).sort((a, b) => a.localeCompare(b))
+        const typeMap = new Map<string, string>()
+        for (const e of events) {
+            typeMap.set(e.event_type_code, e.event_type_name || e.event_type_code)
+        }
+        return Array.from(typeMap.entries())
+            .map(([code, name]) => ({ code, name }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
     }, [events])
 
     const sortedAndFilteredEvents = useMemo(() => {
@@ -225,22 +230,22 @@ export function HistoryPage(): JSX.Element {
                         >
                             <option value="all">Tous les types</option>
                             {eventTypes.map((type) => (
-                                <option key={type} value={type}>
-                                    {type}
+                                <option key={type.code} value={type.code}>
+                                    {type.name}
                                 </option>
                             ))}
                         </select>
-                        <label htmlFor="filter-severity" className="text-slate-400 text-sm">Severity:</label>
+                        <label htmlFor="filter-severity" className="text-slate-400 text-sm">Criticité :</label>
                         <select
                             id="filter-severity"
                             value={filterSeverity}
                             onChange={(e) => setFilterSeverity(e.target.value as typeof filterSeverity)}
                             className="bg-slate-800/80 px-3 py-2 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
                         >
-                            <option value="all">All</option>
-                            <option value="low">Low (1-2)</option>
-                            <option value="medium">Medium (3)</option>
-                            <option value="high">High (4-5)</option>
+                            <option value="all">Tous</option>
+                            <option value="low">Faible (1-2)</option>
+                            <option value="medium">Modéré (3)</option>
+                            <option value="high">Élevé (4-5)</option>
                         </select>
                     </div>
                 </div>
