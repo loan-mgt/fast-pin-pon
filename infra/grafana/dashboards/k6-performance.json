@@ -1,0 +1,192 @@
+{
+  "annotations": { "list": [] },
+  "description": "Tests de charge k6 — vue d'ensemble des performances de l'API",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Vue d'ensemble",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 1 },
+      "id": 2,
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto"
+      },
+      "title": "Taux d'erreur",
+      "description": "Pourcentage de requêtes HTTP en échec",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(k6_http_reqs_total{expected_response=\"false\"}[1m])) / sum(rate(k6_http_reqs_total[1m]))",
+          "legendFormat": "erreurs"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 1 },
+      "id": 3,
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto"
+      },
+      "title": "Requêtes / seconde",
+      "description": "Nombre total de requêtes HTTP traitées par seconde",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(k6_http_reqs_total[1m]))",
+          "legendFormat": "req/s"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "purple", "value": null }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 1 },
+      "id": 4,
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto"
+      },
+      "title": "Utilisateurs virtuels actifs",
+      "description": "Nombre de VUs simulés en parallèle par k6",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "k6_vus",
+          "legendFormat": "VUs"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "id": 101,
+      "title": "Charge et utilisateurs",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 15 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "id": 30,
+      "options": { "tooltip": { "mode": "multi" } },
+      "title": "Utilisateurs virtuels dans le temps",
+      "description": "Évolution du nombre de VUs actifs et du maximum configuré pendant le test",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "k6_vus",
+          "legendFormat": "VUs actifs"
+        },
+        {
+          "expr": "k6_vus_max",
+          "legendFormat": "VUs max"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 20, "stacking": { "mode": "normal" } } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "id": 20,
+      "options": { "tooltip": { "mode": "multi" } },
+      "title": "Requêtes/s par endpoint",
+      "description": "Débit de requêtes HTTP ventilé par endpoint API (hors authentification)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (name) (rate(k6_http_reqs_total{name!=\"auth_token\"}[1m]))",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "id": 102,
+      "title": "Erreurs",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 20, "stacking": { "mode": "normal" } } }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "id": 21,
+      "options": { "tooltip": { "mode": "multi" } },
+      "title": "Erreurs/s par endpoint",
+      "description": "Requêtes en échec (code HTTP 4xx/5xx) ventilées par endpoint et code de statut",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (name, status) (rate(k6_http_reqs_total{expected_response=\"false\", name!=\"auth_token\"}[1m]))",
+          "legendFormat": "{{name}} ({{status}})"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["k6", "performance", "tests-charge"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Tests de charge k6",
+  "uid": "k6-performance",
+  "version": 2
+}

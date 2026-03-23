@@ -26,6 +26,7 @@ type Server struct {
 	queries   *db.Queries
 	validate  *validator.Validate
 	authMw    *AuthMiddleware
+	cache     *TTLCache
 	startedAt time.Time
 	// repairLocks prevents concurrent repair attempts for the same unit
 	repairLocks sync.Map
@@ -56,6 +57,7 @@ func New(ctx context.Context, cfg config.Config, log zerolog.Logger) (*Server, e
 		queries:   db.New(pool),
 		validate:  validate,
 		authMw:    authMw,
+		cache:     NewTTLCache(60*time.Second, log),
 		startedAt: time.Now().UTC(),
 	}
 
