@@ -72,24 +72,32 @@ func (s *Server) handleListRecentEventLogs(w http.ResponseWriter, r *http.Reques
 // @Failure 500 {object} APIError
 // @Route /v1/event-types [get]
 func (s *Server) handleListEventTypes(w http.ResponseWriter, r *http.Request) {
-	types, err := s.queries.ListEventTypes(r.Context())
+	data, err := GetOrFetch(s.cache, CacheKeyEventTypes, r.Context(), func(ctx context.Context) ([]EventTypeResponse, error) {
+		types, err := s.queries.ListEventTypes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		resp := make([]EventTypeResponse, 0, len(types))
+		for _, t := range types {
+			resp = append(resp, EventTypeResponse{
+				Code:                 t.Code,
+				Name:                 t.Name,
+				Description:          t.Description,
+				DefaultSeverity:      t.DefaultSeverity,
+				RecommendedUnitTypes: t.RecommendedUnitTypes,
+			})
+		}
+		return resp, nil
+	})
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to list event types", err.Error())
 		return
 	}
 
-	resp := make([]EventTypeResponse, 0, len(types))
-	for _, t := range types {
-		resp = append(resp, EventTypeResponse{
-			Code:                 t.Code,
-			Name:                 t.Name,
-			Description:          t.Description,
-			DefaultSeverity:      t.DefaultSeverity,
-			RecommendedUnitTypes: t.RecommendedUnitTypes,
-		})
-	}
-
-	s.writeJSON(w, http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=60")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
 }
 
 // handleListUnitTypes godoc
@@ -101,25 +109,33 @@ func (s *Server) handleListEventTypes(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} APIError
 // @Route /v1/unit-types [get]
 func (s *Server) handleListUnitTypes(w http.ResponseWriter, r *http.Request) {
-	types, err := s.queries.ListUnitTypes(r.Context())
+	data, err := GetOrFetch(s.cache, CacheKeyUnitTypes, r.Context(), func(ctx context.Context) ([]UnitTypeResponse, error) {
+		types, err := s.queries.ListUnitTypes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		resp := make([]UnitTypeResponse, 0, len(types))
+		for _, t := range types {
+			resp = append(resp, UnitTypeResponse{
+				Code:         t.Code,
+				Name:         t.Name,
+				Capabilities: t.Capabilities,
+				SpeedKMH:     t.SpeedKmh,
+				MaxCrew:      t.MaxCrew,
+				Illustration: optionalString(t.Illustration),
+			})
+		}
+		return resp, nil
+	})
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to list unit types", err.Error())
 		return
 	}
 
-	resp := make([]UnitTypeResponse, 0, len(types))
-	for _, t := range types {
-		resp = append(resp, UnitTypeResponse{
-			Code:         t.Code,
-			Name:         t.Name,
-			Capabilities: t.Capabilities,
-			SpeedKMH:     t.SpeedKmh,
-			MaxCrew:      t.MaxCrew,
-			Illustration: optionalString(t.Illustration),
-		})
-	}
-
-	s.writeJSON(w, http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=60")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
 }
 
 // handleListEvents godoc

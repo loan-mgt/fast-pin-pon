@@ -183,6 +183,32 @@ services:
     ports:
       - "9090:9090"
 
+  k6:
+    image: grafana/k6:latest
+    container_name: fast-pin-pon-k6
+    profiles: [ "load-test" ]
+    volumes:
+      - ./infra/k6:/scripts:ro
+    working_dir: /scripts
+    environment:
+      - K6_API_URL=http://api:8080
+      - K6_KEYCLOAK_URL=http://fast-pin-pon-keycloak:8080
+      - K6_KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - K6_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - K6_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - K6_PROMETHEUS_RW_SERVER_URL=http://fast-pin-pon-prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+    depends_on:
+      api:
+        condition: service_healthy
+      keycloak_web:
+        condition: service_healthy
+    networks:
+      - internal
+      - internal-keycloak
+      - internal-grafana
+    entrypoint: ["k6"]
+
 networks:
   internal: {}
   internal-keycloak: {}

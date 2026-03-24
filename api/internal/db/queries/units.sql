@@ -73,7 +73,8 @@ FROM units u
 LEFT JOIN locations l ON u.location_id = l.id
 WHERE (u.status = 'available' OR u.status = 'available_hidden')
 AND (sqlc.narg(unit_types)::text[] IS NULL OR u.unit_type_code = ANY(sqlc.narg(unit_types)::text[]))
-ORDER BY distance ASC;
+ORDER BY distance ASC
+LIMIT 50;
 
 -- name: CreateUnit :one
 INSERT INTO units (

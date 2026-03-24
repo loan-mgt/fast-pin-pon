@@ -26,20 +26,26 @@ import (
 // @Failure 500 {object} APIError
 // @Router /v1/dispatch/config [get]
 func (s *Server) handleGetDispatchConfig(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	configs, err := s.queries.ListDispatchConfig(ctx)
+	data, err := GetOrFetch(s.cache, CacheKeyDispatchCfg, r.Context(), func(ctx context.Context) (DispatchConfigResponse, error) {
+		configs, err := s.queries.ListDispatchConfig(ctx)
+		if err != nil {
+			return DispatchConfigResponse{}, err
+		}
+		items := make([]DispatchConfigItem, 0, len(configs))
+		for _, c := range configs {
+			items = append(items, mapDispatchConfigToDTO(c))
+		}
+		return DispatchConfigResponse{Items: items}, nil
+	})
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to fetch dispatch config", err.Error())
 		return
 	}
 
-	items := make([]DispatchConfigItem, 0, len(configs))
-	for _, c := range configs {
-		items = append(items, mapDispatchConfigToDTO(c))
-	}
-
-	s.writeJSON(w, http.StatusOK, DispatchConfigResponse{Items: items})
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=30")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
 }
 
 // handleUpdateDispatchConfig updates a single dispatch configuration parameter.
@@ -85,6 +91,10 @@ func (s *Server) handleUpdateDispatchConfig(w http.ResponseWriter, r *http.Reque
 
 	// Trigger engine refresh asynchronously
 	go s.notifyEngineRefresh(context.Background())
+
+	// Invalidate caches that include dispatch config
+	s.cache.Invalidate(CacheKeyDispatchCfg)
+	s.cache.Invalidate(CacheKeyDispatchStatic)
 
 	s.writeJSON(w, http.StatusOK, mapDispatchConfigToDTO(updated))
 }
