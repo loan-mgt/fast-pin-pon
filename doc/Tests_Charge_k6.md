@@ -26,44 +26,59 @@ infra/k6/
 
 Pic total : environ 160 VUs pendant 4 minutes.
 
-## Lancer le test à la main
+## Schéma du fonctionnement k6
 
-En local (simple) :
-```bash
-export K6_API_URL="http://localhost:8081"
-export K6_KEYCLOAK_URL="http://localhost:8082"
-export K6_CLIENT_ID="sdmis-api"
-export K6_CLIENT_SECRET="<secret>"
+```mermaid
+flowchart LR
+  subgraph k6 Runner
+    CONF[config.js<br/>variables env]
+    SCEN[mixed-realistic.js<br/>scénarios VU]
+    AUTH[auth.js<br/>token Keycloak]
+  end
 
-k6 run infra/k6/scenarios/mixed-realistic.js
+  subgraph Plateforme
+    API[API Go]
+    KC[Keycloak]
+  end
+
+  subgraph Monitoring
+    PROM[Prometheus]
+    GRAF[Grafana]
+  end
+
+  CONF --> SCEN
+  SCEN --> AUTH
+  AUTH --> KC
+  SCEN -->|requêtes HTTP| API
+  API -->|metrics /logs| PROM
+  PROM -->|series k6 + API| GRAF
 ```
 
-Avec Docker Compose + monitoring activé :
+## Lancer le test (workflow infra projet)
+
+1) Démarrer l'infra de monitoring (Prometheus/Grafana) et les dépendances :
 ```bash
 docker-compose -f docker-compose.dev.yml --profile monitoring up -d
+```
+
+2) Lancer k6 avec export Prometheus (utilise les scripts embarqués dans le conteneur k6) :
+```bash
 docker-compose -f docker-compose.dev.yml run --rm k6 \
   run --out experimental-prometheus-rw /scripts/scenarios/mixed-realistic.js
 ```
 
-Avec export Prometheus direct (pour Grafana) :
-```bash
-k6 run \
-  --out experimental-prometheus-rw \
-  -e K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9090/api/v1/write \
-  -e K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true \
-  infra/k6/scenarios/mixed-realistic.js
-```
+Variables attendues (peuvent être passées via `-e` si besoin) : `K6_API_URL`, `K6_KEYCLOAK_URL`, `K6_CLIENT_ID`, `K6_CLIENT_SECRET`.
 
 ## Comment lire le dashboard Grafana ?
 
 Dashboard : k6 Performance Dashboard (http://localhost:3000)
 
-- Overview : p95 de latence, taux d'erreur, requêtes par seconde, VUs actifs.
+- Overview : taux d'erreur, requêtes par seconde, VUs actifs.
 - Latence : percentiles globaux et p95 par endpoint pour repérer les routes lentes.
 - Débit : RPS par endpoint et erreurs par endpoint pour voir où ça casse.
 - API Server : métriques Prometheus de l'API (latence côté serveur, RPS serveur).
 
-## Optimisations proposées (top 2)
+## Optimisations proposées
 
 - Index DB ciblés — voir api/migrations/018_performance_indexes.sql : réduit fortement les scans sur les requêtes fréquentes (events, routes, nearby).
 - Cache en mémoire (TTL 60s) — voir api/internal/server/cache.go : évite de taper la base pour les données de référence, baisse la latence et la charge DB.
